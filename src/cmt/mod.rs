@@ -11,10 +11,13 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-extern crate bitcoin;
-extern crate bitcoin_hashes as hashes;
+pub mod contained;
+pub mod util;
+pub mod committable;
+pub mod digests;
 
-pub mod common;
-pub mod cmt;
-pub mod cvp;
-pub mod state;
+pub use contained::*;
+pub use util::*;
+
+pub use committable::*;
+pub use digests::*;

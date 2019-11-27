@@ -11,10 +11,14 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-extern crate bitcoin;
-extern crate bitcoin_hashes as hashes;
+pub trait Container: Clone + Eq {
+    type Message;
 
-pub mod common;
-pub mod cmt;
-pub mod cvp;
-pub mod state;
+    fn commit(&mut self, msg: &Self::Message);
+
+    fn verify(&self, msg: &Self::Message, origin: &Self) -> bool {
+        let mut origin = origin.clone();
+        origin.commit(msg);
+        origin == *self
+    }
+}

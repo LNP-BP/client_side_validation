@@ -10,11 +10,3 @@
 // You should have received a copy of the MIT License
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
-
-extern crate bitcoin;
-extern crate bitcoin_hashes as hashes;
-
-pub mod common;
-pub mod cmt;
-pub mod cvp;
-pub mod state;
