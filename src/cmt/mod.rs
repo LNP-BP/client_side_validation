@@ -11,14 +11,18 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-extern crate bitcoin;
-#[cfg(test)]
-extern crate hex;
+pub mod committable;
+pub mod digests;
+pub mod pubkey;
+pub mod lockscript;
+pub mod taproot;
+pub mod txout;
+pub mod tx;
 
-#[macro_use]
-pub mod common;
-pub mod cmt;
-//pub mod cvp;
-pub mod state;
-
-pub use common::*;
+pub use committable::*;
+pub use digests::*;
+pub use pubkey::*;
+pub use lockscript::*;
+pub use taproot::*;
+pub use txout::*;
+pub use tx::*;

@@ -11,14 +11,7 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-extern crate bitcoin;
-#[cfg(test)]
-extern crate hex;
-
-#[macro_use]
-pub mod common;
-pub mod cmt;
-//pub mod cvp;
-pub mod state;
-
-pub use common::*;
+pub struct SplitData<ONCH, OFFCH> {
+    pub onchain: ONCH,
+    pub offchain: OFFCH,
+}
