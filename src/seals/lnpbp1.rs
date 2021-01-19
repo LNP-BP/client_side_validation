@@ -15,8 +15,7 @@ use std::collections::BTreeSet;
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::secp256k1;
-
-use crate::SECP256K1;
+use wallet::SECP256K1;
 
 lazy_static! {
     /// Single SHA256 hash of "LNPBP1" string according to LNPBP-1 acting as a
@@ -219,8 +218,8 @@ mod test {
     use std::str::FromStr;
 
     use super::*;
-    use crate::bp::test::*;
-    use crate::paradigms::commit_verify::test::*;
+    use crate::test::*;
+    use client_side_validation::commit_verify::test_helpers::*;
 
     #[test]
     fn test_lnpbp1_tag() {

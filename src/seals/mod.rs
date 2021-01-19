@@ -11,17 +11,16 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-//! Modules implementing specific LNPBP standards. Check
-//! [LNP/BP Standards page](https://github.com/LNP-BP/LNPBPs) for details.
-//!
-//! Here reside low-level standards implementations, used by a higher-level
-//! convenience wrappers (like `bp::dbc`) or not fitting into the scope of any
-//! other part of the library (like Elgamal encryption).
-
-#[cfg(feature = "elgamal")]
-pub mod elgamal;
-pub mod features;
+mod error;
 pub mod lnpbp1;
 pub mod lnpbp2;
 pub mod lnpbp3;
 pub mod lnpbp4;
+mod tx_graph;
+mod txout_seal;
+mod txout_witness;
+
+pub use error::Error;
+pub use tx_graph::{SpendingStatus, TxGraph};
+pub use txout_seal::{TxResolve, TxoutSeal};
+pub use txout_witness::{InnerWitness, OuterWitness, Witness};
