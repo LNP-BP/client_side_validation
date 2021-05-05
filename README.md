@@ -1,166 +1,157 @@
-# LNP/BP Core Library
+# Client-side-validation library
 
-![Build](https://github.com/LNP-BP/rust-lnpbp/workflows/Build/badge.svg)
-![Tests](https://github.com/LNP-BP/rust-lnpbp/workflows/Tests/badge.svg)
-![Lints](https://github.com/LNP-BP/rust-lnpbp/workflows/Lints/badge.svg)
-[![codecov](https://codecov.io/gh/LNP-BP/rust-lnpbp/branch/master/graph/badge.svg)](https://codecov.io/gh/LNP-BP/rust-lnpbp)
+![Build](https://github.com/LNP-BP/client_side_validation/workflows/Build/badge.svg)
+![Tests](https://github.com/LNP-BP/client_side_validation/workflows/Tests/badge.svg)
+![Lints](https://github.com/LNP-BP/client_side_validation/workflows/Lints/badge.svg)
+[![codecov](https://codecov.io/gh/LNP-BP/client_side_validation/branch/master/graph/badge.svg)](https://codecov.io/gh/LNP-BP/client_side_validation)
 
-[![crates.io](https://meritbadge.herokuapp.com/lnpbp)](https://crates.io/crates/lnpbp)
-[![Docs](https://docs.rs/lnpbp/badge.svg)](https://docs.rs/lnpbp)
+[![crates.io](https://meritbadge.herokuapp.com/client_side_validation)](https://crates.io/crates/client_side_validation)
+[![Docs](https://docs.rs/lnpbp/badge.svg)](https://docs.rs/client_side_validation)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Apache-2 licensed](https://img.shields.io/crates/l/client_side_validation)](./LICENSE)
 
-This is LNP/BP Core Library: a rust library implementing LNP/BP specifications 
-<https://github.com/LNP-BP/LNPBPs>. It can be used to simplify development of
-layer 2 & 3 solutions on top of Lightning Network and Bitcoin blockchain. 
+This is an implementation defining standard of client-side-validation, i.e. its
+Core library.
 
-The current list of the projects based on the library include:
-* [RGB](https://github.com/LNP-BP/rgb-node): Confidential & scalable smart 
-  contracts for Bitcoin & Lightning
-* [Generalized Lightning Network](https://www.youtube.com/watch?v=YmmNsWS5wiM) 
-  and it's reference implementation named 
-  [LNP node](https://github.com/LNP-BP/lnp-node) enabling:
-  - RGB extensions
-  - DLC extensions
-  - [Lightspeed payments](https://github.com/LNP-BP/LNPBPs/issues/24)
-  - Multi-peer channels
-  - Faster lightning experiments (quicker adoption of eltoo, Taproot etc)
-* [LNP](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/LNP%20Networking%20%26%20RGB%20Integration_final.pdf): 
-  Networking protocol for privacy-keeping and censorship-resistant applications,
-  operating in both P2P and RPC modes (currently used as a part of Lightning 
-  network, but our effort is to make it more generic and usable even outside of 
-  LN). All services, developed by LNP/BP Standards Association (see points
-  below) are made with LNP.
-* [BP node](https://github.com/LNP-BP/bp-node): Indexing service for bitcoin 
-  blockchain; more efficient & universal Electrum server replacement. In 
-  perspective - validating Bitcoin network node (using libbitcoinconsus)
+Client-side-validation is a paradigm for distributed computing, based on top of
+proof-of-publication/commitment medium layer, which may be a bitcoin blockchain
+or other type of distributed consensus system.
 
-The planned projects:
-* Decentralized exchange for Lightning Network
-* Bifrost Node: P2P LNP/BP network infrastructural node running
-  - Decentralized exchange information workflows
-  - Watchtowers (RGB-enabled)
-  - DLC oracle provider
-  - Anonymous intermediate storage for client-validated data (like RGB 
-    consignments)
-  - Storm storage providers (see below)
-* [Storm](https://github.com/storm-org): Incentivised trustless storage and 
-  messaging protocol
-* [Prometheus](https://github.com/pandoracore/prometheus-spec): Decentralized 
-  trustless computing
+The development of the library is supported by [LNP/BP Standards Association](https://lnp-bp.org).
+The original idea of client-side-validation was proposed by Peter Todd with its 
+possible applications designed by Giacomo Zucco. It was shaped into a protocol-
+level design by Dr Maxim Orlovsky with a big input from the community and
+implemented by him as this set of libraries.
 
-Potentially, with LNP/BP Core library you can simplify the development of
-* Discreet log contracts
-* Implement experimental lightning features
-* Do complex multi-threaded or elastic/dockerized client-service microservice 
-  architectures
 
-To learn more about the technologies enabled by the library please check:
-* [RGB Technology Internals](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/)
-* [Networking with LNP](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/LNP%20Networking%20%26%20RGB%20Integration_final.pdf)
-* [LNP/BP Nodes Initiative](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/LNP-BP%20Nodes%20Initiative.pdf)
+## Documentation
 
-The development of the library projects is supported by LNP/BP Standards 
-Association.
+Detailed developer & API documentation for all libraries can be accessed
+at <https://docs.rs/client_side_validation/>
 
-## Library functionality
+To learn about the technologies enabled by the library please check
+[slides from our tech presentations](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/)
+and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwArGaMKsxg)
 
-The library provides the code for:
 
-* RGB: confidential smart contracts with client-side validation, with Lightning
-  network support
-* Improvements & utilities for Bitcoin protocol 
-* Deterministic commitments that can be embedded into for Bitcoin transactions 
-  and public keys (DBC)
-* Single-use seals
-* Client-side validation
-* Lightning networking protocol (LNP)
-* Generalized lightning network
+## Components
 
-This code supports both Bitcoin blockchain and Lightning network.
+This library consists of the following main three components, which define
+independent parts constituting together client-side-validation API and its core
+functionality. These are:
+- Strict encoding (LNPBP-7 standard): binary standard of encoding 
+  client-side-validated data
+- Commit-verify scheme and its client-side-validation specific implementations
+  * consensus commitments
+  * multi-commitments (LNPBP-4 standard)
+- Single-use-seals (LNPBP-8 standard)
 
-## Project structure
+Basing on these APIs, this library includes specific applications for commitment/
+proof-of-publication mediums. Currently, this is *Bitcoin transaction graph*
+(both blockchain and state channel-based), consisting of two main components:
+- deterministic bitcoin commitments API (LNPBP-1, 2 & 3 standards)
+- bitcoin-based single-use-seal API (LNPBP-10 and LNPBP-39 standards)
 
-The library is built as a single Rust crate with the following top-level mods:
-* paradigms: generic paradigms (API best practices) which are not bitcoin-specific
-* bp: Bitcoin protocol extensions external to [Bitcoin Core](https://github.com/bitcoin/bitcoin) 
-  functionality and existing [BIPs](http://github.com/bitcoin/bips). These may
-  also cover those of [LNPBP standards](https://github.com/lnp-bp/lnpbps) which 
-  are not specific for other layers.
-* lnp: Lightning Network protocol extensions: networking, generalized lightning 
-  channels and better layerization of
-  [BOLT specifications](https://github.com/lightningnetwork/lightning-rfc)
-* rgb: smart contracts for Bitcoin and Lightning network based client-side 
-  validation, deterministic bitcoin commitments and single-use seals.
-* standards: other LNPBPs standard implementation which does not fit into any of
-  the categories above
 
-The library is based on other projects:
-* [rust-bitcoin](https://github.com/rust-bitcoin/rust-bitcoin)
-* [bitcoin_hashes](https://github.com/rust-bitcoin/bitcoin_hashes)
-* [rust-secp256k1](https://github.com/rust-bitcoin/rust-secp256k1)
-* [rust-secp256k1-zkp](https://github.com/ElementsProject/rust-secp256k1-zkp) 
-  for Pedersen commitments and Bulletproofs used in confidential state inside 
-  RGB protocols
-* [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript)
+## Usage
 
-## Install
-
-### Get the dependencies
-
-On Debian, run
-```shell script
-sudo apt-get install cargo libssl-dev libzmq3-dev pkg-config g++ cmake
-```
-
-On Mac OS, run
-```shell script
-brew cargo pkg-config zmq
-```
-
-### Clone and compile library
-
-Minimum supported rust compiler version (MSRV): 1.47 (caused by array size
-limitation to 32 bytes only in `strict_encoding` crate).
-
-```shell script
-git clone https://github.com/lnp-bp/rust-lnpbp
-cd rust-lnpbp
-cargo build --release --all-features
-```
-
-The library can be found in `target/release` directory.
-
-You can run full test suite with:
-
-```
-./contrib/test.sh
-```
-
-Please refer to the [`cargo` documentation](https://doc.rust-lang.org/stable/cargo/) 
-for more detailed instructions. 
+The repository contains rust libraries for client-side validation and 
+command-line tools for debugging/low-level hacking mode.
 
 ### Use library in other projects
 
-Add these lines to your `Cargo.toml` file at the very end of the `[dependecies]`
-section:
+To use libraries, you just need lates version of libraries, published to 
+[crates.io](https://crates.io) into `[dependencies]` section of your project 
+`Cargo.toml`. Here is the full list of available libraries from this repository:
 
 ```toml
-lnpbp = "~0.2.0"
-lnpbp_derive = "~0.2.0"
-lnpbp_services = "~0.2.0"
+client_side_validation = "1" # "Umbrella" library including all other libraries
+strict_encoding = "1" # Strict encoding API and derivation macros
+commit_verify = "1" # Consensus and multi-message commitments
+single_use_seals = "1" # Generic (non-bitcoin-specific) API
+bp-dbc = "1" # Deterministic bitcoin commitments library
+bp-seals = "1" # Bitcoin single-use-seals library
 ```
+
+"Umbrella" `client_side_validation` library is configured with default set of
+features enabling all of its functionality (and including all of other libraries 
+from this repository, listed above). If you need to restrict this set, either
+use specific libraries - or configure main library with a set of features in
+the following way:
+```toml
+[dependencies.client_side_validation]
+version = "1"
+default-features = false
+features = [] # Your set of features goes here
+# Avaliable features
+# * `derivation` - includes strict encoding derivation macros
+# * `strict_encoding` - strict encoding library (by default does not include
+#                       derivation macros, to use it you need`derivation` 
+#                       feature to be explicetly enabled
+# * `multi-commitments` - LNPBP-4 multi-commitments
+# * `dbc` - deterministic bitcoin commitments
+# * `seals-all` - All single-use-seals component, including bitcoin seals 
+#                 library
+# * `seals-api` - single-use-seals core API (without bitcoin-specific extensions)
+# * `seals-utxo - Bitcoin-based UTXO single-use-seals
+```
+
+For specific features which may be enabled for the libraries, please check
+library-specific guidelines, located in `README.md` files in each of library
+subdirectories.
+
+
+### Use command-line tool
+
+First, you have to install rust toolchain using instructions from 
+[the official website](https://www.rust-lang.org/tools/install).
+
+Next, if you need the latest published version, you can simply run
+```shell script
+cargo install client_side_validation
+```
+which will give you the latest version of the command-line tool. For now, you 
+can use it by typing in terminal
+```shell script
+clisv help
+```
+
+If you need a latest `master` version (which may be unstable), you need to clone
+git repository and compile the project locally:
+```shell script
+git clone https://github.com/LNP-BP/client_side_validation
+cd client_side_validation
+cargo install --path .
+```
+
+
+## Known applications
+
+The current list of the projects based on the library include:
+* [RGB](https://github.com/LNP-BP/rgb-node): Confidential & scalable smart
+  contracts for Bitcoin & Lightning
+* [LNP](https://www.youtube.com/watch?v=YmmNsWS5wiM): generalized lightning 
+  network and it's reference implementations named
+  [LNP Core](https://github.com/LNP-BP/lnp-core) and
+  [LNP Node](https://github.com/LNP-BP/lnp-node)
+* [Bitcoin-based decentralized identity](https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2021-February/018381.html) 
+  proposal uses single-use-seals
+* [Internet2 project](https://github.com/internet2-org) uses strict-encoding
+  for building its Internet2 APIs and microservice architecture
+
+To learn more about the technologies enabled by the library please check
+[slides from our tech presentations](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/)
+and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwArGaMKsxg)
 
 
 ## Contributing
 
-Contribution guidelines can be found in a separate 
-[CONTRIBUTING](CONTRIBUTING.md) file
+Contribution guidelines can be found in [CONTRIBUTING](CONTRIBUTING.md)
 
 
 ## More information
 
-### Policy on Altcoins/Altchains
+### Policy on altcoins
 
 Altcoins and "blockchains" other than Bitcoin blockchain/Bitcoin protocols are 
 not supported and not planned to be supported; pull requests targeting them will 
@@ -169,4 +160,3 @@ be declined.
 ### Licensing
 
 See [LICENCE](LICENSE) file.
-

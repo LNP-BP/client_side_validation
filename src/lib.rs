@@ -1,5 +1,5 @@
 // LNP/BP Core Library implementing LNPBP specifications & standards
-// Written in 2019 by
+// Written in 2020 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //
 // To the extent possible under law, the author(s) have dedicated all
@@ -22,81 +22,36 @@
     dead_code,
     //missing_docs
 )]
-// TODO #184: when we will be ready for the release #![deny(missing_docs)]
 
-#[macro_use]
-extern crate amplify;
+//! Primitives module defines core strict interfaces from informational LNPBP
+//! standards specifying secure and robust practices for function calls
+//! used in main LNP/BP development paradigms:
+//! * Cryptographic commitments and verification
+//! * Single-use seals
+//! * Client-side validation
+//! * Strict binary data serialization used by client-side validation
+//!
+//! The goal of this module is to maximally reduce the probability of errors and
+//! mistakes within particular implementations of this paradigms by
+//! standartizing typical workflow processes in a form of interfaces that
+//! will be nearly impossible to use in the wrong form.
+
 #[macro_use]
 extern crate amplify_derive;
 #[macro_use]
-extern crate lazy_static;
-
-#[cfg(feature = "serde")]
-#[macro_use]
-extern crate serde_with;
-#[cfg(feature = "serde")]
-extern crate serde_crate as serde;
-
-#[macro_use]
 extern crate bitcoin_hashes;
-
-pub extern crate client_side_validation;
-pub use client_side_validation::commit_encode_list;
-pub use client_side_validation::commit_verify;
-#[macro_use]
-pub extern crate strict_encoding;
-pub use strict_encoding::{
-    impl_enum_strict_encoding, strict_decode_self, strict_encode_list,
-    test_encode, test_enum_u8_exhaustive, test_garbage_exhaustive,
-};
-#[macro_use]
-pub extern crate strict_encoding_derive;
-pub use strict_encoding_derive::{StrictDecode, StrictEncode};
-
-pub mod bech32;
-pub mod chain;
-pub mod dbc;
-#[cfg(feature = "elgamal")]
-pub mod elgamal;
-pub mod seals;
-pub mod short_id;
-pub mod tagged_hash;
-
-pub use chain::{Chain, P2pNetworkId};
-pub use seals::TxoutSeal;
-pub use seals::{lnpbp1, lnpbp2, lnpbp3, lnpbp4};
-pub use short_id::ShortId;
-pub use tagged_hash::TaggedHash;
-
 #[cfg(test)]
-pub mod test {
-    use bitcoin::secp256k1;
-    use wallet::SECP256K1;
+#[macro_use]
+extern crate strict_encoding;
 
-    pub fn gen_secp_pubkeys(n: usize) -> Vec<secp256k1::PublicKey> {
-        let mut ret = Vec::with_capacity(n);
-        let mut sk = [0; 32];
+#[macro_use]
+mod commit_encode;
+pub mod commit_verify;
+mod digests;
+pub mod single_use_seals;
 
-        for i in 1..n + 1 {
-            sk[0] = i as u8;
-            sk[1] = (i >> 8) as u8;
-            sk[2] = (i >> 16) as u8;
-
-            ret.push(secp256k1::PublicKey::from_secret_key(
-                &SECP256K1,
-                &secp256k1::SecretKey::from_slice(&sk[..]).unwrap(),
-            ));
-        }
-        ret
-    }
-
-    pub fn gen_bitcoin_pubkeys(
-        n: usize,
-        compressed: bool,
-    ) -> Vec<bitcoin::PublicKey> {
-        gen_secp_pubkeys(n)
-            .into_iter()
-            .map(|key| bitcoin::PublicKey { key, compressed })
-            .collect()
-    }
-}
+pub use crate::commit_encode::{
+    commit_strategy, merklize, CommitConceal, CommitEncode,
+    CommitEncodeWithStrategy, ConsensusCommit, ConsensusMerkleCommit,
+    MerkleNode, MerkleSource, ToMerkleSource,
+};
