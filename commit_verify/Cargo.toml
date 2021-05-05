@@ -1,0 +1,30 @@
+[package]
+name = "commit_verify"
+version = "0.5.0-rc.1"
+license = "Apache-2.0"
+authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
+description = "Commit-verify API for client-side validation"
+repository = "https://github.com/LNP-BP/client_side_validation"
+homepage = "https://github.com/LNP-BP"
+keywords = ["lnp-bp", "cryptography", "smart-contracts", "client-side-validation"]
+categories = ["cryptography", "encoding"]
+readme = "README.md"
+edition = "2018"
+
+[lib]
+name = "commit_verify"
+path = "src/lib.rs"
+
+[dependencies]
+amplify = "3.4"
+amplify_derive = "2.7"
+bitcoin_hashes = "0.9.6"
+strict_encoding = "1.2.3"
+rand = { version = "0.8", optional = true }
+serde_crate = { version = "1", package = "serde", optional = true }
+serde_with = { version = "1.8", optional = true }
+
+[features]
+default = ["rand"]
+all = ["rand", "serde"]
+serde = ["serde_crate", "serde_with"]

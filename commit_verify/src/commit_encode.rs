@@ -16,7 +16,7 @@ use std::iter::FromIterator;
 
 use bitcoin_hashes::{sha256, sha256d, Hash, HashEngine};
 
-use super::commit_verify::{self, CommitVerify};
+use crate::CommitVerify;
 
 pub trait CommitEncode {
     fn commit_encode<E: io::Write>(&self, e: E) -> usize;
@@ -185,7 +185,7 @@ pub trait CommitConceal {
 }
 
 pub trait ConsensusCommit: Sized + CommitEncode {
-    type Commitment: commit_verify::CommitVerify<Vec<u8>>;
+    type Commitment: CommitVerify<Vec<u8>>;
 
     #[inline]
     fn consensus_commit(&self) -> Self::Commitment {

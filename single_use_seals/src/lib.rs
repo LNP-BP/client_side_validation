@@ -96,6 +96,9 @@
 //!   and Proof-of-Publication. 1. Single-Use-Seal Definition.
 //!   <https://petertodd.org/2017/scalable-single-use-seal-asset-transfer>
 
+#[macro_use]
+extern crate amplify_derive;
+
 /// Message type that can be used to close the seal over it
 pub type Message = dyn AsRef<[u8]>;
 

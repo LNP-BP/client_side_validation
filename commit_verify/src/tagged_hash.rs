@@ -14,8 +14,8 @@
 //! Bitcoin tagged hash helper types.
 
 use amplify::Wrapper;
-use bitcoin::hashes::hex::FromHex;
-use bitcoin::hashes::{hex, sha256, sha256t, Hash, HashEngine};
+use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::{hex, sha256, sha256t, Hash, HashEngine};
 #[cfg(feature = "serde")]
 use serde_with::{As, DisplayFromStr};
 use wallet::Slice32;

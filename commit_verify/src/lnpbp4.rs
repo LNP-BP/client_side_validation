@@ -13,11 +13,12 @@
 
 use std::collections::BTreeMap;
 
-use bitcoin::hashes::{sha256d, Hash, HashEngine};
-use bitcoin::secp256k1::rand::{thread_rng, Rng};
 use bitcoin::util::uint::Uint256;
-use client_side_validation::commit_verify::TryCommitVerify;
+use bitcoin_hashes::{sha256d, Hash, HashEngine};
+use rand::{thread_rng, Rng};
 use wallet::Slice32;
+
+use crate::TryCommitVerify;
 
 /// Source data for creation of multi-message commitments according to LNPBP-4
 /// procedure
