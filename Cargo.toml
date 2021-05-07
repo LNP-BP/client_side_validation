@@ -10,7 +10,7 @@ keywords = ["lnp-bp", "cryptocurrency", "smart-contracts", "client-side-validati
 categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
 readme = "README.md"
 edition = "2018"
-exclude = [".github", "bp-dbc", "bp-seals", "commit_verify", "strict_encoding", "single_use_seals"]
+exclude = [".github", "commit_verify", "strict_encoding", "single_use_seals"]
 
 [lib]
 name = "client_side_validation"
@@ -20,8 +20,6 @@ path = "src/lib.rs"
 strict_encoding = { version = "1", optional = true, default-features = false }
 commit_verify = { version = "0.5.0-rc.1", path = "./commit_verify", default-features = false }
 single_use_seals = { version = "0.5.0-rc.1", path = "./single_use_seals", optional = true, default-features = false }
-bp-dbc = { version = "0.5.0-rc.1", path = "./bp-dbc", optional = true, default-features = false }
-bp-seals = { version = "0.5.0-rc.1", path = "./bp-seals", optional = true, default-features = false }
 
 [features]
 default = []
@@ -29,5 +27,5 @@ all = []
 
 
 [workspace]
-members = [".", "bp-dbc", "bp-seals", "strict_encoding", "commit_verify", "single_use_seals"]
-default-members = [".", "bp-dbc", "bp-seals", "strict_encoding", "commit_verify", "single_use_seals"]
+members = [".", "strict_encoding", "commit_verify", "single_use_seals"]
+default-members = [".", "strict_encoding", "commit_verify", "single_use_seals"]

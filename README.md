@@ -46,12 +46,6 @@ functionality. These are:
   * multi-commitments (LNPBP-4 standard)
 - Single-use-seals (LNPBP-8 standard)
 
-Basing on these APIs, this library includes specific applications for commitment/
-proof-of-publication mediums. Currently, this is *Bitcoin transaction graph*
-(both blockchain and state channel-based), consisting of two main components:
-- deterministic bitcoin commitments API (LNPBP-1, 2 & 3 standards)
-- bitcoin-based single-use-seal API (LNPBP-10 and LNPBP-39 standards)
-
 
 ## Usage
 
@@ -65,12 +59,10 @@ To use libraries, you just need lates version of libraries, published to
 `Cargo.toml`. Here is the full list of available libraries from this repository:
 
 ```toml
-client_side_validation = "1" # "Umbrella" library including all other libraries
+client_side_validation = "1" # "Umbrella" library including all of the tree libraries below
 strict_encoding = "1" # Strict encoding API and derivation macros
 commit_verify = "1" # Consensus and multi-message commitments
 single_use_seals = "1" # Generic (non-bitcoin-specific) API
-bp-dbc = "1" # Deterministic bitcoin commitments library
-bp-seals = "1" # Bitcoin single-use-seals library
 ```
 
 "Umbrella" `client_side_validation` library is configured with default set of
@@ -89,7 +81,6 @@ features = [] # Your set of features goes here
 #                       derivation macros, to use it you need`derivation` 
 #                       feature to be explicetly enabled
 # * `multi-commitments` - LNPBP-4 multi-commitments
-# * `dbc` - deterministic bitcoin commitments
 # * `seals-all` - All single-use-seals component, including bitcoin seals 
 #                 library
 # * `seals-api` - single-use-seals core API (without bitcoin-specific extensions)
@@ -100,6 +91,27 @@ For specific features which may be enabled for the libraries, please check
 library-specific guidelines, located in `README.md` files in each of library
 subdirectories.
 
+### Libraries based on client-side-validation
+
+Most of the developers will be probably interested in a more high-level 
+libraries based on client-side-validation, applying it to a specific commitment
+mediums (bitcoin transaction graph from blockchain or state channels, or more
+exotic systems like confidential bitcoin transactions used by elements & liquid,
+or mimblewimble-based systems). Here is (potentially incomplete) list of such
+libraries:
+- Bitcoin: [BP Core Lib](https://github.com/LNP-BP/bp-core), which contains 
+  bitcoin UTXO single-use-seal implementations for pay-to-contract and 
+  sign-to-contract types of seals, as well as a library for deterministic 
+  bitcoin commitments. This library is maintained by LNP/BP Association.
+- Mimblewimble: [MW Core Lib](https://github.com/pandoracore/mw-core) from 
+  [Pandora Core](https://pandoracore.com) – a very early prototypes and proofs 
+  of concept applying client-side-validation to mimblewimble-types of 
+  blockchains.
+- [Pandora timechain](https://github.com/pandora-network/timechain), an 
+  experimental blockchain of [Pandora Network](https://pandora.network), 
+  experimenting with client-side-validation using modified bitcoin consensus 
+  rules, extended with eltoo- and covenants-related functionality and with 
+  removed native blockchain-level coin.
 
 ### Use command-line tool
 
@@ -125,38 +137,12 @@ cargo install --path .
 ```
 
 
-## Known applications
-
-The current list of the projects based on the library include:
-* [RGB](https://github.com/LNP-BP/rgb-node): Confidential & scalable smart
-  contracts for Bitcoin & Lightning
-* [LNP](https://www.youtube.com/watch?v=YmmNsWS5wiM): generalized lightning 
-  network and it's reference implementations named
-  [LNP Core](https://github.com/LNP-BP/lnp-core) and
-  [LNP Node](https://github.com/LNP-BP/lnp-node)
-* [Bitcoin-based decentralized identity](https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2021-February/018381.html) 
-  proposal uses single-use-seals
-* [Internet2 project](https://github.com/internet2-org) uses strict-encoding
-  for building its Internet2 APIs and microservice architecture
-
-To learn more about the technologies enabled by the library please check
-[slides from our tech presentations](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/)
-and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwArGaMKsxg)
-
-
 ## Contributing
 
 Contribution guidelines can be found in [CONTRIBUTING](CONTRIBUTING.md)
 
 
-## More information
+## Licensing
 
-### Policy on altcoins
-
-Altcoins and "blockchains" other than Bitcoin blockchain/Bitcoin protocols are 
-not supported and not planned to be supported; pull requests targeting them will 
-be declined.
-
-### Licensing
-
-See [LICENCE](LICENSE) file.
+The libraries are distributed on the terms of Apache 2.0 opensource license.
+See [LICENCE](LICENSE) file for the license details.

@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "aho-corasick"
-version = "0.7.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e37cfd5e7657ada45f742d6e99ca5788580b5c529dc78faf11ece6dc702656f"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "amplify"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19,7 +10,6 @@ checksum = "6c0e727465efa19191f24c4167350cba8b1482dcfa45491c84c069ecf1696d81"
 dependencies = [
  "amplify_derive",
  "amplify_syn",
- "stringly_conversions",
 ]
 
 [[package]]
@@ -100,28 +90,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bp-dbc"
-version = "0.5.0-rc.1"
-dependencies = [
- "amplify",
- "bitcoin",
- "commit_verify",
- "descriptor-wallet",
- "strict_encoding 1.2.3",
-]
-
-[[package]]
-name = "bp-seals"
-version = "0.5.0-rc.1"
-dependencies = [
- "amplify",
- "bitcoin",
- "bp-dbc",
- "commit_verify",
- "single_use_seals",
-]
-
-[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -156,8 +124,6 @@ dependencies = [
 name = "client_side_validation"
 version = "0.5.0-rc.1"
 dependencies = [
- "bp-dbc",
- "bp-seals",
  "commit_verify",
  "single_use_seals",
  "strict_encoding 1.2.3",
@@ -187,9 +153,12 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cd5a7748210e7ec1a9696610b1015e6e31fbf58f77a160801f124bd1c36592a"
+checksum = "dec1028182c380cc45a2e2c5ec841134f2dfd0f8f5f0a5bcd68004f81b5efdf4"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "curve25519-dalek"
@@ -237,23 +206,6 @@ dependencies = [
  "darling_core",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "descriptor-wallet"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39adbc7eccd5b6a2bc598730d0e197ac8e089aea212aabe77b6facb8cb6d40d5"
-dependencies = [
- "amplify",
- "amplify_derive",
- "bitcoin",
- "chrono",
- "lazy_static",
- "miniscript",
- "regex",
- "slip132",
- "strict_encoding 1.2.3",
 ]
 
 [[package]]
@@ -329,7 +281,7 @@ checksum = "c9495705279e7140bf035dde1f6e750c162df8b625267cd52cc44e0b156732c8"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
+ "wasi 0.10.2+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -361,22 +313,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
-name = "lazy_static"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-
-[[package]]
 name = "libc"
 version = "0.2.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
-
-[[package]]
-name = "memchr"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
 name = "miniscript"
@@ -423,12 +363,6 @@ name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
-
-[[package]]
-name = "paste"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
 
 [[package]]
 name = "ppv-lite86"
@@ -564,23 +498,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "regex"
-version = "1.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5f1ceb7f74abbce32601642fcf8e8508a8a8991e0621c7d750295b9095702b"
-dependencies = [
- "aho-corasick",
- "memchr",
- "regex-syntax",
-]
-
-[[package]]
-name = "regex-syntax"
-version = "0.6.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
-
-[[package]]
 name = "rustc-serialize"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -697,17 +614,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "slip132"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "296e95fcf964943e0a16730184a929e9476615e31fb7fbcdc6476d99b2690cac"
-dependencies = [
- "amplify",
- "amplify_derive",
- "bitcoin",
-]
-
-[[package]]
 name = "strict_encoding"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -717,7 +623,6 @@ dependencies = [
  "amplify_derive",
  "bitcoin",
  "chrono",
- "miniscript",
  "strict_encoding_derive 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -759,15 +664,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stringly_conversions"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff63080f492dd4d289ffcaed8d7ece38adfb423db910eb342c0e04d409536a7a"
-dependencies = [
- "paste",
-]
-
-[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -804,12 +700,11 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.44"
+version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
+checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
 dependencies = [
  "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi",
 ]
 
@@ -839,9 +734,9 @@ checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
 
 [[package]]
 name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
+version = "0.10.2+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
+checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 
 [[package]]
 name = "winapi"
