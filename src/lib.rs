@@ -36,22 +36,8 @@
 //! standartizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in the wrong form.
 
-#[macro_use]
-extern crate amplify_derive;
-#[macro_use]
-extern crate bitcoin_hashes;
-#[cfg(test)]
-#[macro_use]
-extern crate strict_encoding;
+pub extern crate commit_verify;
+pub extern crate single_use_seals;
+pub extern crate strict_encoding;
 
-#[macro_use]
-mod commit_encode;
-pub mod commit_verify;
-mod digests;
-pub mod single_use_seals;
-
-pub use crate::commit_encode::{
-    commit_strategy, merklize, CommitConceal, CommitEncode,
-    CommitEncodeWithStrategy, ConsensusCommit, ConsensusMerkleCommit,
-    MerkleNode, MerkleSource, ToMerkleSource,
-};
+pub use strict_encoding::derive::{StrictDecode, StrictEncode};

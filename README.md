@@ -109,32 +109,9 @@ libraries:
   blockchains.
 - [Pandora timechain](https://github.com/pandora-network/timechain), an 
   experimental blockchain of [Pandora Network](https://pandora.network), 
-  experimenting with client-side-validation using modified bitcoin consensus 
-  rules, extended with eltoo- and covenants-related functionality and with 
-  removed native blockchain-level coin.
-
-### Use command-line tool
-
-First, you have to install rust toolchain using instructions from 
-[the official website](https://www.rust-lang.org/tools/install).
-
-Next, if you need the latest published version, you can simply run
-```shell script
-cargo install client_side_validation
-```
-which will give you the latest version of the command-line tool. For now, you 
-can use it by typing in terminal
-```shell script
-clisv help
-```
-
-If you need a latest `master` version (which may be unstable), you need to clone
-git repository and compile the project locally:
-```shell script
-git clone https://github.com/LNP-BP/client_side_validation
-cd client_side_validation
-cargo install --path .
-```
+  playing with client-side-validation using modified bitcoin consensus rules, 
+  extended with eltoo- and covenants-related functionality and with removed 
+  native blockchain-level coin.
 
 
 ## Contributing

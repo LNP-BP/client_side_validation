@@ -1,0 +1,76 @@
+// LNP/BP Core Library implementing LNPBP specifications & standards
+// Written in 2020 by
+//     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
+//
+// To the extent possible under law, the author(s) have dedicated all
+// copyright and related and neighboring rights to this software to
+// the public domain worldwide. This software is distributed without
+// any warranty.
+//
+// You should have received a copy of the MIT License
+// along with this software.
+// If not, see <https://opensource.org/licenses/MIT>.
+
+use amplify::flags::FlagVec;
+use amplify::num::{u1024, u256, u512};
+use std::io;
+
+use crate::{Error, StrictDecode, StrictEncode};
+
+impl StrictEncode for FlagVec {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.shrunk().as_inner().strict_encode(e)
+    }
+}
+
+impl StrictDecode for FlagVec {
+    #[inline]
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(Self::from_inner(StrictDecode::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for u256 {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_le_bytes().strict_encode(e)
+    }
+}
+
+impl StrictDecode for u256 {
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(u256::from_le_bytes(<[u8; 32]>::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for u512 {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let bytes = self.to_le_bytes();
+        e.write_all(&bytes)?;
+        Ok(bytes.len())
+    }
+}
+
+impl StrictDecode for u512 {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut bytes = [0u8; 64];
+        d.read_exact(&mut bytes)?;
+        Ok(u512::from_le_bytes(bytes))
+    }
+}
+
+impl StrictEncode for u1024 {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let bytes = self.to_le_bytes();
+        e.write_all(&bytes)?;
+        Ok(bytes.len())
+    }
+}
+
+impl StrictDecode for u1024 {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut bytes = [0u8; 128];
+        d.read_exact(&mut bytes)?;
+        Ok(u1024::from_le_bytes(bytes))
+    }
+}

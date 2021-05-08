@@ -24,23 +24,19 @@
 )]
 
 #[cfg(feature = "derive")]
-#[allow(unused_imports)]
-#[macro_use]
-extern crate strict_encoding_derive as derive;
+pub extern crate strict_encoding_derive as derive;
 #[cfg(feature = "derive")]
 pub use derive::{StrictDecode, StrictEncode};
 
-#[allow(unused_imports)]
 #[macro_use]
 extern crate amplify;
-#[macro_use]
-extern crate amplify_derive;
 
 #[macro_use]
 mod macros;
 #[macro_use]
 pub mod test_helpers;
 
+mod amplify_types;
 mod bitcoin;
 mod byte_str;
 mod collections;

@@ -13,11 +13,11 @@
 
 use std::collections::BTreeMap;
 
-use bitcoin::util::uint::Uint256;
+use amplify::num::u256;
 use bitcoin_hashes::{sha256d, Hash, HashEngine};
 use rand::{thread_rng, Rng};
-use wallet::Slice32;
 
+use crate::Slice32;
 use crate::TryCommitVerify;
 
 /// Source data for creation of multi-message commitments according to LNPBP-4
@@ -100,8 +100,8 @@ impl TryCommitVerify<MessageMap> for MultimsgCommitment {
             // TODO #192: Modify arithmetics in LNPBP-4 spec
             //       <https://github.com/LNP-BP/LNPBPs/issues/19>
             if multimsg.into_iter().all(|(protocol, digest)| {
-                let rem = Uint256::from_be_bytes(**protocol)
-                    % Uint256::from_u64(n as u64)
+                let rem = u256::from_be_bytes(**protocol)
+                    % u256::from_u64(n as u64)
                         .expect("Bitcoin U256 struct is broken");
                 ordered
                     .insert(rem.low_u64() as usize, (*protocol, *digest))

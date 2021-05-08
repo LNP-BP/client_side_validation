@@ -325,10 +325,11 @@ pub enum SealStatus {
 /// related to [SealMedium] operations within
 /// [SealMediumError::MediumAccessError] case; the type of MediumAccessError is
 /// defined through generic argument to [SealMediumError].
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum SealMediumError<M: std::error::Error> {
     /// Can't access the publication medium
+    #[from]
     MediumAccessError(M),
 
     /// Publication id is not supported
