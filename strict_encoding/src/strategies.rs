@@ -11,6 +11,7 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+//! Strategies simplifying implementation of encoding traits.
 //! Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 
 use amplify::Wrapper;
@@ -19,14 +20,31 @@ use std::io;
 use super::net;
 use super::{Error, StrictDecode, StrictEncode};
 
-// Defining strategies:
-
+/// Encodes/decodes data as a [`bitcoin::hashes::Hash`]-based (wrapper) type,
+/// i.e. as a fixed-size byte string of [`bitcoin::hashes::Hash::LEN`] length.
 pub struct HashFixedBytes;
+
+/// Encodes/decodes data in the same way as they are encoded/decoded according
+/// to bitcoin consensus rules from Bitcoin Core
 pub struct BitcoinConsensus;
+
+/// Encodes/decodes data as a wrapped type, i.e. according to the rules of
+/// encoding for its inner representation. Applicable only for types
+/// implementing [`amplify::Wrapper`]
 pub struct Wrapped;
+
+/// Encodes/decodes internet address according to LNPBP-47 "Uniform address
+/// encoding" rules. Applicable only for types implementing [`net::Uniform`].
 pub struct UsingUniformAddr;
 
+/// Marker trait defining specific encoding strategy which should be used for
+/// automatic implementation of both [`StrictEncode`] and [`StrictDecode`].
 pub trait Strategy {
+    /// Specific strategy. List of supported strategies:
+    /// - [`HashFixedBytes`]
+    /// - [`BitcoinConsensus`]
+    /// - [`Wrapped`]
+    /// - [`UsingUniformAddr`]
     type Strategy;
 }
 

@@ -11,19 +11,24 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+//! Helping macros and functions for creating test coverage for strict-encoded
+//! data.
+
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use crate::{Error, StrictDecode, StrictEncode};
 
+/// Macro testing encoding of all possible enum values, covering out-of-range
+/// values
 #[macro_export]
 macro_rules! test_enum_u8_exhaustive {
     ($enum:ident; $( $item:path => $val:expr ),+) => { {
         $( assert_eq!($item as u8, $val); )+
         let mut set = ::std::collections::HashSet::new();
         $( set.insert($val); )+
-        for x in 0..=u8::MAX {
+        for x in 0..=::std::u8::MAX {
             if !set.contains(&x) {
                 let decoded: Result<$enum, _> = ::strict_encoding::strict_deserialize(&[x]);
                 assert_eq!(decoded.unwrap_err(), ::strict_encoding::Error::EnumValueNotKnown(stringify!($enum).to_string(), x));

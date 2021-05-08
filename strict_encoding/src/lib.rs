@@ -11,6 +11,42 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+//! Library implementing **strict encoding** standard, defined by
+//! [LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md).
+//! Strict encoding is a binary conservative encoding extensively used in
+//! client-side-validation for deterministic portable (platform-independent)
+//! serialization of data with a known internal data structure. Strict encoding
+//! is a schema-less encoding.
+//!
+//! As a part of strict encoding, crate also includes implementation of
+//! network address **uniform encoding** standard
+//! ([LMPBP-42]([LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md))),
+//! which allows representation of any kind of network address as a fixed-size
+//! byte string occupying 37 bytes. This standard is used for the strict
+//! encoding of networking addresses.
+//!
+//! Library defines two main traits, [`StrictEncode`] and [`StrictDecode`],
+//! which should be implemented on each type that requires to be represented
+//! for client-side-validation. It also defines possible encoding error cases
+//! with [`Error`] and provides derivation macros
+//! `#[derive(StrictEncode, StrictDecode)]`, which are a part of
+//! `strict_encode_derive` sub-crate and represented by a default feature
+//! `derive`. Finally, it implements strict encoding traits for main data types
+//! defined by rust standard library and frequently used crates; the latter
+//! increases the number of dependencies and thus can be controlled with
+//! feature flags:
+//! - `chrono` (used by default): date & time types from `chrono` crate
+//! - `miniscript`: types defined in bitcoin Miniscript
+//! - `crypto`: non-bitcoin cryptographic primitives, which include Ed25519
+//!   curve, X25519 signatures from `ed25519-dalek` library and pedersen
+//!   commitments + bulletproofs from `grin_secp256k1zkp` library. Encodings for
+//!   other cryptography-related types, such as Secp256k1 and hashes, are always
+//!   included as a part of the library - see NB below.
+//!
+//! NB: this crate requires `bitcoin` as an upstream dependency since many of
+//!     strict-encoded formats are standardized as using *bitcoin consensus
+//!     encoding*.
+
 #![recursion_limit = "256"]
 // Coding conventions
 #![deny(
@@ -20,7 +56,7 @@
     unused_mut,
     unused_imports,
     dead_code,
-    //missing_docs
+    missing_docs
 )]
 #![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
@@ -34,6 +70,7 @@ extern crate amplify;
 
 #[macro_use]
 mod macros;
+#[cfg(test)]
 #[macro_use]
 pub mod test_helpers;
 
@@ -157,8 +194,8 @@ pub enum Error {
     /// encoded non-0 or non-1 length Vec will result in
     /// `Error::WrongOptionalEncoding`.
     #[display(
-        "Invalid value {0} met as an optional type byte, which must be \
-               equal to either 0 (no value) or 1"
+        "Invalid value {0} met as an optional type byte, which must be equal to \
+        either 0 (no value) or 1"
     )]
     WrongOptionalEncoding(u8),
 

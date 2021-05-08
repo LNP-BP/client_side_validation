@@ -11,7 +11,26 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-//! Network addresses uniform encoding (LNPBP-??)
+//! Network addresses uniform encoding (LNPBP-47).
+//!
+//! Implementation of network address **uniform encoding** standard
+//! ([LMPBP-42]([LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md))),
+//! which allows representation of any kind of network address as a fixed-size
+//! byte string occupying 37 bytes. This standard is used for the strict
+//! encoding of networking addresses.
+//!
+//! Currently supported networking address protocols (see [`AddrFormat`]):
+//! - IPv4 and IPv6
+//! - Tor, both ONION v2 and v3 addresses
+//! - Lightning peer network addresses (Secp256k1 public keys)
+//! This list may be extended with future LNPBP-47 revisions
+//!
+//! Currently supported transport protocols (see [`Transport`]):
+//! - TCP
+//! - UDP
+//! - MTCP (multi-path TCP)
+//! - QUIC (more efficient UDP version)
+//! This list may be extended with future LNPBP-47 revisions
 
 use std::convert::TryFrom;
 use std::io;
@@ -21,15 +40,24 @@ use std::net::{
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
 
+/// Standard length of the host-specific part of the encoding, in bytes
 pub const ADDR_LEN: usize = 33; // Maximum Tor public key size
+
+/// Standard length for the whole uniformly-encoded address data, including
+/// host and protocol parts.
 pub const UNIFORM_LEN: usize = ADDR_LEN
     + 1  // Prefix byte for specifying address format (IP, Onion, etc)
     + 2  // Suffix byte for specifying port number
     + 1; // Suffix byte for specifying transport-level protocol (TCP, UDP, ...)
 
+/// Type representing host-specific address part
 pub type RawAddr = [u8; ADDR_LEN];
+
+/// Type representing whole uniformly-encoded address, with all host and
+/// protocol-specific parts put together
 pub type RawUniformAddr = [u8; UNIFORM_LEN];
 
+/// Uniform ecoding error types
 #[derive(
     Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error,
 )]
@@ -64,26 +92,33 @@ pub enum DecodeError {
     InsufficientData,
 }
 
+/// Format of the host address
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum AddrFormat {
+    /// IPv4 addresss
     #[display("ipv4")]
     IpV4 = 0,
 
+    /// IPv6 address
     #[display("ipv6")]
     IpV6 = 1,
 
+    /// Tor ONION v2 address
     #[display("onion(v2)")]
     OnionV2 = 2,
 
+    /// Tor ONION v3 address
     #[display("onion(v3)")]
     OnionV3 = 3,
 
+    /// Lightning network node address (Secp256k1 public key)
     #[display("lightning")]
     Lightning = 4,
 }
 
+/// Supported transport protocols
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
 #[repr(u8)]
 #[non_exhaustive]
@@ -96,7 +131,7 @@ pub enum Transport {
     #[display("udp")]
     Udp = 2,
 
-    /// Multipath TCP version
+    /// Multi-path TCP version
     #[display("mtcp")]
     Mtcp = 3,
 
@@ -106,20 +141,44 @@ pub enum Transport {
     Quic = 4,
 }
 
+/// Structured uniform address representation, consisting of host address,
+/// (conforming a given address format) optional port and optional transport
+/// protocol
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub struct UniformAddr {
+    /// Address format (see [`AddrFormat`])
     pub addr_format: AddrFormat,
+
+    /// Fixed-size byte string (of [`ADDR_LEN`] length) containing uniformally-
+    /// encoded host address
     pub addr: RawAddr,
+
+    /// Optional port number
     pub port: Option<u16>,
+
+    /// Optional transport protocol (see [`Transport`])
     pub transport: Option<Transport>,
 }
 
+/// Uniform encoding trait, which should be implemented by different address
+/// structures which allow representation as [`UniformAddr`] and encoding to
+/// [`RawUniformAddr`].
 pub trait Uniform {
+    /// Should return which address format have to be used for address encoding
     fn addr_format(&self) -> AddrFormat;
+
+    /// Should return uniformly-encoded host address
     fn addr(&self) -> RawAddr;
+
+    /// Should return port number, if present – or `None` otherwise
     fn port(&self) -> Option<u16>;
+
+    /// Should return transport protocol identifier, if applicable – or `None`
+    /// otherwise
     fn transport(&self) -> Option<Transport>;
 
+    /// Transforms given address type into a structured uniform address
+    /// (see [`UniformAddr`])
     #[inline]
     fn to_uniform_addr(&self) -> UniformAddr {
         UniformAddr {
@@ -130,19 +189,45 @@ pub trait Uniform {
         }
     }
 
+    /// Produces unniformally-encoded byte representation of the address
+    /// (see [`RawUniformAddr`]).
     #[inline]
     fn to_raw_uniform(&self) -> RawUniformAddr {
         self.to_uniform_addr().into()
     }
 
+    /// Constructs  address of a given type from a structure uniform address
+    /// data.
+    ///
+    /// If the uniform data contain more information than can be fit into
+    /// current address representation (for instance port number or transport
+    /// protocol can't fit [`IpAddr`]) the function will ignore this
+    /// information. If this is not desirable, pls use
+    /// [`Uniform::from_uniform_addr_lossy`].
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
     where
         Self: Sized;
 
+    /// Constructs address of a given type from a structured uniform address
+    /// data.
+    ///
+    /// If the uniform data contain more information than can be fit into
+    /// current address representation (for instance port number or transport
+    /// protocol can't fit [`IpAddr`]) the function fail with
+    /// [`DecodeError::ExcessiveData`]. If this is not desirable, pls use
+    /// [`Uniform::from_uniform_addr`].
     fn from_uniform_addr_lossy(addr: UniformAddr) -> Result<Self, DecodeError>
     where
         Self: Sized;
 
+    /// Constructs address of a given type from a uniformly-encoded byte string
+    /// (see [`RawUniformAddr`]).
+    ///
+    /// If the uniform data contain more information than can be fit into
+    /// current address representation (for instance port number or transport
+    /// protocol can't fit [`IpAddr`]) the function will ignore this
+    /// information. If this is not desirable, pls use
+    /// [`Uniform::from_raw_uniform_addr_lossy`].
     fn from_raw_uniform_addr(
         uniform: RawUniformAddr,
     ) -> Result<Self, DecodeError>
@@ -152,6 +237,14 @@ pub trait Uniform {
         Self::from_uniform_addr(UniformAddr::try_from(uniform)?)
     }
 
+    /// Constructs address of a given type from a uniformly-encoded byte string
+    /// (see [`RawUniformAddr`]).
+    ///
+    /// If the uniform data contain more information than can be fit into
+    /// current address representation (for instance port number or transport
+    /// protocol can't fit [`IpAddr`]) the function fail with
+    /// [`DecodeError::ExcessiveData`]. If this is not desirable, pls use
+    /// [`Uniform::from_raw_uniform_addr`].
     fn from_raw_uniform_addr_lossy(
         uniform: RawUniformAddr,
     ) -> Result<Self, DecodeError>
