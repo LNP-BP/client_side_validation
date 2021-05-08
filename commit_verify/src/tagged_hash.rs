@@ -82,6 +82,12 @@ where
     }
 
     // TODO #198: Add `from_slice` method
+    fn from_slice(slice: &[u8]) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        sha256t::Hash::from_slice(slice).map(Self::from_inner)
+    }
 
     fn as_slice(&'a self) -> &'a [u8; 32] {
         self.as_inner().as_inner()
