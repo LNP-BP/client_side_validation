@@ -185,7 +185,7 @@ impl Uniform for UniformAddr {
 
     #[inline]
     fn to_uniform_addr(&self) -> UniformAddr {
-        self.clone()
+        *self
     }
 
     #[inline]
@@ -193,7 +193,7 @@ impl Uniform for UniformAddr {
     where
         Self: Sized,
     {
-        Ok(addr.clone())
+        Ok(addr)
     }
 
     #[inline]
@@ -304,7 +304,7 @@ impl Uniform for IpAddr {
         Ok(match addr.addr_format {
             AddrFormat::IpV4 => IpAddr::V4(Ipv4Addr::from_uniform_addr(addr)?),
             AddrFormat::IpV6 => IpAddr::V6(Ipv6Addr::from_uniform_addr(addr)?),
-            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
     }
 
@@ -319,7 +319,7 @@ impl Uniform for IpAddr {
             AddrFormat::IpV6 => {
                 IpAddr::V6(Ipv6Addr::from_uniform_addr_lossy(addr)?)
             }
-            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
     }
 }
@@ -453,7 +453,7 @@ impl Uniform for SocketAddr {
             AddrFormat::IpV6 => {
                 SocketAddr::V6(SocketAddrV6::from_uniform_addr(addr)?)
             }
-            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
     }
 
@@ -468,7 +468,7 @@ impl Uniform for SocketAddr {
             AddrFormat::IpV6 => {
                 SocketAddr::V6(SocketAddrV6::from_uniform_addr_lossy(addr)?)
             }
-            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
     }
 }

@@ -181,11 +181,11 @@ pub mod test_helpers {
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert_eq!(cmt.verify(msg), false);
+                    assert!(!cmt.verify(msg));
                 });
 
                 // Detecting collision
-                assert_eq!(acc.insert(commitment), true);
+                assert!(acc.insert(commitment));
 
                 acc
             },
@@ -228,11 +228,11 @@ pub mod test_helpers {
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert_eq!(cmt.verify(container, msg).unwrap(), false);
+                    assert!(!cmt.verify(container, msg).unwrap());
                 });
 
                 // Detecting collision
-                assert_eq!(acc.insert(commitment), true);
+                assert!(acc.insert(commitment));
 
                 acc
             },

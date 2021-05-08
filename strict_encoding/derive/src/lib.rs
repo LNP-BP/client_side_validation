@@ -28,7 +28,7 @@ mod param;
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-pub(crate) const ATTR_NAME: &'static str = "strict_encoding";
+pub(crate) const ATTR_NAME: &str = "strict_encoding";
 
 #[proc_macro_derive(StrictEncode, attributes(strict_encoding))]
 pub fn derive_strict_encode(input: TokenStream) -> TokenStream {

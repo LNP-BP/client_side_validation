@@ -47,7 +47,7 @@ where
         match len {
             0 => Ok(None),
             1 => Ok(Some(T::strict_decode(&mut d)?)),
-            invalid => Err(Error::WrongOptionalEncoding(invalid))?,
+            invalid => Err(Error::WrongOptionalEncoding(invalid)),
         }
     }
 }
@@ -128,7 +128,7 @@ where
         for _ in 0..len {
             let val = T::strict_decode(&mut d)?;
             if data.contains(&val) {
-                Err(Error::RepeatedValue(format!("{:?}", val)))?;
+                return Err(Error::RepeatedValue(format!("{:?}", val)));
             } else {
                 data.insert(val);
             }
@@ -172,7 +172,7 @@ where
         for _ in 0..len {
             let val = T::strict_decode(&mut d)?;
             if data.contains(&val) {
-                Err(Error::RepeatedValue(format!("{:?}", val)))?;
+                return Err(Error::RepeatedValue(format!("{:?}", val)));
             } else {
                 data.insert(val);
             }

@@ -187,7 +187,7 @@ fn decode_fields_impl<'a>(
             .ident
             .as_ref()
             .map(Ident::to_token_stream)
-            .unwrap_or(Index::from(index).to_token_stream());
+            .unwrap_or_else(|| Index::from(index).to_token_stream());
 
         if encoding.skip {
             stream.append_all(quote_spanned! { field.span() =>

@@ -79,7 +79,7 @@ impl EncodingDerive {
             .expect(
                 "amplify_syn is broken: attribute `repr` required to be Ident",
             )
-            .unwrap_or(ident!(u8));
+            .unwrap_or_else(|| ident!(u8));
 
         match repr.to_string().as_str() {
             "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" => {}
@@ -95,7 +95,7 @@ impl EncodingDerive {
             .args
             .get("crate")
             .cloned()
-            .unwrap_or(ArgValue::from(ident!(strict_encoding)))
+            .unwrap_or_else(|| ArgValue::from(ident!(strict_encoding)))
             .try_into()
             .expect("amplify_syn is broken: requirements for crate arg are not satisfied");
 
@@ -112,8 +112,8 @@ impl EncodingDerive {
             use_crate,
             skip,
             by_order,
-            repr,
             value,
+            repr,
         })
     }
 }

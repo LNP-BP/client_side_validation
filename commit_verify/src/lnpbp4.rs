@@ -99,7 +99,7 @@ impl TryCommitVerify<MessageMap> for MultimsgCommitment {
                 BTreeMap::<usize, (ProtocolId, Commitment)>::new();
             // TODO #192: Modify arithmetics in LNPBP-4 spec
             //       <https://github.com/LNP-BP/LNPBPs/issues/19>
-            if multimsg.into_iter().all(|(protocol, digest)| {
+            if multimsg.iter().all(|(protocol, digest)| {
                 let rem = u256::from_be_bytes(**protocol)
                     % u256::from_u64(n as u64)
                         .expect("Bitcoin U256 struct is broken");

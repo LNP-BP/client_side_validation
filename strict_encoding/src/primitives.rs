@@ -110,7 +110,7 @@ impl StrictDecode for i128 {
 impl StrictEncode for usize {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         if *self > core::u16::MAX as usize {
-            Err(Error::ExceedMaxItems(*self))?;
+            return Err(Error::ExceedMaxItems(*self));
         }
         let size = *self as u16;
         size.strict_encode(&mut e)

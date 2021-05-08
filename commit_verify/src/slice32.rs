@@ -73,6 +73,7 @@ impl Slice32 {
         Some(Self(inner))
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()
     }

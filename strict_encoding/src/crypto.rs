@@ -30,11 +30,11 @@ impl StrictDecode for ed25519_dalek::PublicKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; ed25519_dalek::PUBLIC_KEY_LENGTH];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_bytes(&buf).map_err(|_| {
+        Self::from_bytes(&buf).map_err(|_| {
             Error::DataIntegrityError(
                 "invalid Curve25519 public key data".to_string(),
             )
-        })?)
+        })
     }
 }
 
@@ -50,11 +50,11 @@ impl StrictDecode for ed25519_dalek::Signature {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; ed25519_dalek::SIGNATURE_LENGTH];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_bytes(&buf).map_err(|_| {
+        Self::from_bytes(&buf).map_err(|_| {
             Error::DataIntegrityError(
                 "invalid Ed25519 signature data".to_string(),
             )
-        })?)
+        })
     }
 }
 
@@ -95,10 +95,12 @@ impl StrictDecode for secp256k1zkp::Error {
             8 => secp256k1zkp::Error::IncorrectCommitSum,
             9 => secp256k1zkp::Error::InvalidRangeProof,
             10 => secp256k1zkp::Error::PartialSigFailure,
-            unknown => Err(Error::EnumValueNotKnown(
-                "secp256k1zkp::Error",
-                unknown as usize,
-            ))?,
+            unknown => {
+                return Err(Error::EnumValueNotKnown(
+                    "secp256k1zkp::Error",
+                    unknown as usize,
+                ))
+            }
         })
     }
 }

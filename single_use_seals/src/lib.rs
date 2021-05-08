@@ -16,6 +16,18 @@
 // to help to understanding single-use-seal concept and write the current
 // implementation.
 
+// Coding conventions
+#![deny(
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case,
+    unused_mut,
+    unused_imports,
+    dead_code,
+    missing_docs
+)]
+#![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
+
 //! # Single-use-seals
 //!
 //! Set of traits that allow to implement Peter's Todd **single-use seal**

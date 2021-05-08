@@ -126,9 +126,11 @@ fn encode_enum_impl(
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                f.ident.as_ref().map(Ident::to_token_stream).unwrap_or(
-                    Ident::new(&format!("_{}", i), Span::call_site())
-                        .to_token_stream(),
+                f.ident.as_ref().map(Ident::to_token_stream).unwrap_or_else(
+                    || {
+                        Ident::new(&format!("_{}", i), Span::call_site())
+                            .to_token_stream()
+                    },
                 )
             })
             .collect::<Vec<_>>();

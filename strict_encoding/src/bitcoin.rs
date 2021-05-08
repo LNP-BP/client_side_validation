@@ -109,7 +109,7 @@ impl StrictDecode for Amount {
 impl StrictEncode for Script {
     #[inline]
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        Ok(self.to_bytes().strict_encode(e)?)
+        self.to_bytes().strict_encode(e)
     }
 }
 
@@ -132,9 +132,9 @@ impl StrictDecode for secp256k1::SecretKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::SECRET_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_slice(&buf).map_err(|_| {
+        Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError("invalid private key data".to_string())
-        })?)
+        })
     }
 }
 
@@ -150,9 +150,9 @@ impl StrictDecode for secp256k1::PublicKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_slice(&buf).map_err(|_| {
+        Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError("invalid public key data".to_string())
-        })?)
+        })
     }
 }
 
@@ -168,9 +168,9 @@ impl StrictDecode for secp256k1::schnorrsig::PublicKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_slice(&buf).map_err(|_| {
+        Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError("invalid public key data".to_string())
-        })?)
+        })
     }
 }
 
@@ -186,11 +186,11 @@ impl StrictDecode for secp256k1::Signature {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::COMPACT_SIGNATURE_SIZE];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_compact(&buf).map_err(|_| {
+        Self::from_compact(&buf).map_err(|_| {
             Error::DataIntegrityError(
                 "Invalid secp256k1 signature data".to_string(),
             )
-        })?)
+        })
     }
 }
 
@@ -206,11 +206,11 @@ impl StrictDecode for secp256k1::schnorrsig::Signature {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_SIGNATURE_SIZE];
         d.read_exact(&mut buf)?;
-        Ok(Self::from_slice(&buf).map_err(|_| {
+        Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError(
                 "Invalid secp256k1 signature data".to_string(),
             )
-        })?)
+        })
     }
 }
 
@@ -257,7 +257,7 @@ impl StrictDecode for bitcoin::PublicKey {
 impl StrictEncode for bitcoin::Network {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.magic().strict_encode(&mut e)?)
+        self.magic().strict_encode(&mut e)
     }
 }
 
@@ -265,11 +265,11 @@ impl StrictDecode for bitcoin::Network {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let magic = u32::strict_decode(&mut d)?;
-        Ok(Self::from_magic(magic).ok_or(Error::ValueOutOfRange(
+        Self::from_magic(magic).ok_or(Error::ValueOutOfRange(
             "bitcoin::Network",
             0..0,
             magic as u128,
-        ))?)
+        ))
     }
 }
 
@@ -288,13 +288,13 @@ impl StrictDecode for bip32::ChildNumber {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let t = u8::strict_decode(&mut d)?;
         let index = u32::strict_decode(&mut d)?;
-        Ok(match t {
-            0 => bip32::ChildNumber::Normal { index },
-            1 => bip32::ChildNumber::Hardened { index },
+        match t {
+            0 => Ok(bip32::ChildNumber::Normal { index }),
+            1 => Ok(bip32::ChildNumber::Hardened { index }),
             x => {
-                Err(Error::EnumValueNotKnown("bip32::ChildNumber", x as usize))?
+                Err(Error::EnumValueNotKnown("bip32::ChildNumber", x as usize))
             }
-        })
+        }
     }
 }
 
@@ -303,7 +303,7 @@ impl StrictEncode for bip32::DerivationPath {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let buf: Vec<bip32::ChildNumber> =
             self.into_iter().map(bip32::ChildNumber::clone).collect();
-        Ok(buf.strict_encode(&mut e)?)
+        buf.strict_encode(&mut e)
     }
 }
 
@@ -359,11 +359,11 @@ impl StrictDecode for bip32::ExtendedPubKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 78];
         d.read_exact(&mut buf)?;
-        Ok(bip32::ExtendedPubKey::decode(&buf).map_err(|_| {
+        bip32::ExtendedPubKey::decode(&buf).map_err(|_| {
             Error::DataIntegrityError(
                 "Extended pubkey integrity is broken".to_string(),
             )
-        })?)
+        })
     }
 }
 
@@ -379,11 +379,11 @@ impl StrictDecode for bip32::ExtendedPrivKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 78];
         d.read_exact(&mut buf)?;
-        Ok(bip32::ExtendedPrivKey::decode(&buf).map_err(|_| {
+        bip32::ExtendedPrivKey::decode(&buf).map_err(|_| {
             Error::DataIntegrityError(
                 "Extended privkey integrity is broken".to_string(),
             )
-        })?)
+        })
     }
 }
 
@@ -430,7 +430,7 @@ impl StrictDecode for Address {
                 program: StrictDecode::strict_decode(&mut d)?,
             },
         };
-        Ok(Address { network, payload })
+        Ok(Address { payload, network })
     }
 }
 

@@ -22,6 +22,7 @@
     dead_code,
     //missing_docs
 )]
+#![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
 #[cfg(feature = "derive")]
 pub extern crate strict_encoding_derive as derive;
@@ -127,7 +128,7 @@ where
     if consumed == data.as_ref().len() {
         Ok(rv)
     } else {
-        Err(Error::DataNotEntirelyConsumed)?
+        Err(Error::DataNotEntirelyConsumed)
     }
 }
 
