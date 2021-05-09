@@ -154,11 +154,11 @@ where
 
 /// Convenience method for strict decoding of data structures implementing
 /// [StrictDecode] from any byt data source.
-pub fn strict_deserialize<T>(data: &impl AsRef<[u8]>) -> Result<T, Error>
+pub fn strict_deserialize<T>(data: impl AsRef<[u8]>) -> Result<T, Error>
 where
     T: StrictDecode,
 {
-    let mut decoder = io::Cursor::new(data);
+    let mut decoder = io::Cursor::new(data.as_ref());
     let rv = T::strict_decode(&mut decoder)?;
     let consumed = decoder.position() as usize;
 
