@@ -52,5 +52,5 @@ Contribution guidelines can be found in [CONTRIBUTING](../CONTRIBUTING.md)
 The libraries are distributed on the terms of Apache 2.0 opensource license.
 See [LICENCE](LICENSE) file for the license details.
 
-[`client_side_validation`]: https://crates.io/client_side_validation
-[`strict_encoding`]: https://crates.io/strict_encoding
+[`client_side_validation`]: https://crates.io/crates/client_side_validation
+[`strict_encoding`]: https://crates.io/crates/strict_encoding

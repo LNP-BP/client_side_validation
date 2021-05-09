@@ -494,6 +494,15 @@ pub(crate) mod test {
             0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
         ];
 
+        let secp_pk_02 =
+            secp256k1::PublicKey::strict_deserialize(&PK_BYTES_02).unwrap();
+        let secp_pk_03 =
+            secp256k1::PublicKey::strict_deserialize(&PK_BYTES_03).unwrap();
+        assert_eq!(
+            secp256k1::PublicKey::strict_deserialize(&PK_BYTES_04),
+            Err(Error::DataIntegrityError(s!("invalid public key data")))
+        );
+
         let pubkey_02 =
             bitcoin::PublicKey::strict_decode(&PK_BYTES_02[..]).unwrap();
         let pubkey_03 =
@@ -502,6 +511,9 @@ pub(crate) mod test {
             bitcoin::PublicKey::strict_decode(&PK_BYTES_04[..]).unwrap();
         let pubkey_onekey =
             bitcoin::PublicKey::strict_decode(&PK_BYTES_ONEKEY[..]).unwrap();
+
+        assert_eq!(secp_pk_02, pubkey_02.key);
+        assert_eq!(secp_pk_03, pubkey_03.key);
 
         test_suite(&pubkey_02, &PK_BYTES_02, 33);
         test_suite(&pubkey_03, &PK_BYTES_03, 33);

@@ -209,12 +209,13 @@ mod _chrono {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::strict_serialize;
+    use crate::{strict_deserialize, strict_serialize};
+    use chrono::{NaiveDateTime, Utc};
 
     /// Checking that byte encoding and decoding works correctly for the most
     /// common marginal and middle-probability cases
     #[test]
-    fn test_u8_encode() {
+    fn test_u8_encoding() {
         let zero: u8 = 0;
         let one: u8 = 1;
         let thirteen: u8 = 13;
@@ -242,5 +243,54 @@ pub mod test {
         assert_eq!(u8::strict_decode(byte_ef).unwrap(), confusing);
         assert_eq!(u8::strict_decode(byte_fe).unwrap(), nearly_full);
         assert_eq!(u8::strict_decode(byte_ff).unwrap(), full);
+    }
+
+    #[test]
+    fn test_bool_encoding() {
+        assert_eq!(strict_serialize(&true), Ok(vec![0x01]));
+        assert_eq!(strict_serialize(&false), Ok(vec![0x00]));
+
+        assert_eq!(strict_deserialize(vec![0x01]), Ok(true));
+        assert_eq!(strict_deserialize(vec![0x00]), Ok(false));
+        assert_eq!(
+            bool::strict_decode(&[0x20][..]),
+            Err(Error::ValueOutOfRange("boolean", 0..1, 0x20))
+        );
+    }
+
+    #[test]
+    fn test_float_encoding() {
+        let f_32 = 5.7692_f32;
+        let f_32_ser = &[73, 157, 184, 64][..];
+        let f_64 = 54546457.76965676_f64;
+        let f_64_ser = &[206, 65, 40, 206, 128, 2, 138, 65][..];
+
+        assert_eq!(&strict_serialize(&f_32).unwrap(), f_32_ser);
+        assert_eq!(&strict_serialize(&f_64).unwrap(), f_64_ser);
+
+        assert_eq!(f32::strict_deserialize(f_32_ser), Ok(f_32));
+        assert_eq!(f64::strict_deserialize(f_64_ser), Ok(f_64));
+    }
+
+    #[test]
+    #[cfg(feature = "chrono")]
+    fn test_chrono_encoding() {
+        let utc = Utc::now();
+
+        let ser = utc.strict_serialize().unwrap();
+        assert_eq!(ser.len(), 8);
+
+        let naive = utc.naive_utc();
+        let naive = NaiveDateTime::from_timestamp(naive.timestamp(), 0);
+        assert_eq!(strict_deserialize(&ser), Ok(naive));
+
+        let ser = naive.strict_serialize().unwrap();
+        assert_eq!(ser.len(), 8);
+        assert_eq!(strict_deserialize(&ser), Ok(naive));
+
+        let duration = Duration::new(naive.timestamp() as u64, 38455567);
+        let ser = duration.strict_serialize().unwrap();
+        assert_eq!(ser.len(), 12);
+        assert_eq!(strict_deserialize(&ser), Ok(duration));
     }
 }

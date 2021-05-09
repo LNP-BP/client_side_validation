@@ -21,7 +21,7 @@ is a schema-less encoding.
 
 As a part of strict encoding, crate also includes implementation of
 network address **uniform encoding** standard
-([LMPBP-42]([LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md))),
+([LNPBP-42](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md)),
 which allows representation of any kind of network address as a fixed-size
 byte string occupying 37 bytes. This standard is used for the strict
 encoding of networking addresses.
@@ -95,5 +95,5 @@ Contribution guidelines can be found in [CONTRIBUTING](../CONTRIBUTING.md)
 The libraries are distributed on the terms of Apache 2.0 opensource license.
 See [LICENCE](LICENSE) file for the license details.
 
-[`client_side_validation`]: https://crates.io/client_side_validation
-[`strict_encoding_derive`]: https://crates.io/strict_encoding_derive
+[`client_side_validation`]: https://crates.io/crates/client_side_validation
+[`strict_encoding_derive`]: https://crates.io/crates/strict_encoding_derive
