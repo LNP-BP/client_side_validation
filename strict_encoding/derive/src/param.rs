@@ -1,4 +1,4 @@
-// LNP/BP client-side-validation library implementig respective LNPBP
+// LNP/BP client-side-validation library implementing respective LNPBP
 // specifications & standards (LNPBP-7, 8, 9, 42)
 //
 // Written in 2019-2021 by
