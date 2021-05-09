@@ -736,6 +736,7 @@ impl Strategy for SocketAddrV6 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::strict_deserialize;
     use bitcoin::secp256k1::PublicKey;
     use std::convert::TryInto;
     use std::str::FromStr;
@@ -795,6 +796,17 @@ mod test {
 
         assert_eq!(ADDR_LEN, 33);
         assert_eq!(UNIFORM_LEN, 37);
+
+        assert_eq!(Tcp as u8, 1);
+        assert_eq!(Udp as u8, 2);
+        assert_eq!(Mtcp as u8, 3);
+        assert_eq!(Quic as u8, 4);
+
+        assert_eq!(IpV4 as u8, 0);
+        assert_eq!(IpV6 as u8, 1);
+        assert_eq!(OnionV2 as u8, 2);
+        assert_eq!(OnionV3 as u8, 3);
+        assert_eq!(Lightning as u8, 4);
 
         test_enum_u8_exhaustive!(crate => AddrFormat; IpV4 => 0, IpV6 => 1, OnionV2 => 2, OnionV3 => 3, Lightning => 4);
         test_enum_u8_exhaustive!(crate => Transport; Tcp => 1, Udp => 2, Mtcp => 3, Quic => 4);
@@ -867,9 +879,11 @@ mod test {
     fn uniform_conversions() {
         let ipv4 = *gen_ipv4_addrs().last().unwrap();
         let ipv6 = *gen_ipv6_addrs().last().unwrap();
+        let ip = IpAddr::from(ipv6);
 
         let socket4 = SocketAddrV4::new(ipv4, 32);
         let socket6 = SocketAddrV6::new(ipv6, 8080, 0, 0);
+        let socket = SocketAddr::from(socket6);
 
         let raw_ipv4 = Ipv4Addr::new(255, 255, 255, 255).to_uniform_addr().addr;
         let raw_ipv6 = Ipv6Addr::new(
@@ -933,8 +947,10 @@ mod test {
         assert_eq!(socket4.to_uniform_addr(), uniform_socket4);
         assert_eq!(socket6.to_uniform_addr(), uniform_socket6);
 
+        assert_eq!(IpAddr::from_uniform_addr(uniform_ipv6), Ok(ip));
         assert_eq!(Ipv4Addr::from_uniform_addr(uniform_ipv4), Ok(ipv4));
         assert_eq!(Ipv6Addr::from_uniform_addr(uniform_ipv6), Ok(ipv6));
+        assert_eq!(SocketAddr::from_uniform_addr(uniform_socket6), Ok(socket));
         assert_eq!(
             SocketAddrV4::from_uniform_addr(uniform_socket4),
             Ok(socket4)
@@ -1162,5 +1178,18 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn strict_encoding() {
+        let ipv6 = *gen_ipv6_addrs().last().unwrap();
+        let socket6 = SocketAddrV6::new(ipv6, 8080, 0, 0);
+
+        let ser = socket6.addr().strict_serialize().unwrap();
+        assert_eq!(ser.len(), 33);
+
+        let ser = socket6.to_raw_uniform();
+        assert_eq!(ser.len(), 37);
+        assert_eq!(socket6, strict_deserialize(ser).unwrap());
     }
 }
