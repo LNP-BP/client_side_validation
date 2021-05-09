@@ -1,5 +1,5 @@
-Contributing to LNP/BP Core Library
-===================================
+Contributing to LNP/BP Libraries
+================================
 
 The LNP/BP project operates an open contributor model where anyone is welcome to 
 contribute towards development in the form of peer review, documentation, 
@@ -17,14 +17,14 @@ Communications Channels
 -----------------------
 
 Communication about LNP/BP standards & implementations happens primarily 
-in #lnp-pb  IRC chat on Freenode with the logs available at 
+on #lnp-pb IRC chat on Freenode with the logs available at 
 <http://gnusha.org/lnp-bp/>
 
 Discussion about code base improvements happens in GitHub issues and on pull
 requests.
 
 Major projects are tracked [here](https://github.com/orgs/LNP-BP/projects).
-Major milestones are tracked [here](https://github.com/LNP-BP/rust-lnpbp/milestones).
+Project roadmap is tracked in each repository GitHub milestones.
 
 Contribution Workflow
 ---------------------
@@ -78,7 +78,7 @@ Each commitment within a PR to the `master` must
 
 Additionally to the `master` branch the repository has `develop` branch for any 
 experimental developments. This branch may not compile and should not be used by 
-any projects depending on `lnpbp` library.
+any projects depending on the library.
 
 
 Peer review
@@ -93,32 +93,39 @@ grammar fixes.
 Coding Conventions
 ------------------
 
-Rust-fmt should be used as a coding style recommendations in general, with a 
-default coding style. By default, Rustfmt uses a style which conforms to the 
-[Rust style guide][style guide] that has been formalized through the [style RFC 
-process][fmt rfcs]. It is also required to run `cargo fmt` to make the code 
-formatted according to `rustfmt` parameters
+Our CI enforces [clippy's](https://github.com/rust-lang/rust-clippy) 
+[default linting](https://rust-lang.github.io/rust-clippy/rust-1.52.0/index.html)
+and [rustfmt](https://github.com/rust-lang/rustfmt) formatting defined by rules
+in [.rustfmt.toml](./.rustfmt.toml). Both linter and formatter are based on
+1.52.0 version
 
+If you use rustup, feel free to lint locally, otherwise you can just push to CI 
+for automated linting.
+
+```shell script
+rustup component add clippy
+rustup component add fmt
+cargo clippy
+cargo fmt
+```
 
 Security
 --------
 
-Security is the primary focus of Rust-LNPBP; disclosure of security 
+Security is the primary focus of LNP/BP libraries; disclosure of security 
 vulnerabilities helps prevent user loss of funds. If you believe a vulnerability 
-may affect other  implementations, please inform them.
+may affect other implementations, please inform them.
 
-Note that Rust-LNPBP is currently considered "pre-production" during this time, 
-there is no special handling of security issues. Please simply open an issue on 
-Github.
+Note that LNP/BP libraries are currently considered "pre-production" during this
+time, there is no special handling of security issues. Please simply open an 
+issue on GitHub.
 
 Testing
 -------
 
-Related to the security aspect, Rust-LNPBP developers take testing very 
-seriously. Due to the modular nature of the project, writing new functional
-tests is easy and good test coverage of the codebase is an important goal. 
-Refactoring the project to enable fine-grained unit testing is also an ongoing 
-effort.
+Related to the security aspect, LNP/BP developers take testing very seriously. 
+Due to the modular nature of the project, writing new functional tests is easy 
+and good test coverage of the codebase is an important goal.
 
 Fuzzing is heavily encouraged: feel free to add related material under `fuzz/`
 
@@ -127,7 +134,7 @@ Mutation testing is planned; any contribution there would be warmly welcomed.
 Going further
 -------------
 
-You may be interested by Jon Atack guide on [How to review Bitcoin Core PRs](https://github.com/jonatack/bitcoin-development/blob/master/how-to-review-bitcoin-core-prs.md)
+You may be interested in Jon Atack guide on [How to review Bitcoin Core PRs](https://github.com/jonatack/bitcoin-development/blob/master/how-to-review-bitcoin-core-prs.md)
 and [How to make Bitcoin Core PRs](https://github.com/jonatack/bitcoin-development/blob/master/how-to-make-bitcoin-core-prs.md).
 While there are differences between the projects in terms of context and maturity, many
 of the suggestions offered apply to this project.

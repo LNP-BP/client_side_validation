@@ -11,6 +11,9 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+//! Library providing primitives for cryptographic commit-verify schemes used in
+//! client-side-validation
+
 #![recursion_limit = "256"]
 // Coding conventions
 #![deny(
@@ -20,7 +23,7 @@
     unused_mut,
     unused_imports,
     dead_code,
-    //missing_docs
+    missing_docs
 )]
 #![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
@@ -36,20 +39,22 @@ extern crate serde_crate as serde;
 #[macro_use]
 extern crate serde_with;
 
-mod commit_encode;
-mod commit_verify;
+pub mod commit_encode;
+pub mod commit_verify;
 mod digests;
-pub mod lnpbp4;
+pub mod multi_commit;
 mod slice32;
 pub mod tagged_hash;
 
+#[doc(hidden)]
 pub use commit_encode::{
-    commit_strategy, merklize, CommitConceal, CommitEncode,
-    CommitEncodeWithStrategy, ConsensusCommit, ConsensusMerkleCommit,
-    MerkleSource, ToMerkleSource,
+    merklize, CommitConceal, CommitEncode, ConsensusCommit,
+    ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
-pub use commit_verify::{
-    test_helpers, CommitVerify, EmbedCommitVerify, TryCommitVerify,
-};
+#[doc(hidden)]
+pub use commit_verify::{CommitVerify, EmbedCommitVerify, TryCommitVerify};
+#[doc(hidden)]
+pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
 pub use slice32::Slice32;
+#[doc(hidden)]
 pub use tagged_hash::TaggedHash;

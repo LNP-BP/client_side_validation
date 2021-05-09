@@ -117,6 +117,8 @@ where
     }
 }
 
+/// Helpers for writing test functions working with commit-verify scheme
+#[cfg(test)]
 pub mod test_helpers {
     use super::*;
     use bitcoin_hashes::hex::FromHex;
@@ -124,6 +126,8 @@ pub mod test_helpers {
     use core::hash::Hash;
     use std::collections::HashSet;
 
+    /// Generates a set of messages for testing purposes
+    ///
     /// All of these messages MUST produce different commitments, otherwise the
     /// commitment algorithm is not collision-resistant
     pub fn gen_messages() -> Vec<Vec<u8>> {
@@ -153,6 +157,8 @@ pub mod test_helpers {
         ]
     }
 
+    /// Runs round-trip of commitment and verification for a given set of
+    /// messages
     pub fn commit_verify_suite<MSG, CMT>(messages: Vec<MSG>)
     where
         MSG: AsRef<[u8]> + Eq,
@@ -192,6 +198,8 @@ pub mod test_helpers {
         );
     }
 
+    /// Runs round-trip of commitment-embed-verify for a given set of messages
+    /// and provided container
     pub fn embed_commit_verify_suite<MSG, CMT>(
         messages: Vec<MSG>,
         container: &mut CMT::Container,

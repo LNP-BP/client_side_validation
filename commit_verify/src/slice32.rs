@@ -54,6 +54,8 @@ pub struct Slice32(
 
 impl Slice32 {
     #[cfg(feature = "keygen")]
+    /// Generates 256-bit array from `bitcoin::secp256k1::rand::thread_rng`
+    /// random number generator
     pub fn random() -> Self {
         use bitcoin::secp256k1::rand;
 
@@ -64,6 +66,8 @@ impl Slice32 {
         Slice32::from_inner(entropy)
     }
 
+    /// Constructs 256-bit array from a provided slice. If the slice length
+    /// is not equal to 32 bytes, returns `None`
     pub fn from_slice(slice: impl AsRef<[u8]>) -> Option<Slice32> {
         if slice.as_ref().len() != 32 {
             return None;
@@ -73,6 +77,7 @@ impl Slice32 {
         Some(Self(inner))
     }
 
+    /// Returns vector representing internal slice data
     #[allow(clippy::wrong_self_convention)]
     pub fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()

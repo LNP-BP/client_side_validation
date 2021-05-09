@@ -12,6 +12,7 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 //! Strategies simplifying implementation of encoding traits.
+//!
 //! Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 
 use amplify::Wrapper;
@@ -96,7 +97,7 @@ impl<H> StrictEncode for amplify::Holder<H, HashFixedBytes>
 where
     H: bitcoin::hashes::Hash,
 {
-    // TODO #201: Verify byte order for hash encodings
+    // TODO #5: Verify byte order for hash encodings
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.as_inner()[..])?;

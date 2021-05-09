@@ -34,7 +34,7 @@ impl StrictDecode for DescriptorSinglePub {
     }
 }
 
-// TODO #200: Encode miniscript structures in a binary way
+// TODO #4: Encode miniscript structures in a binary way
 
 impl<Pk> StrictEncode for policy::Concrete<Pk>
 where

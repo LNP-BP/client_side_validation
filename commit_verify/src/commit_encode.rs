@@ -11,6 +11,29 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+//! Encoding and data preparation for commitment procedures in
+//! client-side-validation as defined by [LNPBP-9] standard.
+//!
+//! Client-side-validation commitment process requires special encoding of
+//! the data. While [`strict_encoding`] is the main standard for atomic data
+//! types in client-side-validation world and should be used during internal
+//! protocol-specific data validation, commitments may require processes of
+//! merklization arrays of data items, or hiding confidential parts of the
+//! data via hashing, pedersen commitments and so on. Thus, additinally to
+//! strict encoding, a set of different encodings and data convolution and
+//! hiding procedures are defined in this `commit_encode` module of the
+//! `commit_verify` library. This includes:
+//! - **merklization** procedures operating special types of tagged hashes and
+//!   committing to the depth of each node
+//! - **commit conceal** procedures, making data confidential (transforming
+//!   types into confidential versions)
+//! - **commit encoding**, which should *conceal* all the data and merklize
+//!   arrays, and only them performing their *strict encoding*
+//! - **consensus commitment**, which wraps all of the above as a final API,
+//!   producing of a single commitment to the client-validated data.
+//!
+//! [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
+
 use std::io;
 use std::iter::FromIterator;
 
@@ -18,8 +41,16 @@ use bitcoin_hashes::{sha256, sha256d, Hash, HashEngine};
 
 use crate::CommitVerify;
 
+/// Prepares the data to the *consensus commit* procedure by first running
+/// necessary conceal and merklization procedures, and them performing strict
+/// encoding for the resulted data.
 pub trait CommitEncode {
+    /// Encodes the data for the commitment by writing them directly into a
+    /// [`io::Write`] writer instance
     fn commit_encode<E: io::Write>(&self, e: E) -> usize;
+
+    /// Serializes data for the commitment in-memory into a newly allocated
+    /// array
     fn commit_serialize(&self) -> Vec<u8> {
         let mut vec = Vec::new();
         self.commit_encode(&mut vec);
@@ -27,18 +58,53 @@ pub trait CommitEncode {
     }
 }
 
-pub trait CommitEncodeWithStrategy {
+/// Convenience macro for commit-encoding list of the data
+#[macro_export]
+macro_rules! commit_encode_list {
+    ( $encoder:ident; $($item:expr),+ ) => {
+        {
+            let mut len = 0usize;
+            $(
+                len += $item.commit_encode(&mut $encoder);
+            )+
+            len
+        }
+    }
+}
+
+/// Marker trait defining specific encoding strategy which should be used for
+/// automatic implementation of [`CommitEncode`].
+pub trait Strategy {
+    /// Specific strategy. List of supported strategies:
+    /// - [`strategy::UsingStrict`]
+    /// - [`strategy::UsingConceal`]
+    /// - [`strategy::UsingHash`]
     type Strategy;
 }
 
+/// Strategies simplifying implementation of [`CommitEncode`] trait.
+///
 /// Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
-pub mod commit_strategy {
+pub mod strategy {
     use super::*;
     use bitcoin_hashes::Hash;
 
-    // Defining strategies:
+    /// Encodes by running strict *encoding procedure* on the raw data without
+    /// any pre-processing.
+    ///
+    /// Should not be used for array types (require manual [`CommitEncode`]
+    /// implementation involving merklization) or data which may contain
+    /// confidential or sensitive information (use [`UsingConceal`] in this
+    /// case).
     pub struct UsingStrict;
+
+    /// Encodes data by first converting them into confidential version
+    /// (*concealing*) by running [`CommitConceal::commit_conceal`] first and
+    /// returning its result serialized with strict encoding rules.
     pub struct UsingConceal;
+
+    /// Encodes data by first hashing them with the provided hash function `H`
+    /// and then returning its result serialized with strict encoding rules.
     pub struct UsingHash<H>(std::marker::PhantomData<H>)
     where
         H: Hash + strict_encoding::StrictEncode;
@@ -49,8 +115,7 @@ pub mod commit_strategy {
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             self.as_inner().strict_encode(e).expect(
-                "Strict encoding must not fail for types implementing \
-                      ConsensusCommit via marker trait ConsensusCommitFromStrictEncoding",
+                "Strict encoding must not fail for types using `strategy::UsingStrict`",
             )
         }
     }
@@ -78,8 +143,7 @@ pub mod commit_strategy {
                 ));
             let hash = H::from_engine(engine);
             hash.strict_encode(e).expect(
-                "Strict encoding must not fail for types implementing \
-                      ConsensusCommit via marker trait ConsensusCommitFromStrictEncoding",
+                "Strict encoding must not fail for types using `strategy::UsingHash`",
             )
         }
     }
@@ -109,84 +173,102 @@ pub mod commit_strategy {
 
     impl<T> CommitEncode for T
     where
-        T: CommitEncodeWithStrategy + Clone,
-        amplify::Holder<T, <T as CommitEncodeWithStrategy>::Strategy>:
-            CommitEncode,
+        T: Strategy + Clone,
+        amplify::Holder<T, <T as Strategy>::Strategy>: CommitEncode,
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             amplify::Holder::new(self.clone()).commit_encode(e)
         }
     }
 
-    impl CommitEncodeWithStrategy for usize {
+    impl Strategy for usize {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for u8 {
+    impl Strategy for u8 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for u16 {
+    impl Strategy for u16 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for u32 {
+    impl Strategy for u32 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for u64 {
+    impl Strategy for u64 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for i8 {
+    impl Strategy for i8 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for i16 {
+    impl Strategy for i16 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for i32 {
+    impl Strategy for i32 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for i64 {
+    impl Strategy for i64 {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for String {
+    impl Strategy for String {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for &str {
+    impl Strategy for &str {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for &[u8] {
+    impl Strategy for &[u8] {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for Vec<u8> {
+    impl Strategy for Vec<u8> {
         type Strategy = UsingStrict;
     }
-    impl CommitEncodeWithStrategy for MerkleNode {
+    impl Strategy for MerkleNode {
         type Strategy = UsingStrict;
     }
 
     #[cfg(feature = "grin_secp256k1zkp")]
-    impl CommitEncodeWithStrategy for secp256k1zkp::pedersen::Commitment {
-        type Strategy = commit_strategy::UsingStrict;
+    impl Strategy for secp256k1zkp::pedersen::Commitment {
+        type Strategy = strategy::UsingStrict;
     }
 
     #[cfg(feature = "grin_secp256k1zkp")]
-    impl CommitEncodeWithStrategy for secp256k1zkp::pedersen::RangeProof {
-        type Strategy = commit_strategy::UsingHash<sha256::Hash>;
+    impl Strategy for secp256k1zkp::pedersen::RangeProof {
+        type Strategy = strategy::UsingHash<sha256::Hash>;
     }
 
-    impl<T> CommitEncodeWithStrategy for &T
+    impl<T> Strategy for &T
     where
-        T: CommitEncodeWithStrategy,
+        T: Strategy,
     {
         type Strategy = T::Strategy;
     }
 }
 
+/// Trait that should perform conversion of a given client-side-validated data
+/// type into its confidential version concealing all of its data.
+///
+/// Since the resulting concealed version must be unequally derived from the
+/// original data with negligible risk of collisions, it is a form of
+/// *commitment* – thus the procedure called *commit-conceal* and not just a
+/// *conceal*.
 pub trait CommitConceal {
+    /// The resulting confidential type concealing and committing to the
+    /// original data
     type ConcealedCommitment;
+
+    /// Performs commit-conceal procedure returning confidential data
+    /// concealing and committing to the original data
     fn commit_conceal(&self) -> Self::ConcealedCommitment;
 }
 
+/// High-level API used in client-side validation for producing a single
+/// commitment to the data, which includes running all necessary procedures like
+/// concealment with [`CommitConceal`], merklization, strict encoding,
+/// wrapped into [`CommitEncode`], followed by the actual commitment to its
+/// output.
 pub trait ConsensusCommit: Sized + CommitEncode {
+    /// Type of the resulting commitment
     type Commitment: CommitVerify<Vec<u8>>;
 
+    /// Performs commitment to client-side-validated data
     #[inline]
     fn consensus_commit(&self) -> Self::Commitment {
         let mut encoder = io::Cursor::new(vec![]);
@@ -194,6 +276,7 @@ pub trait ConsensusCommit: Sized + CommitEncode {
         Self::Commitment::commit(&encoder.into_inner())
     }
 
+    /// Verifies commitment to client-side-validated data
     #[inline]
     fn consensus_verify(&self, commitment: &Self::Commitment) -> bool {
         let mut encoder = io::Cursor::new(vec![]);
@@ -202,9 +285,14 @@ pub trait ConsensusCommit: Sized + CommitEncode {
     }
 }
 
+/// Marker trait for types that require merklization of the underlying data
+/// during [`ConsensusCommit`] procedure. Allows specifying custom tag for the
+/// tagged hash used in the merklization (see [`merklize`]).
 pub trait ConsensusMerkleCommit:
     ConsensusCommit<Commitment = MerkleNode>
 {
+    /// The tag which will be used in the merklization process (see
+    /// [`merklize`])
     const MERKLE_NODE_TAG: &'static str;
 }
 
@@ -223,19 +311,6 @@ where
     C: CommitEncode,
 {
     type Commitment = MerkleNode;
-}
-
-#[macro_export]
-macro_rules! commit_encode_list {
-    ( $encoder:ident; $($item:expr),+ ) => {
-        {
-            let mut len = 0usize;
-            $(
-                len += $item.commit_encode(&mut $encoder);
-            )+
-            len
-        }
-    }
 }
 
 hash_newtype!(
@@ -299,8 +374,12 @@ pub fn merklize(prefix: &str, data: &[MerkleNode], depth: u16) -> MerkleNode {
     MerkleNode::from_engine(engine)
 }
 
+/// The source data for the merklization process
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-pub struct MerkleSource<T>(pub Vec<T>);
+pub struct MerkleSource<T>(
+    /// Array of the data which will be merklized
+    pub Vec<T>,
+);
 
 impl<L, I> From<I> for MerkleSource<L>
 where
@@ -353,8 +432,13 @@ where
     }
 }
 
+/// Converts given piece of client-side-validated data into a structure which
+/// can be used in merklization process
 pub trait ToMerkleSource {
+    /// Defining type of the commitment produced during merlization process
     type Leaf: ConsensusMerkleCommit;
+
+    /// Performs transformation of the data type into a merkilzable data
     fn to_merkle_source(&self) -> MerkleSource<Self::Leaf>;
 }
 
@@ -391,13 +475,13 @@ mod test {
         }
         // Next, we need to specify how the concealed data should be
         // commit-encoded: this time we strict-serialize the hash
-        impl CommitEncodeWithStrategy for sha256d::Hash {
-            type Strategy = commit_strategy::UsingStrict;
+        impl Strategy for sha256d::Hash {
+            type Strategy = strategy::UsingStrict;
         }
         // Now, we define commitment encoding for our concealable type: it
         // should conceal the data
-        impl CommitEncodeWithStrategy for Item {
-            type Strategy = commit_strategy::UsingConceal;
+        impl Strategy for Item {
+            type Strategy = strategy::UsingConceal;
         }
         // Now, we need to say that consensus commit procedure should produce
         // a final commitment from commit-encoded data (equal to the

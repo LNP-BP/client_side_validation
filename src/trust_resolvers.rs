@@ -1,6 +1,8 @@
 //! This is a planned API for v0.5.0 that will help structuring RGB validation
 //! into a more formal process
 
+// TODO: #11 Finalize trust resolvers API
+
 /// This simple trait MUST be used by all parties implementing client-side
 /// validation paradigm. The core concept of this paradigm is that a client
 /// must have a complete and uniform set of data, which can be represented
