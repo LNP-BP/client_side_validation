@@ -24,11 +24,10 @@
 
 use std::collections::BTreeMap;
 
-use amplify::num::u256;
-use bitcoin_hashes::{sha256, Hash, HashEngine};
-use rand::{thread_rng, Rng};
+use bitcoin_hashes::sha256;
 
 use crate::Slice32;
+#[cfg(feature = "rand")]
 use crate::TryCommitVerify;
 
 /// Source data for creation of multi-message commitments according to LNPBP-4
@@ -111,12 +110,17 @@ pub struct MultiCommitBlock {
     pub entropy: Option<u64>,
 }
 
+#[cfg(feature = "rand")]
 impl TryCommitVerify<MessageMap> for MultiCommitBlock {
     type Error = TooManyMessagesError;
 
     fn try_commit(
         multi_msg: &MessageMap,
     ) -> Result<Self, TooManyMessagesError> {
+        use amplify::num::u256;
+        use bitcoin_hashes::{Hash, HashEngine};
+        use rand::{thread_rng, Rng};
+
         const SORT_LIMIT: usize = 2 << 16;
 
         let mut n = multi_msg.len();
