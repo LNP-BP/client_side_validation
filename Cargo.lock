@@ -683,6 +683,7 @@ dependencies = [
  "ed25519-dalek",
  "grin_secp256k1zkp",
  "miniscript",
+ "rand 0.7.3",
  "strict_encoding_derive 1.1.0",
 ]
 

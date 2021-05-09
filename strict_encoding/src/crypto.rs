@@ -154,3 +154,102 @@ impl StrictDecode for secp256k1zkp::pedersen::RangeProof {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use bitcoin::secp256k1::PublicKey;
+    use std::str::FromStr;
+
+    #[test]
+    fn ed25519() {
+        let keypair = ed25519_dalek::Keypair::generate(&mut rand::thread_rng());
+
+        let ser = keypair.public.strict_serialize().unwrap();
+        assert_eq!(ser.len(), 32);
+        assert_eq!(
+            ed25519_dalek::PublicKey::strict_deserialize(ser).unwrap(),
+            keypair.public
+        );
+    }
+
+    #[test]
+    fn x25519() {
+        use ed25519_dalek::Signer;
+
+        let keypair = ed25519_dalek::Keypair::generate(&mut rand::thread_rng());
+        let message: &[u8] = b"This is a test of the tsunami alert system.";
+        let signature = keypair.sign(message);
+
+        let ser = signature.strict_serialize().unwrap();
+        assert_eq!(ser.len(), 64);
+        assert_eq!(
+            ed25519_dalek::Signature::strict_deserialize(ser).unwrap(),
+            signature
+        );
+    }
+
+    #[test]
+    fn pedersen() {
+        let pk = PublicKey::from_str("02d1780dd0e08f4d873f94faf49d878d909a1174291d3fcac3e02a6c45e7eda744").unwrap();
+        let secp = secp256k1zkp::Secp256k1::new();
+        let pedersen = secp256k1zkp::pedersen::Commitment::from_pubkey(
+            &secp,
+            &secp256k1zkp::PublicKey::from_slice(&secp, &pk.serialize())
+                .unwrap(),
+        )
+        .unwrap();
+
+        let ser = pedersen.strict_serialize().unwrap();
+        assert_eq!(ser.len(), 33);
+        assert_eq!(
+            secp256k1zkp::pedersen::Commitment::strict_deserialize(ser)
+                .unwrap(),
+            pedersen
+        );
+    }
+
+    #[test]
+    fn bulletproof() {
+        let secp = secp256k1zkp::Secp256k1::new();
+        let blind = secp256k1zkp::SecretKey::new(
+            &secp,
+            &mut secp256k1zkp::rand::thread_rng(),
+        );
+        let bulletproof = secp.bullet_proof(
+            0x79833565,
+            blind.clone(),
+            blind.clone(),
+            blind.clone(),
+            None,
+            None,
+        );
+
+        let ser = bulletproof.strict_serialize().unwrap();
+        assert_eq!(ser.len(), bulletproof.plen + 2);
+        assert_eq!(
+            secp256k1zkp::pedersen::RangeProof::strict_deserialize(ser)
+                .unwrap(),
+            bulletproof
+        );
+    }
+
+    /*
+    #[test]
+    fn error_encoding() {
+        test_enum_u8_exhaustive!(crate => secp256k1zkp::Error;
+            secp256k1zkp::Error::IncapableContext => 0,
+            secp256k1zkp::Error::IncorrectSignature => 1,
+            secp256k1zkp::Error::InvalidMessage => 2,
+            secp256k1zkp::Error::InvalidPublicKey => 3,
+            secp256k1zkp::Error::InvalidCommit => 4,
+            secp256k1zkp::Error::InvalidSignature => 5,
+            secp256k1zkp::Error::InvalidSecretKey => 6,
+            secp256k1zkp::Error::InvalidRecoveryId => 7,
+            secp256k1zkp::Error::IncorrectCommitSum => 8,
+            secp256k1zkp::Error::InvalidRangeProof => 9,
+            secp256k1zkp::Error::PartialSigFailure => 10
+        )
+    }
+     */
+}
