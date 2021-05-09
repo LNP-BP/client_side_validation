@@ -40,20 +40,20 @@ extern crate serde_crate as serde;
 #[macro_use]
 extern crate serde_with;
 
+pub mod api;
 pub mod commit_encode;
-pub mod commit_verify;
 mod digests;
 pub mod multi_commit;
 mod slice32;
 pub mod tagged_hash;
 
 #[doc(hidden)]
+pub use api::{CommitVerify, EmbedCommitVerify, TryCommitVerify};
+#[doc(hidden)]
 pub use commit_encode::{
     merklize, CommitConceal, CommitEncode, ConsensusCommit,
     ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
-#[doc(hidden)]
-pub use commit_verify::{CommitVerify, EmbedCommitVerify, TryCommitVerify};
 #[doc(hidden)]
 pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
 pub use slice32::Slice32;

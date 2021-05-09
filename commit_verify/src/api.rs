@@ -13,8 +13,7 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 //! Base commit-verify scheme interface with extension allowing to create
-//! embedded commitments (commit-embed-verify), required for detarministic
-//! bitcoin commitments (LNPBP1-3 standards).
+//! embedded commitments (commit-embed-verify).
 
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements

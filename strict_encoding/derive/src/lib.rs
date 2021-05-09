@@ -15,6 +15,7 @@
 #![recursion_limit = "256"]
 #![cfg_attr(test, deny(warnings))]
 
+extern crate proc_macro;
 #[macro_use]
 extern crate amplify;
 #[macro_use]

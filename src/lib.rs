@@ -21,7 +21,7 @@
     unused_mut,
     unused_imports,
     dead_code,
-    //missing_docs
+    missing_docs
 )]
 
 //! Primitives module defines core strict interfaces from informational LNPBP
@@ -41,4 +41,8 @@ pub extern crate commit_verify;
 pub extern crate single_use_seals;
 pub extern crate strict_encoding;
 
+pub use commit_verify::commit_encode;
+pub use commit_verify::multi_commit;
+pub use commit_verify::tagged_hash;
+pub use commit_verify::Slice32;
 pub use strict_encoding::derive::{StrictDecode, StrictEncode};

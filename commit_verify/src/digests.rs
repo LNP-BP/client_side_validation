@@ -16,7 +16,7 @@ use bitcoin_hashes::{
     hash160, ripemd160, sha1, sha256, sha256d, sha256t, sha512, siphash24, Hash,
 };
 
-use crate::commit_verify::CommitVerify;
+use crate::api::CommitVerify;
 
 impl<MSG> CommitVerify<MSG> for sha1::Hash
 where
@@ -101,7 +101,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::commit_verify::test_helpers::*;
+    use crate::api::test_helpers::*;
     use bitcoin_hashes::*;
 
     #[test]
