@@ -194,7 +194,9 @@ pub(crate) mod serde_helpers {
             let vec = Vec::<u8>::from_hex(&string)
                 .map_err(|_| D::Error::custom("wrong hex data"))?;
             if vec.len() != 32 {
-                Err(D::Error::custom("Wrong 32-byte slice data length"))?
+                return Err(D::Error::custom(
+                    "Wrong 32-byte slice data length",
+                ));
             }
             let mut slice32 = [0u8; 32];
             slice32.copy_from_slice(&vec[0..32]);

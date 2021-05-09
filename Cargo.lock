@@ -19,9 +19,9 @@ dependencies = [
 
 [[package]]
 name = "amplify_derive"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "150d51c591f9495aa9b0e4e003808055e79e1f6d6af65c66c65ec062af41a34d"
+checksum = "350d0e0c3e2931ebc78322c2f3ecefe2cc4a238500a40d65a50d876adefd1a65"
 dependencies = [
  "amplify_syn",
  "proc-macro2",
@@ -695,7 +695,6 @@ dependencies = [
  "amplify_derive",
  "proc-macro2",
  "quote",
- "serde",
  "strict_encoding 1.3.0",
  "syn",
 ]

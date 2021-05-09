@@ -18,16 +18,8 @@
 // implementation.
 
 // Coding conventions
-#![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-    unused_mut,
-    unused_imports,
-    dead_code,
-    missing_docs
-)]
-#![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
+#![recursion_limit = "256"]
+#![deny(dead_code, missing_docs, warnings)]
 
 //! # Single-use-seals
 //!

@@ -17,7 +17,7 @@ jobs:
       - name: Install rustc 1.52.0
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.52.0
+          toolchain: nightly
           override: true
           components: rustfmt
       - uses: actions-rs/cargo@v1
@@ -39,4 +39,5 @@ jobs:
         name: Clippy
         with:
           command: clippy
-          args: --workspace
+          args: --workspace --all-features
+

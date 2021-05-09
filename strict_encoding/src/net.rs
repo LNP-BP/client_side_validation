@@ -1132,7 +1132,7 @@ mod test {
         };
         let raw = uniform.to_raw_uniform();
         assert_eq!(UniformAddr::try_from(raw), Err(DecodeError::InvalidAddr));
-        uniform.addr[..23].fill(0);
+        uniform.addr[..23].copy_from_slice(&[0u8; 23]);
         let raw = uniform.to_raw_uniform();
         assert_eq!(uniform, raw.try_into().unwrap());
     }

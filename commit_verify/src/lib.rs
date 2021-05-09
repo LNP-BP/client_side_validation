@@ -12,21 +12,12 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+// Coding conventions
+#![recursion_limit = "256"]
+#![deny(dead_code, missing_docs, warnings)]
+
 //! Library providing primitives for cryptographic commit-verify schemes used in
 //! client-side-validation
-
-#![recursion_limit = "256"]
-// Coding conventions
-#![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-    unused_mut,
-    unused_imports,
-    dead_code,
-    missing_docs
-)]
-#![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
 #[macro_use]
 extern crate amplify;
