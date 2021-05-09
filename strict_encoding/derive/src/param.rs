@@ -83,7 +83,7 @@ impl EncodingDerive {
             .unwrap_or_else(|| ident!(u8));
 
         match repr.to_string().as_str() {
-            "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" => {}
+            "u8" | "u16" | "u32" | "u64" => {}
             _ => {
                 return Err(Error::new(
                     Span::call_site(),

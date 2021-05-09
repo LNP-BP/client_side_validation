@@ -16,8 +16,6 @@
 
 #[macro_use]
 extern crate amplify_derive;
-#[macro_use]
-extern crate serde;
 
 use strict_encoding::{StrictDecode, StrictEncode};
 
@@ -48,8 +46,6 @@ enum Hi {
 
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
 #[repr(u8)]
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
 #[derive(StrictEncode, StrictDecode)]
 pub enum ContractType {
     #[display("singlesig")]
