@@ -1,5 +1,7 @@
-// LNP/BP Core Library implementing LNPBP specifications & standards
-// Written in 2020 by
+// LNP/BP client-side-validation library implementig respective LNPBP
+// specifications & standards (LNPBP-7, 8, 9, 42)
+//
+// Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //
 // To the extent possible under law, the author(s) have dedicated all
@@ -7,11 +9,10 @@
 // the public domain worldwide. This software is distributed without
 // any warranty.
 //
-// You should have received a copy of the MIT License
-// along with this software.
-// If not, see <https://opensource.org/licenses/MIT>.
+// You should have received a copy of the Apache 2.0 License along with this
+// software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-//! Network addresses uniform encoding (LNPBP-47).
+//! Network addresses uniform encoding (LNPBP-42).
 //!
 //! Implementation of network address **uniform encoding** standard
 //! ([LMPBP-42]([LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md))),
@@ -23,14 +24,14 @@
 //! - IPv4 and IPv6
 //! - Tor, both ONION v2 and v3 addresses
 //! - Lightning peer network addresses (Secp256k1 public keys)
-//! This list may be extended with future LNPBP-47 revisions
+//! This list may be extended with future LNPBP-42 revisions
 //!
 //! Currently supported transport protocols (see [`Transport`]):
 //! - TCP
 //! - UDP
 //! - MTCP (multi-path TCP)
 //! - QUIC (more efficient UDP version)
-//! This list may be extended with future LNPBP-47 revisions
+//! This list may be extended with future LNPBP-42 revisions
 
 use std::convert::TryFrom;
 use std::io;
