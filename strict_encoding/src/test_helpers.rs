@@ -25,10 +25,10 @@ use crate::{Error, StrictDecode, StrictEncode};
 /// values
 #[macro_export]
 macro_rules! test_enum_u8_exhaustive {
-    ($enum:ident; $( $item:path => $val:expr ),+) => { {
+    ($enum:path; $( $item:path => $val:expr ),+) => { {
         test_enum_u8_exhaustive!(strict_encoding => $enum; $( $item => $val ),+)
     } };
-    ($se:ident => $enum:ident; $( $item:path => $val:expr ),+) => { {
+    ($se:ident => $enum:path; $( $item:path => $val:expr ),+) => { {
         $( assert_eq!($item as u8, $val); )+
         let mut set = ::std::collections::HashSet::new();
         $( set.insert($val); )+
