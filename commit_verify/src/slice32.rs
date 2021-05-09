@@ -204,3 +204,56 @@ pub(crate) mod serde_helpers {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::{Error, Slice32};
+    use amplify::Wrapper;
+    use bitcoin_hashes::hex::FromHex;
+    use std::str::FromStr;
+    use strict_encoding::{StrictDecode, StrictEncode};
+
+    #[test]
+    fn test_slice32_str() {
+        let s =
+            "a3401bcceb26201b55978ff705fecf7d8a0a03598ebeccf2a947030b91a0ff53";
+        let slice32 = Slice32::from_hex(s).unwrap();
+        assert_eq!(Slice32::from_str(s), Ok(slice32));
+
+        assert_eq!(Slice32::from_hex(&s.to_uppercase()), Ok(slice32));
+        assert_eq!(
+            Slice32::from_str(&s[..30]),
+            Err(Error::InvalidLength(32, 15))
+        );
+
+        assert_eq!(&slice32.to_string(), s);
+        assert_eq!(format!("{:x}", slice32), s);
+        assert_eq!(format!("{:X}", slice32), s.to_uppercase());
+        assert_eq!(format!("{:?}", slice32), format!("Slice32({})", s));
+    }
+
+    #[test]
+    fn test_encoding() {
+        let s =
+            "a3401bcceb26201b55978ff705fecf7d8a0a03598ebeccf2a947030b91a0ff53";
+        let slice32 = Slice32::from_hex(s).unwrap();
+        let ser = slice32.strict_serialize().unwrap();
+
+        let data = [
+            0xa3, 0x40, 0x1b, 0xcc, 0xeb, 0x26, 0x20, 0x1b, 0x55, 0x97, 0x8f,
+            0xf7, 0x05, 0xfe, 0xcf, 0x7d, 0x8a, 0x0a, 0x03, 0x59, 0x8e, 0xbe,
+            0xcc, 0xf2, 0xa9, 0x47, 0x03, 0x0b, 0x91, 0xa0, 0xff, 0x53,
+        ];
+
+        assert_eq!(ser.len(), 32);
+        assert_eq!(&ser, &data);
+        assert_eq!(Slice32::strict_deserialize(&ser), Ok(slice32));
+
+        assert_eq!(Slice32::from_slice(&data), Some(slice32));
+        assert_eq!(Slice32::from_slice(&data[..30]), None);
+        assert_eq!(&slice32.to_vec(), &data);
+        assert_eq!(&slice32.as_inner()[..], &data);
+        assert_eq!(slice32.to_inner(), data);
+        assert_eq!(slice32.into_inner(), data);
+    }
+}

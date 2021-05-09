@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/LNP-BP/client_side_validation/branch/master/graph/badge.svg)](https://codecov.io/gh/LNP-BP/client_side_validation)
 
 [![crates.io](https://meritbadge.herokuapp.com/single_use_seals)](https://crates.io/crates/single_use_seals)
-[![Docs](https://docs.rs/lnpbp/badge.svg)](https://docs.rs/single_use_seals)
+[![Docs](https://docs.rs/single_use_seals/badge.svg)](https://docs.rs/single_use_seals)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/single_use_seals)](./LICENSE)
 

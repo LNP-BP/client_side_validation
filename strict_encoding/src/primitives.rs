@@ -265,8 +265,8 @@ pub mod test {
         let f_64 = 54546457.76965676_f64;
         let f_64_ser = &[206, 65, 40, 206, 128, 2, 138, 65][..];
 
-        assert_eq!(&strict_serialize(&f_32).unwrap(), f_32_ser);
-        assert_eq!(&strict_serialize(&f_64).unwrap(), f_64_ser);
+        assert_eq!(strict_serialize(&f_32).unwrap(), f_32_ser.to_vec());
+        assert_eq!(strict_serialize(&f_64).unwrap(), f_64_ser.to_vec());
 
         assert_eq!(f32::strict_deserialize(f_32_ser), Ok(f_32));
         assert_eq!(f64::strict_deserialize(f_64_ser), Ok(f_64));

@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/LNP-BP/client_side_validation/branch/master/graph/badge.svg)](https://codecov.io/gh/LNP-BP/client_side_validation)
 
 [![crates.io](https://meritbadge.herokuapp.com/strict_encoding)](https://crates.io/crates/strict_encoding)
-[![Docs](https://docs.rs/lnpbp/badge.svg)](https://docs.rs/strict_encoding)
+[![Docs](https://docs.rs/strict_encoding/badge.svg)](https://docs.rs/strict_encoding)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/strict_encoding)](./LICENSE)
 
