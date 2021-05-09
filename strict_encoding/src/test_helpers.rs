@@ -26,13 +26,16 @@ use crate::{Error, StrictDecode, StrictEncode};
 #[macro_export]
 macro_rules! test_enum_u8_exhaustive {
     ($enum:ident; $( $item:path => $val:expr ),+) => { {
+        test_enum_u8_exhaustive!(strict_encoding => $enum; $( $item => $val ),+)
+    } };
+    ($se:ident => $enum:ident; $( $item:path => $val:expr ),+) => { {
         $( assert_eq!($item as u8, $val); )+
         let mut set = ::std::collections::HashSet::new();
         $( set.insert($val); )+
         for x in 0..=u8::MAX {
             if !set.contains(&x) {
-                let decoded: Result<$enum, _> = ::strict_encoding::strict_deserialize(&[x]);
-                assert_eq!(decoded.unwrap_err(), ::strict_encoding::Error::EnumValueNotKnown(stringify!($enum).to_string(), x));
+                let decoded: Result<$enum, _> = $se::strict_deserialize(&[x]);
+                assert_eq!(decoded.unwrap_err(), $se::Error::EnumValueNotKnown(stringify!($enum), x as usize));
             }
         }
         let mut all = ::std::collections::BTreeSet::new();
@@ -44,8 +47,8 @@ macro_rules! test_enum_u8_exhaustive {
                 assert!(a < b);
             }
         }
-        $( assert_eq!(::strict_encoding::strict_serialize(&$item).unwrap(), &[$val]); )+
-        $( assert_eq!($item, ::strict_encoding::strict_deserialize(&[$val]).unwrap()); )+
+        $( assert_eq!($se::strict_serialize(&$item).unwrap(), &[$val]); )+
+        $( assert_eq!($item, $se::strict_deserialize(&[$val]).unwrap()); )+
     } };
 }
 
