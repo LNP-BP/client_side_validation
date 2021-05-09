@@ -96,6 +96,8 @@ pub enum DecodeError {
 /// Format of the host address
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
 #[repr(u8)]
+#[derive(StrictEncode, StrictDecode)]
+#[strict_encoding(crate = crate, by_value)]
 #[non_exhaustive]
 pub enum AddrFormat {
     /// IPv4 addresss
@@ -122,6 +124,8 @@ pub enum AddrFormat {
 /// Supported transport protocols
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
 #[repr(u8)]
+#[derive(StrictEncode, StrictDecode)]
+#[strict_encoding(crate = crate, by_value)]
 #[non_exhaustive]
 pub enum Transport {
     /// Normal TCP
@@ -785,32 +789,78 @@ mod test {
     }
 
     #[test]
+    fn constants() {
+        use AddrFormat::*;
+        use Transport::*;
+
+        assert_eq!(ADDR_LEN, 33);
+        assert_eq!(UNIFORM_LEN, 37);
+
+        test_enum_u8_exhaustive!(crate => AddrFormat; IpV4 => 0, IpV6 => 1, OnionV2 => 2, OnionV3 => 3, Lightning => 4);
+        test_enum_u8_exhaustive!(crate => Transport; Tcp => 1, Udp => 2, Mtcp => 3, Quic => 4);
+    }
+
+    #[test]
+    fn display() {
+        use AddrFormat::*;
+        use Transport::*;
+
+        assert_eq!(Tcp.to_string(), "tcp");
+        assert_eq!(Udp.to_string(), "udp");
+        assert_eq!(Mtcp.to_string(), "mtcp");
+        assert_eq!(Quic.to_string(), "quic");
+
+        assert_eq!(IpV4.to_string(), "ipv4");
+        assert_eq!(IpV6.to_string(), "ipv6");
+        assert_eq!(OnionV2.to_string(), "onion(v2)");
+        assert_eq!(OnionV3.to_string(), "onion(v3)");
+        assert_eq!(Lightning.to_string(), "lightning");
+
+        /*
+        assert_eq!(Transport::from_str("tcp").unwrap(), Tcp);
+        assert_eq!(Transport::from_str("udp").unwrap(), Udp);
+        assert_eq!(Transport::from_str("mtcp").unwrap(), Mtcp);
+        assert_eq!(Transport::from_str("quic").unwrap(), Quic);
+         */
+    }
+
+    #[test]
     fn uniform_methods() {
         let ipv4 = *gen_ipv4_addrs().first().unwrap();
         let ipv6 = *gen_ipv6_addrs().first().unwrap();
+        let ip = IpAddr::from(ipv6);
 
         let socket4 = SocketAddrV4::new(ipv4, 32);
         let socket6 = SocketAddrV6::new(ipv6, 8080, 0, 0);
+        let socket = SocketAddr::from(socket6);
 
         assert_eq!(ipv4.addr_format(), AddrFormat::IpV4);
         assert_eq!(ipv6.addr_format(), AddrFormat::IpV6);
+        assert_eq!(ip.addr_format(), AddrFormat::IpV6);
         assert_eq!(socket4.addr_format(), AddrFormat::IpV4);
         assert_eq!(socket6.addr_format(), AddrFormat::IpV6);
+        assert_eq!(socket.addr_format(), AddrFormat::IpV6);
 
         assert_eq!(ipv4.addr(), [0u8; ADDR_LEN]);
         assert_eq!(ipv6.addr(), [0u8; ADDR_LEN]);
+        assert_eq!(ip.addr(), [0u8; ADDR_LEN]);
         assert_eq!(socket4.addr(), [0u8; ADDR_LEN]);
         assert_eq!(socket6.addr(), [0u8; ADDR_LEN]);
+        assert_eq!(socket.addr(), [0u8; ADDR_LEN]);
 
         assert_eq!(ipv4.port(), None);
         assert_eq!(ipv6.port(), None);
+        assert_eq!(ip.port(), None);
         assert_eq!((&socket4 as &dyn Uniform).port(), Some(32));
         assert_eq!((&socket6 as &dyn Uniform).port(), Some(8080));
+        assert_eq!((&socket as &dyn Uniform).port(), Some(8080));
 
         assert_eq!(ipv4.transport(), None);
         assert_eq!(ipv6.transport(), None);
+        assert_eq!(ip.transport(), None);
         assert_eq!(socket4.transport(), None);
         assert_eq!(socket6.transport(), None);
+        assert_eq!(socket.transport(), None);
     }
 
     #[test]
@@ -860,6 +910,19 @@ mod test {
             transport: None,
         };
 
+        assert_eq!(
+            UniformAddr::from_uniform_addr(uniform_socket6),
+            UniformAddr::from_uniform_addr_lossy(uniform_socket6)
+        );
+        assert_eq!(
+            uniform_socket6,
+            UniformAddr::from_uniform_addr_lossy(uniform_socket6).unwrap()
+        );
+        assert_ne!(
+            uniform_ipv4,
+            UniformAddr::from_uniform_addr_lossy(uniform_socket6).unwrap()
+        );
+
         assert_eq!(uniform_socket6.addr_format(), AddrFormat::IpV6);
         assert_eq!(uniform_socket6.addr(), raw_ipv6);
         assert_eq!(uniform_socket6.port(), Some(8080));
@@ -883,37 +946,56 @@ mod test {
 
         // Check errors
         assert_eq!(
-            Ipv4Addr::from_uniform_addr(uniform_ipv6),
+            Ipv4Addr::from_raw_uniform_addr(uniform_ipv6.to_raw_uniform()),
             Err(DecodeError::ExcessiveData)
         );
         assert_eq!(
-            Ipv4Addr::from_uniform_addr(uniform_socket4),
+            Ipv4Addr::from_raw_uniform_addr(uniform_socket4.to_raw_uniform()),
             Err(DecodeError::ExcessiveData)
         );
         assert_eq!(
-            Ipv4Addr::from_uniform_addr(uniform_socket6),
+            Ipv4Addr::from_raw_uniform_addr(uniform_socket6.to_raw_uniform()),
             Err(DecodeError::ExcessiveData)
         );
-        assert!(Ipv6Addr::from_uniform_addr(uniform_ipv4).is_ok());
+        assert!(
+            Ipv6Addr::from_raw_uniform_addr(uniform_ipv4.to_raw_uniform())
+                .is_ok()
+        );
         assert_eq!(
-            SocketAddrV4::from_uniform_addr(uniform_ipv4),
+            SocketAddrV4::from_raw_uniform_addr(uniform_ipv4.to_raw_uniform()),
             Err(DecodeError::InsufficientData)
         );
         assert_eq!(
-            SocketAddrV6::from_uniform_addr(uniform_ipv4),
+            SocketAddrV6::from_raw_uniform_addr(uniform_ipv4.to_raw_uniform()),
             Err(DecodeError::InsufficientData)
         );
 
-        assert!(Ipv4Addr::from_uniform_addr_lossy(uniform_ipv6).is_ok());
-        assert!(Ipv4Addr::from_uniform_addr_lossy(uniform_socket4).is_ok());
-        assert!(Ipv4Addr::from_uniform_addr_lossy(uniform_socket6).is_ok());
-        assert!(Ipv6Addr::from_uniform_addr_lossy(uniform_ipv4).is_ok());
+        assert!(Ipv4Addr::from_raw_uniform_addr_lossy(
+            uniform_ipv6.to_raw_uniform()
+        )
+        .is_ok());
+        assert!(Ipv4Addr::from_raw_uniform_addr_lossy(
+            uniform_socket4.to_raw_uniform()
+        )
+        .is_ok());
+        assert!(Ipv4Addr::from_raw_uniform_addr_lossy(
+            uniform_socket6.to_raw_uniform()
+        )
+        .is_ok());
+        assert!(Ipv6Addr::from_raw_uniform_addr_lossy(
+            uniform_ipv4.to_raw_uniform()
+        )
+        .is_ok());
         assert_eq!(
-            SocketAddrV4::from_uniform_addr_lossy(uniform_ipv4),
+            SocketAddrV4::from_raw_uniform_addr_lossy(
+                uniform_ipv4.to_raw_uniform()
+            ),
             Err(DecodeError::InsufficientData)
         );
         assert_eq!(
-            SocketAddrV6::from_uniform_addr_lossy(uniform_ipv4),
+            SocketAddrV6::from_raw_uniform_addr_lossy(
+                uniform_ipv4.to_raw_uniform()
+            ),
             Err(DecodeError::InsufficientData)
         );
     }
