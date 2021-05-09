@@ -449,6 +449,9 @@ impl Uniform for Ipv4Addr {
         if addr.port.is_some() || addr.transport.is_some() {
             return Err(DecodeError::ExcessiveData);
         }
+        if addr.addr[..27].iter().any(|byte| *byte != 0) {
+            return Err(DecodeError::ExcessiveData);
+        }
         Ipv4Addr::from_uniform_addr_lossy(addr)
     }
 
@@ -492,6 +495,9 @@ impl Uniform for Ipv6Addr {
         Self: Sized,
     {
         if addr.port.is_some() || addr.transport.is_some() {
+            return Err(DecodeError::ExcessiveData);
+        }
+        if addr.addr[0] != 0 {
             return Err(DecodeError::ExcessiveData);
         }
         Ipv6Addr::from_uniform_addr_lossy(addr)
@@ -726,7 +732,9 @@ impl Strategy for SocketAddrV6 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use bitcoin::secp256k1::PublicKey;
     use std::convert::TryInto;
+    use std::str::FromStr;
 
     fn gen_ipv4_addrs() -> Vec<Ipv4Addr> {
         let vars = [0u8, 1, 32, 48, 64, 127, 168, 192, 254, 255];
@@ -744,7 +752,7 @@ mod test {
     }
 
     fn gen_ipv6_addrs() -> Vec<Ipv6Addr> {
-        let vars = [0u16, 1, 127, 256, std::u16::MAX];
+        let vars = [0u16, 1, 127, 256, u16::MAX];
         let ipv4 = gen_ipv4_addrs();
         let mut addrs = Vec::<Ipv6Addr>::with_capacity(
             vars.len().pow(5) * 4 + ipv4.len() * 2,
@@ -774,6 +782,140 @@ mod test {
             }
         }
         addrs
+    }
+
+    #[test]
+    fn uniform_methods() {
+        let ipv4 = *gen_ipv4_addrs().first().unwrap();
+        let ipv6 = *gen_ipv6_addrs().first().unwrap();
+
+        let socket4 = SocketAddrV4::new(ipv4, 32);
+        let socket6 = SocketAddrV6::new(ipv6, 8080, 0, 0);
+
+        assert_eq!(ipv4.addr_format(), AddrFormat::IpV4);
+        assert_eq!(ipv6.addr_format(), AddrFormat::IpV6);
+        assert_eq!(socket4.addr_format(), AddrFormat::IpV4);
+        assert_eq!(socket6.addr_format(), AddrFormat::IpV6);
+
+        assert_eq!(ipv4.addr(), [0u8; ADDR_LEN]);
+        assert_eq!(ipv6.addr(), [0u8; ADDR_LEN]);
+        assert_eq!(socket4.addr(), [0u8; ADDR_LEN]);
+        assert_eq!(socket6.addr(), [0u8; ADDR_LEN]);
+
+        assert_eq!(ipv4.port(), None);
+        assert_eq!(ipv6.port(), None);
+        assert_eq!((&socket4 as &dyn Uniform).port(), Some(32));
+        assert_eq!((&socket6 as &dyn Uniform).port(), Some(8080));
+
+        assert_eq!(ipv4.transport(), None);
+        assert_eq!(ipv6.transport(), None);
+        assert_eq!(socket4.transport(), None);
+        assert_eq!(socket6.transport(), None);
+    }
+
+    #[test]
+    fn uniform_conversions() {
+        let ipv4 = *gen_ipv4_addrs().last().unwrap();
+        let ipv6 = *gen_ipv6_addrs().last().unwrap();
+
+        let socket4 = SocketAddrV4::new(ipv4, 32);
+        let socket6 = SocketAddrV6::new(ipv6, 8080, 0, 0);
+
+        let raw_ipv4 = Ipv4Addr::new(255, 255, 255, 255).to_uniform_addr().addr;
+        let raw_ipv6 = Ipv6Addr::new(
+            0x2001,
+            u16::MAX,
+            0xff0e,
+            0x890a,
+            u16::MAX,
+            u16::MAX,
+            u16::MAX,
+            u16::MAX,
+        )
+        .to_uniform_addr()
+        .addr;
+
+        let uniform_ipv4 = UniformAddr {
+            addr_format: AddrFormat::IpV4,
+            addr: raw_ipv4,
+            port: None,
+            transport: None,
+        };
+        let uniform_ipv6 = UniformAddr {
+            addr_format: AddrFormat::IpV6,
+            addr: raw_ipv6,
+            port: None,
+            transport: None,
+        };
+        let uniform_socket4 = UniformAddr {
+            addr_format: AddrFormat::IpV4,
+            addr: raw_ipv4,
+            port: Some(32),
+            transport: None,
+        };
+        let uniform_socket6 = UniformAddr {
+            addr_format: AddrFormat::IpV6,
+            addr: raw_ipv6,
+            port: Some(8080),
+            transport: None,
+        };
+
+        assert_eq!(uniform_socket6.addr_format(), AddrFormat::IpV6);
+        assert_eq!(uniform_socket6.addr(), raw_ipv6);
+        assert_eq!(uniform_socket6.port(), Some(8080));
+        assert_eq!(uniform_socket6.transport(), None);
+
+        assert_eq!(ipv4.to_uniform_addr(), uniform_ipv4);
+        assert_eq!(ipv6.to_uniform_addr(), uniform_ipv6);
+        assert_eq!(socket4.to_uniform_addr(), uniform_socket4);
+        assert_eq!(socket6.to_uniform_addr(), uniform_socket6);
+
+        assert_eq!(Ipv4Addr::from_uniform_addr(uniform_ipv4), Ok(ipv4));
+        assert_eq!(Ipv6Addr::from_uniform_addr(uniform_ipv6), Ok(ipv6));
+        assert_eq!(
+            SocketAddrV4::from_uniform_addr(uniform_socket4),
+            Ok(socket4)
+        );
+        assert_eq!(
+            SocketAddrV6::from_uniform_addr(uniform_socket6),
+            Ok(socket6)
+        );
+
+        // Check errors
+        assert_eq!(
+            Ipv4Addr::from_uniform_addr(uniform_ipv6),
+            Err(DecodeError::ExcessiveData)
+        );
+        assert_eq!(
+            Ipv4Addr::from_uniform_addr(uniform_socket4),
+            Err(DecodeError::ExcessiveData)
+        );
+        assert_eq!(
+            Ipv4Addr::from_uniform_addr(uniform_socket6),
+            Err(DecodeError::ExcessiveData)
+        );
+        assert!(Ipv6Addr::from_uniform_addr(uniform_ipv4).is_ok());
+        assert_eq!(
+            SocketAddrV4::from_uniform_addr(uniform_ipv4),
+            Err(DecodeError::InsufficientData)
+        );
+        assert_eq!(
+            SocketAddrV6::from_uniform_addr(uniform_ipv4),
+            Err(DecodeError::InsufficientData)
+        );
+
+        assert!(Ipv4Addr::from_uniform_addr_lossy(uniform_ipv6).is_ok());
+        assert!(Ipv4Addr::from_uniform_addr_lossy(uniform_socket4).is_ok());
+        assert!(Ipv4Addr::from_uniform_addr_lossy(uniform_socket6).is_ok());
+        assert!(Ipv6Addr::from_uniform_addr_lossy(uniform_ipv4).is_ok());
+        assert_eq!(
+            SocketAddrV4::from_uniform_addr_lossy(uniform_ipv4),
+            Err(DecodeError::InsufficientData)
+        );
+        assert_eq!(
+            SocketAddrV6::from_uniform_addr_lossy(uniform_ipv4),
+            Err(DecodeError::InsufficientData)
+        );
     }
 
     #[test]
@@ -842,7 +984,7 @@ mod test {
                 addr_format: AddrFormat::IpV6,
                 addr: ip.addr(),
                 port: None,
-                transport: Some(Transport::Tcp),
+                transport: Some(Transport::Mtcp),
             };
             let raw = uniform.to_raw_uniform();
             assert_eq!(uniform, raw.try_into().unwrap());
@@ -851,11 +993,50 @@ mod test {
                 addr_format: AddrFormat::IpV6,
                 addr: ip.addr(),
                 port: Some(32),
-                transport: Some(Transport::Udp),
+                transport: Some(Transport::Quic),
             };
             let raw = uniform.to_raw_uniform();
             assert_eq!(uniform, raw.try_into().unwrap());
         }
+    }
+
+    #[test]
+    fn uniform_raw_roundtrip_other() {
+        let lk = PublicKey::from_str("02d1780dd0e08f4d873f94faf49d878d909a1174291d3fcac3e02a6c45e7eda744").unwrap();
+        let addr = lk.serialize();
+
+        let uniform = UniformAddr {
+            addr_format: AddrFormat::Lightning,
+            addr,
+            port: Some(6432),
+            transport: Some(Transport::Tcp),
+        };
+        let raw = uniform.to_raw_uniform();
+        assert_eq!(uniform, raw.try_into().unwrap());
+
+        let mut uniform = UniformAddr {
+            addr_format: AddrFormat::OnionV3,
+            addr,
+            port: Some(6432),
+            transport: Some(Transport::Udp),
+        };
+        let raw = uniform.to_raw_uniform();
+        assert_eq!(UniformAddr::try_from(raw), Err(DecodeError::InvalidAddr));
+        uniform.addr[0] = 0;
+        let raw = uniform.to_raw_uniform();
+        assert_eq!(uniform, raw.try_into().unwrap());
+
+        let mut uniform = UniformAddr {
+            addr_format: AddrFormat::OnionV2,
+            addr,
+            port: Some(6432),
+            transport: Some(Transport::Tcp),
+        };
+        let raw = uniform.to_raw_uniform();
+        assert_eq!(UniformAddr::try_from(raw), Err(DecodeError::InvalidAddr));
+        uniform.addr[..23].fill(0);
+        let raw = uniform.to_raw_uniform();
+        assert_eq!(uniform, raw.try_into().unwrap());
     }
 
     #[test]
