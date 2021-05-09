@@ -39,22 +39,21 @@ and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwAr
 This library consists of the following main three components, which define
 independent parts constituting together client-side-validation API and its core
 functionality. These are:
-- Strict encoding (LNPBP-7 standard): binary standard of encoding 
-  client-side-validated data
+- Strict encoding ([LNPBP-7] and [LNPBP-42] standards): binary standard of  
+  encoding client-side-validated data and network addresses
 - Commit-verify scheme and its client-side-validation specific implementations
-  * consensus commitments
-  * multi-commitments (LNPBP-4 standard)
-- Single-use-seals (LNPBP-8 standard)
+  * consensus commitments ([LNPBP-9] standard)
+  * multi-commitments ([LNPBP-4] standard)
+- Single-use-seals ([LNPBP-8] standard)
 
 
 ## Usage
 
-The repository contains rust libraries for client-side validation and 
-command-line tools for debugging/low-level hacking mode.
+The repository contains rust libraries for client-side validation.
 
 ### Use library in other projects
 
-To use libraries, you just need lates version of libraries, published to 
+To use libraries, you just need latest version of libraries, published to 
 [crates.io](https://crates.io) into `[dependencies]` section of your project 
 `Cargo.toml`. Here is the full list of available libraries from this repository:
 
@@ -75,17 +74,16 @@ the following way:
 version = "1"
 default-features = false
 features = [] # Your set of features goes here
-# Avaliable features
-# * `derivation` - includes strict encoding derivation macros
-# * `strict_encoding` - strict encoding library (by default does not include
-#                       derivation macros, to use it you need`derivation` 
-#                       feature to be explicetly enabled
-# * `multi-commitments` - LNPBP-4 multi-commitments
-# * `seals-all` - All single-use-seals component, including bitcoin seals 
-#                 library
-# * `seals-api` - single-use-seals core API (without bitcoin-specific extensions)
-# * `seals-utxo - Bitcoin-based UTXO single-use-seals
 ```
+
+The library has just a three feature flags, all of which are not used by default:
+- `rand`, providing support for generating random 32-byte sequences of `Slice32`
+  type, used in many LNP/BP applications (for instance as hash-lock preimages or
+  during LNPBP-4 multi-commitments);
+- `serde`, providing support for data structure serialization with serde across
+  all library;
+- `crypto`, adding strict encoding support for Ed25519/X25519 and Grin 
+  Secp256k1zkp Pedersen commitments and bulletproofs data types.
 
 For specific features which may be enabled for the libraries, please check
 library-specific guidelines, located in `README.md` files in each of library
@@ -123,3 +121,10 @@ Contribution guidelines can be found in [CONTRIBUTING](CONTRIBUTING.md)
 
 The libraries are distributed on the terms of Apache 2.0 opensource license.
 See [LICENCE](LICENSE) file for the license details.
+
+
+[LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+[LNPBP-7]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md
+[LNPBP-8]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0008.md
+[LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
+[LNPBP-42]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md

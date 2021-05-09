@@ -22,3 +22,5 @@ amplify = { version = "3.4", features = [ "proc_attr" ] }
 
 [dev-dependencies]
 strict_encoding = { path = ".." }
+amplify_derive = "2.7"
+serde = "1"
