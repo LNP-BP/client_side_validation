@@ -655,7 +655,7 @@ checksum = "0f0242b8e50dd9accdd56170e94ca1ebd223b098eb9c83539a6e367d0f36ae68"
 
 [[package]]
 name = "single_use_seals"
-version = "0.5.0-rc.1"
+version = "0.5.0"
 dependencies = [
  "amplify_derive",
 ]
@@ -670,7 +670,7 @@ dependencies = [
  "amplify_derive",
  "bitcoin",
  "chrono",
- "strict_encoding_derive 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strict_encoding_derive 1.1.0",
 ]
 
 [[package]]
@@ -684,19 +684,7 @@ dependencies = [
  "grin_secp256k1zkp",
  "miniscript",
  "rand 0.7.3",
- "strict_encoding_derive 1.1.0",
-]
-
-[[package]]
-name = "strict_encoding_derive"
-version = "1.1.0"
-dependencies = [
- "amplify",
- "amplify_derive",
- "proc-macro2",
- "quote",
- "strict_encoding 1.3.0",
- "syn",
+ "strict_encoding_derive 1.1.1",
 ]
 
 [[package]]
@@ -708,6 +696,18 @@ dependencies = [
  "amplify",
  "proc-macro2",
  "quote",
+ "syn",
+]
+
+[[package]]
+name = "strict_encoding_derive"
+version = "1.1.1"
+dependencies = [
+ "amplify",
+ "amplify_derive",
+ "proc-macro2",
+ "quote",
+ "strict_encoding 1.3.0",
  "syn",
 ]
 

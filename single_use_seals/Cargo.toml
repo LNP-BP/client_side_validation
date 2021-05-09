@@ -1,13 +1,13 @@
 [package]
 name = "single_use_seals"
-version = "0.5.0-rc.1"
+version = "0.5.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Single-use-seals foundation API. For bitcoin-specific implementation check bp-seals"
 repository = "https://github.com/LNP-BP/client_side_validation"
 homepage = "https://github.com/LNP-BP"
-keywords = ["lnp-bp", "cryptography", "smart-contracts", "client-side-validation"]
-categories = ["cryptography", "encoding"]
+keywords = ["lnp-bp", "cryptography", "smart-contracts", "single-use-seals"]
+categories = ["cryptography", "cryptography::cryptocurrencies"]
 readme = "README.md"
 edition = "2018"
 
