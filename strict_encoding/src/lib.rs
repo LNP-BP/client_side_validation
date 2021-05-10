@@ -62,7 +62,6 @@ extern crate amplify;
 
 #[macro_use]
 mod macros;
-#[cfg(test)]
 #[macro_use]
 pub mod test_helpers;
 
@@ -89,6 +88,7 @@ use amplify::IoError;
 use core::ops::Range;
 use std::fmt;
 use std::io;
+use std::string::FromUtf8Error;
 
 /// Binary encoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications;
@@ -162,18 +162,17 @@ where
 }
 
 /// Possible errors during strict encoding and decoding process
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Display, From, Error)]
+#[derive(Clone, PartialEq, Eq, Debug, Display, From, Error)]
 #[display(doc_comments)]
 pub enum Error {
-    /// I/O error during data strict encoding: {0}
+    /// I/O error during data strict encoding
     #[from(io::Error)]
     #[from(io::ErrorKind)]
     Io(IoError),
 
     /// String data are not in valid UTF-8 encoding
-    #[from(std::str::Utf8Error)]
-    #[from(std::string::FromUtf8Error)]
-    Utf8Conversion,
+    #[from]
+    Utf8Conversion(std::str::Utf8Error),
 
     /// A collection (slice, vector or other type) has more items ({0}) than
     /// 2^16 (i.e. maximum value which may be held by `u16` `size`
@@ -199,9 +198,9 @@ pub enum Error {
     EnumValueNotKnown(&'static str, usize),
 
     /// The data are correct, however their structure indicate that they were
-    /// created with the future software version which has functional absent in
-    /// the current implementation.
-    /// More details from error source: {0}
+    /// created with the future software version which has a functional absent
+    /// in the current implementation.
+    /// {0}
     UnsupportedDataStructure(&'static str),
 
     /// Decoding resulted in value `{2}` for type `{0}` that exceeds the
@@ -226,5 +225,11 @@ impl From<Error> for fmt::Error {
     #[inline]
     fn from(_: Error) -> Self {
         fmt::Error
+    }
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(err: FromUtf8Error) -> Self {
+        Error::Utf8Conversion(err.utf8_error())
     }
 }
