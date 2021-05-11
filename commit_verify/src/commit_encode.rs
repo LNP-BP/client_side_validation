@@ -336,43 +336,104 @@ where
 }
 
 /// Merklization procedure that uses tagged hashes with depth commitments
-pub fn merklize(prefix: &str, data: &[MerkleNode], depth: u16) -> MerkleNode {
+pub fn merklize<N>(prefix: &str, data: &[N]) -> (MerkleNode, u8)
+where
+    N: AsRef<[u8]>,
+{
+    let mut tag_engine = sha256::Hash::engine();
+    tag_engine.input(prefix.as_bytes());
+    tag_engine.input(":merkle:".as_bytes());
+    merklize_inner(&tag_engine, data, 0, false, None)
+}
+
+fn merklize_inner<N>(
+    engine_proto: &sha256::HashEngine,
+    data: &[N],
+    depth: u8,
+    extend: bool,
+    empty_node: Option<MerkleNode>,
+) -> (MerkleNode, u8)
+where
+    N: AsRef<[u8]>,
+{
     let len = data.len();
+    let mut iter = data.iter();
+    let ext_len = len + if extend { 1 } else { 0 };
+    let empty_node = empty_node.unwrap_or_else(|| MerkleNode::hash(&[0xFF]));
+
+    // Computing tagged hash as per BIP-340
+    let mut tag_engine = engine_proto.clone();
+    tag_engine.input("depth=".as_bytes());
+    tag_engine.input(depth.to_string().as_bytes());
+    tag_engine.input(":width=".as_bytes());
+    tag_engine.input(len.to_string().as_bytes());
+    tag_engine.input(":height=".as_bytes());
 
     let mut engine = MerkleNode::engine();
-    // Computing tagged hash as per BIP-340
-    let tag = format!("{}:merkle:{}", prefix, depth);
-    let tag_hash = sha256::Hash::hash(tag.as_bytes());
-    engine.input(&tag_hash[..]);
-    engine.input(&tag_hash[..]);
-    match len {
-        0 => {
-            0u8.commit_encode(&mut engine);
-            0u8.commit_encode(&mut engine);
-        }
-        1 => {
-            data.first()
-                .expect("We know that we have one element")
-                .commit_encode(&mut engine);
-            0u8.commit_encode(&mut engine);
-        }
-        2 => {
-            data.first()
-                .expect("We know that we have at least two elements")
-                .commit_encode(&mut engine);
-            data.last()
-                .expect("We know that we have at least two elements")
-                .commit_encode(&mut engine);
-        }
-        _ => {
-            let div = len / 2;
-            merklize(prefix, &data[0..div], depth + 1)
-                .commit_encode(&mut engine);
-            merklize(prefix, &data[div..], depth + 1)
-                .commit_encode(&mut engine);
-        }
+    if ext_len <= 2 {
+        tag_engine.input("0:".as_bytes());
+        let tag_hash =
+            sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+
+        let mut leaf_tag_engine = engine_proto.clone();
+        leaf_tag_engine.input("leaf".as_bytes());
+        let leaf_tag =
+            sha256::Hash::hash(&sha256::Hash::from_engine(leaf_tag_engine));
+        let mut leaf_engine = MerkleNode::engine();
+        leaf_engine.input(&leaf_tag[..]);
+        leaf_engine.input(&leaf_tag[..]);
+
+        let mut leaf1 = leaf_engine.clone();
+        leaf1.input(
+            iter.next()
+                .as_ref()
+                .map(|d| d.as_ref())
+                .unwrap_or(empty_node.as_ref()),
+        );
+        MerkleNode::from_engine(leaf1).commit_encode(&mut engine);
+
+        leaf_engine.input(
+            iter.next()
+                .as_ref()
+                .map(|d| d.as_ref())
+                .unwrap_or(empty_node.as_ref()),
+        );
+        MerkleNode::from_engine(leaf_engine).commit_encode(&mut engine);
+
+        (MerkleNode::from_engine(engine), 1)
+    } else {
+        let div = len / 2;
+
+        let (node1, height1) = merklize_inner(
+            engine_proto,
+            &data[..div],
+            depth + 1,
+            false,
+            Some(empty_node),
+        );
+        let (node2, height2) = merklize_inner(
+            engine_proto,
+            &data[div..],
+            depth + 1,
+            len % 2 == 0,
+            Some(empty_node),
+        );
+
+        assert_eq!(height1, height2, "merklization algorithm failure: height of two subtrees is not equal");
+
+        tag_engine.input(height1.to_string().as_bytes());
+        tag_engine.input(":".as_bytes());
+        let tag_hash =
+            sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        node1.commit_encode(&mut engine);
+        node2.commit_encode(&mut engine);
+
+        (MerkleNode::from_engine(engine), height1 + 1)
     }
-    MerkleNode::from_engine(engine)
 }
 
 /// The source data for the merklization process
@@ -406,12 +467,12 @@ where
     L: ConsensusMerkleCommit,
 {
     fn commit_encode<E: io::Write>(&self, e: E) -> usize {
-        let leafs = &self
+        let leafs = self
             .0
             .iter()
             .map(L::consensus_commit)
             .collect::<Vec<MerkleNode>>();
-        merklize(L::MERKLE_NODE_TAG, leafs, 0).commit_encode(e)
+        merklize(L::MERKLE_NODE_TAG, &leafs).0.commit_encode(e)
     }
 }
 
@@ -543,11 +604,11 @@ mod test {
             original.strict_serialize().unwrap()
         );
         assert_eq!(
-            "b497ced8b6431336e4c66ffd56a504633c828ea3ec0c0495a31e9a14cb066406",
+            "1d183cc7f24017fb33c46ba0d47b85987357183ff1c59d0e32a21781f73ea5b7",
             collection.commit_serialize().to_hex()
         );
         assert_eq!(
-            "066406cb149a1ea395040ceca38e823c6304a556fd6fc6e4361343b6d8ce97b4",
+            "b7a53ef78117a2320e9dc5f13f18577398857bd4a06bc433fb1740f2c73c181d",
             collection.consensus_commit().to_hex()
         );
         assert_ne!(
@@ -576,11 +637,11 @@ mod test {
             original.strict_serialize().unwrap()
         );
         assert_eq!(
-            "8a8ebc499d146b0ab551e0ff985cf8166dc05f20f04b0f5991c4b9242dbde205",
+            "be4c548b5fb14b2c86475ff6edc5d186f5980f53191d7df44faa22a97e7be49b",
             vec.commit_serialize().to_hex()
         );
         assert_eq!(
-            "05e2bd2d24b9c491590f4bf0205fc06d16f85c98ffe051b50a6b149d49bc8e8a",
+            "9be47b7ea922aa4ff47d1d19530f98f586d1c5edf65f47862c4bb15f8b544cbe",
             vec.consensus_commit().to_hex()
         );
         assert_ne!(
