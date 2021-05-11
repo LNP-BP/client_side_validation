@@ -15,7 +15,9 @@
 use std::io;
 
 use bitcoin::bech32::u5;
-use bitcoin::hashes::{hash160, hmac, sha256, sha256d, sha256t, sha512, Hash};
+use bitcoin::hashes::{
+    hash160, hmac, ripemd160, sha256, sha256d, sha256t, sha512, Hash,
+};
 use bitcoin::util::address::{self, Address};
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{
@@ -67,6 +69,9 @@ where
     type Strategy = strategies::HashFixedBytes;
 }
 impl Strategy for sha512::Hash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for ripemd160::Hash {
     type Strategy = strategies::HashFixedBytes;
 }
 impl Strategy for hash160::Hash {
@@ -260,50 +265,58 @@ impl Strategy for PartiallySignedTransaction {
     type Strategy = strategies::BitcoinConsensus;
 }
 
-impl StrictEncode for Address {
+impl StrictEncode for address::Payload {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = 0usize;
-        len += self.network.strict_encode(&mut e)?;
-        match &self.payload {
+        Ok(match self {
             address::Payload::PubkeyHash(pkh) => {
-                len += 32u8.strict_encode(&mut e)?;
-                len += pkh.strict_encode(&mut e)?;
+                32u8.strict_encode(&mut e)? + pkh.strict_encode(&mut e)?
             }
             address::Payload::ScriptHash(sh) => {
-                len += 33u8.strict_encode(&mut e)?;
-                len += sh.strict_encode(&mut e)?;
+                33u8.strict_encode(&mut e)? + sh.strict_encode(&mut e)?
             }
             address::Payload::WitnessProgram { version, program } => {
-                len += version.to_u8().strict_encode(&mut e)?;
-                len += program.strict_encode(&mut e)?;
+                version.to_u8().strict_encode(&mut e)?
+                    + program.strict_encode(&mut e)?
             }
-        };
-        Ok(len)
+        })
     }
 }
 
-impl StrictDecode for Address {
+impl StrictDecode for address::Payload {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let network = bitcoin::Network::strict_decode(&mut d)?;
-        let payload = match u8::strict_decode(&mut d)? {
+        Ok(match u8::strict_decode(&mut d)? {
             32u8 => {
                 address::Payload::PubkeyHash(PubkeyHash::strict_decode(&mut d)?)
             }
             33u8 => {
                 address::Payload::ScriptHash(ScriptHash::strict_decode(&mut d)?)
             }
-            version => address::Payload::WitnessProgram {
-                version: u5::try_from_u8(version).map_err(|_| {
-                    Error::ValueOutOfRange(
-                        "witness program version",
-                        0..17,
-                        version as u128,
-                    )
-                })?,
+            // TODO: #18 Update to `WitnessVersion` upon bitcoin 0.26.1 release
+            version if version <= 16 => address::Payload::WitnessProgram {
+                version: u5::try_from_u8(version)
+                    .expect("bech32::u8 decider is broken"),
                 program: StrictDecode::strict_decode(&mut d)?,
             },
-        };
-        Ok(Address { payload, network })
+            wrong => {
+                return Err(Error::ValueOutOfRange(
+                    "witness program version",
+                    0..17,
+                    wrong as u128,
+                ))
+            }
+        })
+    }
+}
+
+impl StrictEncode for Address {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.network, self.payload))
+    }
+}
+
+impl StrictDecode for Address {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(strict_decode_self!(d; network, payload; crate))
     }
 }
 
@@ -470,21 +483,135 @@ impl StrictDecode for bip32::ExtendedPrivKey {
 pub(crate) mod test {
     use std::str::FromStr;
 
-    use bitcoin::{consensus, hashes::hex::FromHex, secp256k1::Message};
+    use bitcoin::{
+        consensus, hashes::hex::FromHex, hashes::Hash, secp256k1::Message,
+    };
 
     use super::*;
-    use crate::strict_serialize;
     use crate::test_helpers::*;
+
+    #[test]
+    fn test_encoding_hashes() {
+        static HASH256_BYTES: [u8; 32] = [
+            0x15, 0x2d, 0x1c, 0x97, 0x61, 0xd4, 0x64, 0x66, 0x68, 0xdf, 0xcd,
+            0xeb, 0x11, 0x98, 0x70, 0x84, 0x4e, 0xdb, 0x25, 0xa0, 0xea, 0x1e,
+            0x35, 0x20, 0x7f, 0xaa, 0x44, 0xa9, 0x67, 0xa6, 0xa6, 0x61,
+        ];
+        static HASH160_BYTES: [u8; 20] = [
+            0x15, 0x2d, 0x1c, 0x97, 0x61, 0xd4, 0x64, 0x66, 0x68, 0xdf, 0xcd,
+            0xeb, 0x11, 0x98, 0x4e, 0xdb, 0x25, 0xa0, 0xea, 0x1e,
+        ];
+
+        const TEST_MIDSTATE: [u8; 32] = [
+            156, 224, 228, 230, 124, 17, 108, 57, 56, 179, 202, 242, 195, 15,
+            80, 137, 211, 243, 147, 108, 71, 99, 110, 96, 125, 179, 62, 234,
+            221, 198, 240, 201,
+        ];
+
+        #[derive(
+            Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash,
+        )]
+        pub struct TestHashTag;
+
+        impl sha256t::Tag for TestHashTag {
+            fn engine() -> sha256::HashEngine {
+                // The TapRoot TapLeaf midstate.
+                let midstate = sha256::Midstate::from_inner(TEST_MIDSTATE);
+                sha256::HashEngine::from_midstate(midstate, 64)
+            }
+        }
+
+        test_encoding_roundtrip(
+            &ripemd160::Hash::from_inner(HASH160_BYTES),
+            HASH160_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &hash160::Hash::from_inner(HASH160_BYTES),
+            HASH160_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &hmac::Hmac::<sha256::Hash>::from_inner(HASH256_BYTES),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &sha256::Hash::from_inner(HASH256_BYTES),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &sha256d::Hash::from_inner(HASH256_BYTES),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &sha256t::Hash::<TestHashTag>::from_inner(HASH256_BYTES),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &Txid::from_slice(&HASH256_BYTES).unwrap(),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &Wtxid::from_slice(&HASH256_BYTES).unwrap(),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &BlockHash::from_slice(&HASH256_BYTES).unwrap(),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &XpubIdentifier::from_slice(&HASH160_BYTES).unwrap(),
+            HASH160_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &SigHash::from_slice(&HASH256_BYTES).unwrap(),
+            HASH256_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &PubkeyHash::from_slice(&HASH160_BYTES).unwrap(),
+            HASH160_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &WPubkeyHash::from_slice(&HASH160_BYTES).unwrap(),
+            HASH160_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &ScriptHash::from_slice(&HASH160_BYTES).unwrap(),
+            HASH160_BYTES,
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &WScriptHash::from_slice(&HASH256_BYTES).unwrap(),
+            HASH256_BYTES,
+        )
+        .unwrap();
+    }
 
     #[test]
     fn test_encoding_seckey(
     ) -> Result<(), DataEncodingTestFailure<secp256k1::SecretKey>> {
+        let secp = secp256k1::Secp256k1::new();
         static SK_BYTES: [u8; 32] = [
             0x15, 0x2d, 0x1c, 0x97, 0x61, 0xd4, 0x64, 0x66, 0x68, 0xdf, 0xcd,
             0xeb, 0x11, 0x98, 0x70, 0x84, 0x4e, 0xdb, 0x25, 0xa0, 0xea, 0x1e,
             0x35, 0x20, 0x7f, 0xaa, 0x44, 0xa9, 0x67, 0xa6, 0xa6, 0x61,
         ];
         let sk = secp256k1::SecretKey::from_slice(&SK_BYTES).unwrap();
+        let _sk_bip340 =
+            secp256k1::schnorrsig::KeyPair::from_seckey_slice(&secp, &SK_BYTES)
+                .unwrap();
+        // TODO: #17 implement KeyPair serialization testing
         test_encoding_roundtrip(&sk, &SK_BYTES[..])
     }
 
@@ -714,6 +841,118 @@ pub(crate) mod test {
     }
 
     #[test]
+    fn test_encoding_address() {
+        test_encoding_roundtrip(
+            &Address::from_str("12CL4K2eVqj7hQTix7dM7CVHCkpP17Pry3").unwrap(),
+            [
+                0xF9, 0xBE, 0xB4, 0xD9, 0x20, 0x0D, 0x1C, 0x9C, 0x02, 0xA7,
+                0xBE, 0x9B, 0xA8, 0xB8, 0x84, 0x28, 0x04, 0xFE, 0xB9, 0x61,
+                0x48, 0x1C, 0xE6, 0x56, 0x1B,
+            ],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &Address::from_str("3AfyxhpBVVLmBR4ZYX2onGzRqjv5QZ7FqD").unwrap(),
+            [
+                0xF9, 0xBE, 0xB4, 0xD9, 0x21, 0x62, 0x87, 0x13, 0xE2, 0x7A,
+                0x36, 0xDA, 0x16, 0x17, 0x4E, 0x9D, 0x02, 0xC1, 0x77, 0x2C,
+                0xD9, 0xE4, 0x06, 0x03, 0x9B,
+            ],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &Address::from_str("bc1qp5wfcq48h6d63wyy9qz0awtpfqwwv4sma86mhz")
+                .unwrap(),
+            [
+                0xF9, 0xBE, 0xB4, 0xD9, 0x00, 0x14, 0x00, 0x0D, 0x1C, 0x9C,
+                0x02, 0xA7, 0xBE, 0x9B, 0xA8, 0xB8, 0x84, 0x28, 0x04, 0xFE,
+                0xB9, 0x61, 0x48, 0x1C, 0xE6, 0x56, 0x1B,
+            ],
+        )
+        .unwrap();
+
+        static P2WSH_BC: [u8; 39] = [
+            0xF9, 0xBE, 0xB4, 0xD9, 0x00, 0x20, 0x00, 0x18, 0x63, 0x14, 0x3C,
+            0x14, 0xC5, 0x16, 0x68, 0x04, 0xBD, 0x19, 0x20, 0x33, 0x56, 0xDA,
+            0x13, 0x6C, 0x98, 0x56, 0x78, 0xCD, 0x4D, 0x27, 0xA1, 0xB8, 0xC6,
+            0x32, 0x96, 0x04, 0x90, 0x32, 0x62,
+        ];
+        test_encoding_roundtrip(
+            &Address::from_str("bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3")
+                .unwrap(),
+            P2WSH_BC,
+        ).unwrap();
+        // TODO: #18 test_encoding_roundtrip(&Address::from_str("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y").unwrap(), []).unwrap();
+        test_encoding_roundtrip(
+            &Address::from_str("mgiHMN7dJsANUWwLfgbiw7hc4kR5xMjPhw").unwrap(),
+            [
+                0x0B, 0x11, 0x09, 0x07, 0x20, 0x0D, 0x1C, 0x9C, 0x02, 0xA7,
+                0xBE, 0x9B, 0xA8, 0xB8, 0x84, 0x28, 0x04, 0xFE, 0xB9, 0x61,
+                0x48, 0x1C, 0xE6, 0x56, 0x1B,
+            ],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &Address::from_str("2N2EC2SkD6wr7PCh7DeegQDyh468FA7TK3a").unwrap(),
+            [
+                0x0B, 0x11, 0x09, 0x07, 0x21, 0x62, 0x87, 0x13, 0xE2, 0x7A,
+                0x36, 0xDA, 0x16, 0x17, 0x4E, 0x9D, 0x02, 0xC1, 0x77, 0x2C,
+                0xD9, 0xE4, 0x06, 0x03, 0x9B,
+            ],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &Address::from_str("tb1qp5wfcq48h6d63wyy9qz0awtpfqwwv4smhppgv3")
+                .unwrap(),
+            [
+                0x0B, 0x11, 0x09, 0x07, 0x00, 0x14, 0x00, 0x0D, 0x1C, 0x9C,
+                0x02, 0xA7, 0xBE, 0x9B, 0xA8, 0xB8, 0x84, 0x28, 0x04, 0xFE,
+                0xB9, 0x61, 0x48, 0x1C, 0xE6, 0x56, 0x1B,
+            ],
+        )
+        .unwrap();
+        static P2WSH_TB: [u8; 39] = [
+            0x0B, 0x11, 0x09, 0x07, 0x00, 0x20, 0x00, 0x18, 0x63, 0x14, 0x3C,
+            0x14, 0xC5, 0x16, 0x68, 0x04, 0xBD, 0x19, 0x20, 0x33, 0x56, 0xDA,
+            0x13, 0x6C, 0x98, 0x56, 0x78, 0xCD, 0x4D, 0x27, 0xA1, 0xB8, 0xC6,
+            0x32, 0x96, 0x04, 0x90, 0x32, 0x62,
+        ];
+        test_encoding_roundtrip(
+            &Address::from_str("tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7")
+                .unwrap(),
+            P2WSH_TB,
+        ).unwrap();
+        // TODO: #18 test_encoding_roundtrip(&Address::from_str("
+        // tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c").
+        // unwrap(), []).unwrap();
+        test_encoding_roundtrip(
+            &Address::from_str("bcrt1qs758ursh4q9z627kt3pp5yysm78ddny6txaqgw")
+                .unwrap(),
+            [
+                0xFA, 0xBF, 0xB5, 0xDA, 0x00, 0x14, 0x00, 0x87, 0xA8, 0x7E,
+                0x0E, 0x17, 0xA8, 0x0A, 0x2D, 0x2B, 0xD6, 0x5C, 0x42, 0x1A,
+                0x10, 0x90, 0xDF, 0x8E, 0xD6, 0xCC, 0x9A,
+            ],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = r#"ValueOutOfRange("witness program version", 0..17, 35)"#
+    )]
+    fn test_encoding_address_failure() {
+        // Address string with witness version byte (fifth) > 17 and not
+        // matching non-witness address type
+        Address::strict_deserialize([
+            0x0B, 0x11, 0x09, 0x07, 0x23, 0x14, 0x00, 0x0D, 0x1C, 0x9C, 0x02,
+            0xA7, 0xBE, 0x9B, 0xA8, 0xB8, 0x84, 0x28, 0x04, 0xFE, 0xB9, 0x61,
+            0x48, 0x1C, 0xE6, 0x56, 0x1B,
+        ])
+        .unwrap();
+    }
+
+    #[test]
     fn test_encoding_outpoint() {
         static OUTPOINT: [u8; 36] = [
             0x53, 0xc6, 0x31, 0x13, 0xed, 0x18, 0x68, 0xfc, 0xa, 0xdf, 0x8e,
@@ -752,6 +991,15 @@ pub(crate) mod test {
     }
 
     #[test]
+    fn test_amount() {
+        let value = 19_356_465_2435_5767__u64;
+        let amount = Amount::from_sat(value);
+        let data = value.to_le_bytes();
+        test_encoding_roundtrip(&value, data).unwrap();
+        test_encoding_roundtrip(&amount, data).unwrap();
+    }
+
+    #[test]
     fn test_tx() {
         let tx_segwit_bytes = Vec::from_hex(
             "02000000000101595895ea20179de87052b4046dfe6fd515860505d6511a9004cf\
@@ -781,9 +1029,6 @@ pub(crate) mod test {
         let tx_legacy2: Transaction =
             consensus::deserialize(&tx_legacy2_bytes).unwrap();
 
-        assert_eq!(strict_serialize(&tx_segwit).unwrap(), tx_segwit_bytes);
-        assert_eq!(strict_serialize(&tx_legacy1).unwrap(), tx_legacy1_bytes);
-        assert_eq!(strict_serialize(&tx_legacy2).unwrap(), tx_legacy2_bytes);
         test_encoding_roundtrip(&tx_segwit, &tx_segwit_bytes).unwrap();
         test_encoding_roundtrip(&tx_legacy1, &tx_legacy1_bytes).unwrap();
         test_encoding_roundtrip(&tx_legacy2, &tx_legacy2_bytes).unwrap();
@@ -799,7 +1044,6 @@ pub(crate) mod test {
             0711c06c7f3e097c9447c52ffffffff"
         ).unwrap();
         let txin: TxIn = consensus::deserialize(&txin_bytes).unwrap();
-        assert_eq!(strict_serialize(&txin).unwrap(), txin_bytes);
         test_encoding_roundtrip(&txin, &txin_bytes).unwrap();
     }
 
@@ -819,14 +1063,6 @@ pub(crate) mod test {
         let txout_legacy: TxOut =
             consensus::deserialize(&txout_legacy_bytes).unwrap();
 
-        assert_eq!(
-            strict_serialize(&txout_segwit).unwrap(),
-            txout_segwit_bytes
-        );
-        assert_eq!(
-            strict_serialize(&txout_legacy).unwrap(),
-            txout_legacy_bytes
-        );
         test_encoding_roundtrip(&txout_segwit, &txout_segwit_bytes).unwrap();
         test_encoding_roundtrip(&txout_legacy, &txout_legacy_bytes).unwrap();
     }
@@ -856,7 +1092,6 @@ pub(crate) mod test {
         let psbt: PartiallySignedTransaction =
             consensus::deserialize(&psbt_bytes).unwrap();
 
-        assert_eq!(strict_serialize(&psbt).unwrap(), psbt_bytes);
         test_encoding_roundtrip(&psbt, &psbt_bytes).unwrap();
     }
 
