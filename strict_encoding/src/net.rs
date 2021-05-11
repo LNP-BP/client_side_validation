@@ -808,8 +808,15 @@ mod test {
         assert_eq!(OnionV3 as u8, 3);
         assert_eq!(Lightning as u8, 4);
 
-        test_enum_u8_exhaustive!(crate => AddrFormat; IpV4 => 0, IpV6 => 1, OnionV2 => 2, OnionV3 => 3, Lightning => 4);
-        test_enum_u8_exhaustive!(crate => Transport; Tcp => 1, Udp => 2, Mtcp => 3, Quic => 4);
+        test_encoding_enum_u8_exhaustive!(
+            crate => AddrFormat;
+            IpV4 => 0u8, IpV6 => 1u8, OnionV2 => 2u8, OnionV3 => 3u8, Lightning => 4u8
+        ).unwrap();
+        test_encoding_enum_u8_exhaustive!(
+            crate => Transport;
+            Tcp => 1u8, Udp => 2u8, Mtcp => 3u8, Quic => 4u8
+        )
+        .unwrap();
     }
 
     #[test]

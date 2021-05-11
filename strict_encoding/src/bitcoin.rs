@@ -79,41 +79,6 @@ where
     type Strategy = strategies::HashFixedBytes;
 }
 
-impl Strategy for OutPoint {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for TxOut {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for TxIn {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for Transaction {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for PartiallySignedTransaction {
-    type Strategy = strategies::BitcoinConsensus;
-}
-
-impl StrictEncode for Amount {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_sat().strict_encode(e)
-    }
-}
-
-impl StrictDecode for Amount {
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(Amount::from_sat(u64::strict_decode(d)?))
-    }
-}
-
-impl StrictEncode for Script {
-    #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bytes().strict_encode(e)
-    }
-}
-
 impl StrictDecode for Script {
     #[inline]
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
@@ -174,6 +139,10 @@ impl StrictDecode for secp256k1::schnorrsig::PublicKey {
         })
     }
 }
+
+// TODO: # Implement strict encoding for `KeyPair` type once there will be a way
+//       to serialize its inner data in Secpk256k1 lib (see
+//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>)
 
 impl StrictEncode for secp256k1::Signature {
     #[inline]
@@ -252,6 +221,88 @@ impl StrictDecode for bitcoin::PublicKey {
                 invalid_flag
             ))),
         }
+    }
+}
+
+impl Strategy for OutPoint {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for TxOut {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for TxIn {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for Transaction {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for PartiallySignedTransaction {
+    type Strategy = strategies::BitcoinConsensus;
+}
+
+impl StrictEncode for Address {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let mut len = 0usize;
+        len += self.network.strict_encode(&mut e)?;
+        match &self.payload {
+            address::Payload::PubkeyHash(pkh) => {
+                len += 32u8.strict_encode(&mut e)?;
+                len += pkh.strict_encode(&mut e)?;
+            }
+            address::Payload::ScriptHash(sh) => {
+                len += 33u8.strict_encode(&mut e)?;
+                len += sh.strict_encode(&mut e)?;
+            }
+            address::Payload::WitnessProgram { version, program } => {
+                len += version.to_u8().strict_encode(&mut e)?;
+                len += program.strict_encode(&mut e)?;
+            }
+        };
+        Ok(len)
+    }
+}
+
+impl StrictDecode for Address {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let network = bitcoin::Network::strict_decode(&mut d)?;
+        let payload = match u8::strict_decode(&mut d)? {
+            32u8 => {
+                address::Payload::PubkeyHash(PubkeyHash::strict_decode(&mut d)?)
+            }
+            33u8 => {
+                address::Payload::ScriptHash(ScriptHash::strict_decode(&mut d)?)
+            }
+            version => address::Payload::WitnessProgram {
+                version: u5::try_from_u8(version).map_err(|_| {
+                    Error::ValueOutOfRange(
+                        "witness program version",
+                        0..17,
+                        version as u128,
+                    )
+                })?,
+                program: StrictDecode::strict_decode(&mut d)?,
+            },
+        };
+        Ok(Address { payload, network })
+    }
+}
+
+impl StrictEncode for Amount {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_sat().strict_encode(e)
+    }
+}
+
+impl StrictDecode for Amount {
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(Amount::from_sat(u64::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for Script {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bytes().strict_encode(e)
     }
 }
 
@@ -388,53 +439,6 @@ impl StrictDecode for bip32::ExtendedPrivKey {
     }
 }
 
-impl StrictEncode for Address {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = 0usize;
-        len += self.network.strict_encode(&mut e)?;
-        match &self.payload {
-            address::Payload::PubkeyHash(pkh) => {
-                len += 32u8.strict_encode(&mut e)?;
-                len += pkh.strict_encode(&mut e)?;
-            }
-            address::Payload::ScriptHash(sh) => {
-                len += 33u8.strict_encode(&mut e)?;
-                len += sh.strict_encode(&mut e)?;
-            }
-            address::Payload::WitnessProgram { version, program } => {
-                len += version.to_u8().strict_encode(&mut e)?;
-                len += program.strict_encode(&mut e)?;
-            }
-        };
-        Ok(len)
-    }
-}
-
-impl StrictDecode for Address {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let network = bitcoin::Network::strict_decode(&mut d)?;
-        let payload = match u8::strict_decode(&mut d)? {
-            32u8 => {
-                address::Payload::PubkeyHash(PubkeyHash::strict_decode(&mut d)?)
-            }
-            33u8 => {
-                address::Payload::ScriptHash(ScriptHash::strict_decode(&mut d)?)
-            }
-            version => address::Payload::WitnessProgram {
-                version: u5::try_from_u8(version).map_err(|_| {
-                    Error::ValueOutOfRange(
-                        "witness program version",
-                        0..17,
-                        version as u128,
-                    )
-                })?,
-                program: StrictDecode::strict_decode(&mut d)?,
-            },
-        };
-        Ok(Address { payload, network })
-    }
-}
-
 #[cfg(test)]
 pub(crate) mod test {
     use std::str::FromStr;
@@ -443,10 +447,11 @@ pub(crate) mod test {
 
     use super::*;
     use crate::strict_serialize;
-    use crate::test_helpers::test_suite;
+    use crate::test_helpers::*;
 
     #[test]
-    fn test_encoding_network() {
+    fn test_encoding_network(
+    ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
         let mainnet_bytes = &[0xF9u8, 0xBEu8, 0xB4u8, 0xD9u8][..];
         let testnet_bytes = &[0x0Bu8, 0x11u8, 0x09u8, 0x07u8][..];
         let regtest_bytes = &[0xFAu8, 0xBFu8, 0xB5u8, 0xDAu8][..];
@@ -455,9 +460,9 @@ pub(crate) mod test {
         let testnet = bitcoin::Network::strict_decode(testnet_bytes).unwrap();
         let regtest = bitcoin::Network::strict_decode(regtest_bytes).unwrap();
 
-        test_suite(&mainnet, &mainnet_bytes, 4);
-        test_suite(&testnet, &testnet_bytes, 4);
-        test_suite(&regtest, &regtest_bytes, 4);
+        test_encoding_roundtrip(&mainnet, &mainnet_bytes)?;
+        test_encoding_roundtrip(&testnet, &testnet_bytes)?;
+        test_encoding_roundtrip(&regtest, &regtest_bytes)
     }
 
     #[test]
@@ -469,7 +474,8 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn test_encoding_pubkey() {
+    fn test_encoding_pubkey(
+    ) -> Result<(), DataEncodingTestFailure<bitcoin::PublicKey>> {
         static PK_BYTES_02: [u8; 33] = [
             0x02, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93, 0x82,
             0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
@@ -512,13 +518,21 @@ pub(crate) mod test {
         let pubkey_onekey =
             bitcoin::PublicKey::strict_decode(&PK_BYTES_ONEKEY[..]).unwrap();
 
+        /* TODO: Add Schnorr key tests
+        let xcoordonly_02 =
+            bitcoin::PublicKey::strict_decode(&PK_BYTES_02[1..]).unwrap();
+        let xcoordonly_03 =
+            bitcoin::PublicKey::strict_decode(&PK_BYTES_03[1..]).unwrap();
+        assert_eq!(xcoordonly_02, xcoordonly_03);
+         */
+
         assert_eq!(secp_pk_02, pubkey_02.key);
         assert_eq!(secp_pk_03, pubkey_03.key);
 
-        test_suite(&pubkey_02, &PK_BYTES_02, 33);
-        test_suite(&pubkey_03, &PK_BYTES_03, 33);
-        test_suite(&pubkey_04, &PK_BYTES_04, 65);
-        test_suite(&pubkey_onekey, &PK_BYTES_ONEKEY, 33);
+        test_encoding_roundtrip(&pubkey_02, &PK_BYTES_02)?;
+        test_encoding_roundtrip(&pubkey_03, &PK_BYTES_03)?;
+        test_encoding_roundtrip(&pubkey_04, &PK_BYTES_04)?;
+        test_encoding_roundtrip(&pubkey_onekey, &PK_BYTES_ONEKEY)
     }
 
     #[test]
@@ -570,9 +584,9 @@ pub(crate) mod test {
         let msg = Message::from_slice(&[1u8; 32]).unwrap();
 
         let sig = s.sign(&msg, &privkey);
-        let decoded_sig = test_suite(&sig, &SIG_BYTES, 64);
+        test_encoding_roundtrip(&sig, &SIG_BYTES).unwrap();
 
-        assert!(s.verify(&msg, &decoded_sig, &pubkey).is_ok());
+        assert!(s.verify(&msg, &sig, &pubkey).is_ok());
     }
 
     #[test]
@@ -611,9 +625,9 @@ pub(crate) mod test {
 
         // test random and null outpoints
         let outpoint = OutPoint::new(txid, vout);
-        let _ = test_suite(&outpoint, &OUTPOINT, 36);
+        let _ = test_encoding_roundtrip(&outpoint, &OUTPOINT).unwrap();
         let null = OutPoint::null();
-        let _ = test_suite(&null, &OUTPOINT_NULL, 36);
+        let _ = test_encoding_roundtrip(&null, &OUTPOINT_NULL).unwrap();
     }
 
     #[test]
@@ -660,9 +674,9 @@ pub(crate) mod test {
         assert_eq!(strict_serialize(&tx_segwit).unwrap(), tx_segwit_bytes);
         assert_eq!(strict_serialize(&tx_legacy1).unwrap(), tx_legacy1_bytes);
         assert_eq!(strict_serialize(&tx_legacy2).unwrap(), tx_legacy2_bytes);
-        test_suite(&tx_segwit, &tx_segwit_bytes, tx_segwit_bytes.len());
-        test_suite(&tx_legacy1, &tx_legacy1_bytes, tx_legacy1_bytes.len());
-        test_suite(&tx_legacy2, &tx_legacy2_bytes, tx_legacy2_bytes.len());
+        test_encoding_roundtrip(&tx_segwit, &tx_segwit_bytes).unwrap();
+        test_encoding_roundtrip(&tx_legacy1, &tx_legacy1_bytes).unwrap();
+        test_encoding_roundtrip(&tx_legacy2, &tx_legacy2_bytes).unwrap();
     }
 
     #[test]
@@ -676,7 +690,7 @@ pub(crate) mod test {
         ).unwrap();
         let txin: TxIn = consensus::deserialize(&txin_bytes).unwrap();
         assert_eq!(strict_serialize(&txin).unwrap(), txin_bytes);
-        test_suite(&txin, &txin_bytes, txin_bytes.len());
+        test_encoding_roundtrip(&txin, &txin_bytes).unwrap();
     }
 
     #[test]
@@ -703,16 +717,8 @@ pub(crate) mod test {
             strict_serialize(&txout_legacy).unwrap(),
             txout_legacy_bytes
         );
-        test_suite(
-            &txout_segwit,
-            &txout_segwit_bytes,
-            txout_segwit_bytes.len(),
-        );
-        test_suite(
-            &txout_legacy,
-            &txout_legacy_bytes,
-            txout_legacy_bytes.len(),
-        );
+        test_encoding_roundtrip(&txout_segwit, &txout_segwit_bytes).unwrap();
+        test_encoding_roundtrip(&txout_legacy, &txout_legacy_bytes).unwrap();
     }
 
     #[test]
@@ -741,7 +747,7 @@ pub(crate) mod test {
             consensus::deserialize(&psbt_bytes).unwrap();
 
         assert_eq!(strict_serialize(&psbt).unwrap(), psbt_bytes);
-        test_suite(&psbt, &psbt_bytes, psbt_bytes.len());
+        test_encoding_roundtrip(&psbt, &psbt_bytes).unwrap();
     }
 
     #[test]
@@ -768,14 +774,14 @@ pub(crate) mod test {
             9ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
         )
         .unwrap();
-        test_suite(&ext_pubkey1, &EXT_PUBKEY1, 78);
+        test_encoding_roundtrip(&ext_pubkey1, &EXT_PUBKEY1).unwrap();
 
         let ext_pubkey2 = bip32::ExtendedPubKey::from_str(
             "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJP\
             MM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5",
         )
         .unwrap();
-        test_suite(&ext_pubkey2, &EXT_PUBKEY2, 78);
+        test_encoding_roundtrip(&ext_pubkey2, &EXT_PUBKEY2).unwrap();
     }
 
     #[test]
@@ -816,33 +822,28 @@ pub(crate) mod test {
         ];
 
         // OP_RETURN
-        let op_return = Script::strict_decode(&OP_RETURN[..]).unwrap();
-        let decode_opreturn = test_suite(&op_return, &OP_RETURN, 40);
-        assert!(decode_opreturn.is_op_return());
+        let op_return: Script =
+            test_vec_decoding_roundtrip(&OP_RETURN).unwrap();
+        assert!(op_return.is_op_return());
 
         // P2PK
-        let p2pk = Script::strict_decode(&P2PK[..]).unwrap();
-        let decode_p2pk = test_suite(&p2pk, &P2PK, 37);
-        assert!(decode_p2pk.is_p2pk());
+        let p2pk: Script = test_vec_decoding_roundtrip(&P2PK).unwrap();
+        assert!(p2pk.is_p2pk());
 
         //P2PKH
-        let p2pkh = Script::strict_decode(&P2PKH[..]).unwrap();
-        let decode_p2pkh = test_suite(&p2pkh, &P2PKH, 27);
-        assert!(decode_p2pkh.is_p2pkh());
+        let p2pkh: Script = test_vec_decoding_roundtrip(&P2PKH).unwrap();
+        assert!(p2pkh.is_p2pkh());
 
         //P2SH
-        let p2sh = Script::strict_decode(&P2SH[..]).unwrap();
-        let decode_p2sh = test_suite(&p2sh, &P2SH, 25);
-        assert!(decode_p2sh.is_p2sh());
+        let p2sh: Script = test_vec_decoding_roundtrip(&P2SH).unwrap();
+        assert!(p2sh.is_p2sh());
 
         //P2WPKH
-        let p2wpkh = Script::strict_decode(&P2WPKH[..]).unwrap();
-        let decode_p2wpkh = test_suite(&p2wpkh, &P2WPKH, 24);
-        assert!(decode_p2wpkh.is_v0_p2wpkh());
+        let p2wpkh: Script = test_vec_decoding_roundtrip(&P2WPKH).unwrap();
+        assert!(p2wpkh.is_v0_p2wpkh());
 
         //P2WSH
-        let p2wsh = Script::strict_decode(&P2WSH[..]).unwrap();
-        let decoded_p2wsh = test_suite(&p2wsh, &P2WSH, 36);
-        assert!(decoded_p2wsh.is_v0_p2wsh());
+        let p2wsh: Script = test_vec_decoding_roundtrip(&P2WSH).unwrap();
+        assert!(p2wsh.is_v0_p2wsh());
     }
 }

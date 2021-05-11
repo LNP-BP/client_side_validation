@@ -238,20 +238,21 @@ macro_rules! test_encoding_enum {
     ($enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum!(strict_encoding => $enum as $ty; $( $item => $val ),+)
     };
-    ($se:ident => $enum:path as $ty:ty; $( $item:ident => $val:expr ),+) => {
+    ($se:ident => $enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         Ok(())
         $(
             .and_then(|_| {
-                match $se::strict_serialize(&$enum::$item) {
+                use $se::test_helpers::EnumEncodingTestFail;
+                match $se::strict_serialize(&$item) {
                     Ok(bytes) if bytes == &$val.to_le_bytes() => {
-                        let deser = $se::strict_deserialize(bytes)
+                        let deser = $se::strict_deserialize(bytes.clone())
                             .map_err(|e| EnumEncodingTestFail::DecoderFailure(
-                                $enum::$item, e, bytes
+                                $item, e, bytes
                             ))?;
-                        if deser != $enum::$item {
+                        if deser != $item {
                             Err(EnumEncodingTestFail::DecodedDiffersFromOriginal {
-                                original: $enum::$item,
-                                actual: deser,
+                                original: $item,
+                                decoded: deser,
                             })
                         } else {
                             Ok(())
@@ -264,7 +265,7 @@ macro_rules! test_encoding_enum {
                         actual: wrong,
                     }),
                     Err(err) => Err(
-                        EnumEncodingTestFail::EncoderFailure($enum::$item, err)
+                        EnumEncodingTestFail::EncoderFailure($item, err)
                     ),
                 }
             })
@@ -315,41 +316,42 @@ macro_rules! test_encoding_enum_by_values {
     ($enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_by_values!(strict_encoding => $enum as $ty; $( $item => $val ),+)
     };
-    ($se:ident => $enum:path as $ty:ty; $( $item:ident => $val:expr ),+) => {
-        Ok(())
+    ($se:ident => $enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
+        test_encoding_enum!($se => $enum as $ty; $( $item => $val ),+)
         $(
             .and_then(|_| {
-                if $enum::$item as $ty != ($val) {
-                    return Err(EnumEncodingTestFailure::EnumValueMismatch {
+                use $se::test_helpers::EnumEncodingTestFail;
+                if $item as $ty != ($val) {
+                    return Err(EnumEncodingTestFail::ValueMismatch {
                         enum_name: stringify!($enum),
                         variant_name: stringify!($item),
                         expected: ($val) as usize,
-                        actial: $enum::$item as usize,
+                        actual: $item as usize,
                     })
                 }
                 Ok(())
             })
-            .and_then(|_| test_encoding_enum!($se => $enum as $ty; $( $item => $val ),+))
+        )+
             .and_then(|_| {
+                use $se::test_helpers::EnumEncodingTestFail;
                 let mut all = ::std::collections::BTreeSet::new();
-                $( all.insert($enum::$item); )+
+                $( all.insert($item); )+
                 for (idx, a) in all.iter().enumerate() {
                     if a != a {
-                        return Err(EncodingTestFailure::FailedEq(a));
+                        return Err(EnumEncodingTestFail::FailedEq(*a));
                     }
                     for b in all.iter().skip(idx + 1) {
-                        if a == b || a as usize == b as usize {
-                            return Err(EncodingTestFailure::FailedNe(a, b))
+                        if a == b || (*a as usize) == (*b as usize) {
+                            return Err(EnumEncodingTestFail::FailedNe(*a, *b))
                         }
-                        if (a >= b && a as usize < b as usize) ||
-                           (a <= b && a as usize > b as usize) {
-                            return Err(EncodingTestFailure::FailedOrd(a, b))
+                        if (a >= b && (*a as usize) < (*b as usize)) ||
+                           (a <= b && (*a as usize) > (*b as usize)) {
+                            return Err(EnumEncodingTestFail::FailedOrd(*a, *b))
                         }
                     }
                 }
                 Ok(())
-            })
-        )+
+        })
     }
 }
 
@@ -401,22 +403,23 @@ macro_rules! test_encoding_enum_u8_exhaustive {
     ($enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_u8_exhaustive!(strict_encoding => $enum as $ty; $( $item => $val ),+)
     };
-    ($se:ident => $enum:path; $( $item:ident => $val:expr ),+) => {
+    ($se:ident => $enum:path; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_u8_exhaustive!($se => $enum as u8; $( $item => $val ),+)
     };
-    ($se:ident => $enum:path as $ty:ty; $( $item:ident => $val:expr ),+) => {
-        test_encoding_enum_values!($se => $enum as $ty; $( $item => $val ),+).and_then(|_| {
+    ($se:ident => $enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
+        test_encoding_enum_by_values!($se => $enum as $ty; $( $item => $val ),+).and_then(|_| {
+            use $se::test_helpers::EnumEncodingTestFail;
             let mut set = ::std::collections::HashSet::new();
             $( set.insert($val); )+
             for x in 0..=u8::MAX {
                 if !set.contains(&x) {
                     match $se::strict_deserialize(&[x]) {
-                        Err($se::Error::EnumValueNotKnown(stringify!($enum), x as usize)) => {},
+                        Err($se::Error::EnumValueNotKnown(stringify!($enum), a)) if a == x as usize => {},
                         Err(err) => return Err(
-                            EnumEncodingTestFailure::DecoderWrongErrorOnUnknownValue(x, err)
+                            EnumEncodingTestFail::DecoderWrongErrorOnUnknownValue(x, err)
                         ),
                         Ok(variant) => return Err(
-                            EnumEncodingTestFailure::UnknownDecodesToVariant(x, variant)
+                            EnumEncodingTestFail::UnknownDecodesToVariant(x, variant)
                         ),
                     }
                 }
