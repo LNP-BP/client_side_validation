@@ -77,7 +77,7 @@ use crate::{Error, StrictDecode, StrictEncode};
 /// NB: These errors are specific for testing configuration and should not be
 /// used in non-test environment.
 #[derive(Clone, PartialEq, Debug, Display, Error)]
-pub enum EnumEncodingTestFail<T>
+pub enum EnumEncodingTestFailure<T>
 where
     T: Clone + PartialEq + Debug,
 {
@@ -249,15 +249,15 @@ macro_rules! test_encoding_enum {
         Ok(())
         $(
             .and_then(|_| {
-                use $se::test_helpers::EnumEncodingTestFail;
+                use $se::test_helpers::EnumEncodingTestFailure;
                 match $se::strict_serialize(&$item) {
                     Ok(bytes) if bytes == &$val.to_le_bytes() => {
                         let deser = $se::strict_deserialize(bytes.clone())
-                            .map_err(|e| EnumEncodingTestFail::DecoderFailure(
+                            .map_err(|e| EnumEncodingTestFailure::DecoderFailure(
                                 $item, e, bytes
                             ))?;
                         if deser != $item {
-                            Err(EnumEncodingTestFail::DecodedDiffersFromOriginal {
+                            Err(EnumEncodingTestFailure::DecodedDiffersFromOriginal {
                                 original: $item,
                                 decoded: deser,
                             })
@@ -265,14 +265,14 @@ macro_rules! test_encoding_enum {
                             Ok(())
                         }
                     },
-                    Ok(wrong) => Err(EnumEncodingTestFail::EncodedValueMismatch {
+                    Ok(wrong) => Err(EnumEncodingTestFailure::EncodedValueMismatch {
                         enum_name: stringify!($enum),
                         variant_name: stringify!($item),
                         expected: $val.to_le_bytes().to_vec(),
                         actual: wrong,
                     }),
                     Err(err) => Err(
-                        EnumEncodingTestFail::EncoderFailure($item, err)
+                        EnumEncodingTestFailure::EncoderFailure($item, err)
                     ),
                 }
             })
@@ -333,9 +333,9 @@ macro_rules! test_encoding_enum_by_values {
         test_encoding_enum!($se => $enum as $ty; $( $item => $val ),+)
         $(
             .and_then(|_| {
-                use $se::test_helpers::EnumEncodingTestFail;
+                use $se::test_helpers::EnumEncodingTestFailure;
                 if $item as $ty != ($val) {
-                    return Err(EnumEncodingTestFail::ValueMismatch {
+                    return Err(EnumEncodingTestFailure::ValueMismatch {
                         enum_name: stringify!($enum),
                         variant_name: stringify!($item),
                         expected: ($val) as usize,
@@ -346,20 +346,20 @@ macro_rules! test_encoding_enum_by_values {
             })
         )+
             .and_then(|_| {
-                use $se::test_helpers::EnumEncodingTestFail;
+                use $se::test_helpers::EnumEncodingTestFailure;
                 let mut all = ::std::collections::BTreeSet::new();
                 $( all.insert($item); )+
                 for (idx, a) in all.iter().enumerate() {
                     if a != a {
-                        return Err(EnumEncodingTestFail::FailedEq(*a));
+                        return Err(EnumEncodingTestFailure::FailedEq(*a));
                     }
                     for b in all.iter().skip(idx + 1) {
                         if a == b || (*a as usize) == (*b as usize) {
-                            return Err(EnumEncodingTestFail::FailedNe(*a, *b))
+                            return Err(EnumEncodingTestFailure::FailedNe(*a, *b))
                         }
                         if (a >= b && (*a as usize) < (*b as usize)) ||
                            (a <= b && (*a as usize) > (*b as usize)) {
-                            return Err(EnumEncodingTestFail::FailedOrd(*a, *b))
+                            return Err(EnumEncodingTestFailure::FailedOrd(*a, *b))
                         }
                     }
                 }
@@ -427,7 +427,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
     };
     ($se:ident => $enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_by_values!($se => $enum as $ty; $( $item => $val ),+).and_then(|_| {
-            use $se::test_helpers::EnumEncodingTestFail;
+            use $se::test_helpers::EnumEncodingTestFailure;
             let mut set = ::std::collections::HashSet::new();
             $( set.insert($val); )+
             for x in 0..=u8::MAX {
@@ -435,10 +435,10 @@ macro_rules! test_encoding_enum_u8_exhaustive {
                     match $se::strict_deserialize(&[x]) {
                         Err($se::Error::EnumValueNotKnown(stringify!($enum), a)) if a == x as usize => {},
                         Err(err) => return Err(
-                            EnumEncodingTestFail::DecoderWrongErrorOnUnknownValue(x, err)
+                            EnumEncodingTestFailure::DecoderWrongErrorOnUnknownValue(x, err)
                         ),
                         Ok(variant) => return Err(
-                            EnumEncodingTestFail::UnknownDecodesToVariant(x, variant)
+                            EnumEncodingTestFailure::UnknownDecodesToVariant(x, variant)
                         ),
                     }
                 }
