@@ -50,9 +50,10 @@
 //! with `?` operator:
 //!
 //! ```
+//! # #[macro_use] extern crate strict_encoding;
 //! use strict_encoding::test_helpers::*;
 //!
-//! #[derive(Clone, PartialEq, Eq, Debug, StrictEncoding, StrictDecoding)]
+//! #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 //! struct Data(pub Vec<u8>);
 //!
 //! #[test]
@@ -219,10 +220,13 @@ where
 /// # Example
 ///
 /// ```
+/// # #[macro_use] extern crate strict_encoding;
+/// # use strict_encoding::test_encoding_enum;
+///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
 /// #[derive(StrictEncode, StrictDecode)]
-/// #[strict_encoding(crate = crate, repr = u8)]
+/// #[strict_encoding(repr = u8)]
 /// enum Bits {
 ///     #[strict_encoding(value = 8)]
 ///     Bit8,
@@ -231,7 +235,10 @@ where
 ///     Bit16,
 /// }
 ///
-/// test_encoding_enum!(crate => Bits as u8; Bit8 => 8, Bit16 => 16)?;
+/// test_encoding_enum!(
+///     Bits as u8;
+///     Bits::Bit8 => 8_u8, Bits::Bit16 => 16_u8
+/// ).unwrap();
 /// ```
 #[macro_export]
 macro_rules! test_encoding_enum {
@@ -300,16 +307,22 @@ macro_rules! test_encoding_enum {
 /// # Example
 ///
 /// ```
+/// # #[macro_use] extern crate strict_encoding;
+/// # use strict_encoding::test_encoding_enum_by_values;
+///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
 /// #[derive(StrictEncode, StrictDecode)]
-/// #[strict_encoding(crate = crate, repr = u8, by_value)]
+/// #[strict_encoding(repr = u8, by_value)]
 /// enum Bits {
 ///     Bit8 = 8,
 ///     Bit16 = 16,
 /// }
 ///
-/// test_encoding_enum_by_values!(crate => Bits as u8; Bit8 => 8, Bit16 => 16)?;
+/// test_encoding_enum_by_values!(
+///     Bits as u8;
+///     Bits::Bit8 => 8_u8, Bits::Bit16 => 16_u8
+/// ).unwrap();
 /// ```
 #[macro_export]
 macro_rules! test_encoding_enum_by_values {
@@ -384,16 +397,22 @@ macro_rules! test_encoding_enum_by_values {
 /// # Example
 ///
 /// ```
+/// # #[macro_use] extern crate strict_encoding;
+/// # use strict_encoding::test_encoding_enum_u8_exhaustive;
+///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
 /// #[derive(StrictEncode, StrictDecode)]
-/// #[strict_encoding(crate = crate, repr = u8, by_value)]
+/// #[strict_encoding(repr = u8, by_value)]
 /// enum Bits {
 ///     Bit8 = 8,
 ///     Bit16 = 16,
 /// }
 ///
-/// test_encoding_enum_u8_exhaustive!(crate => Bits as u8; Bit8 => 8, Bit16 => 16)?;
+/// test_encoding_enum_u8_exhaustive!(
+///     Bits as u8;
+///     Bits::Bit8 => 8_u8, Bits::Bit16 => 16_u8
+/// ).unwrap();
 /// ```
 #[macro_export]
 macro_rules! test_encoding_enum_u8_exhaustive {
@@ -522,13 +541,14 @@ where
 /// # Example
 ///
 /// ```
+/// # #[macro_use] extern crate strict_encoding;
 /// # use strict_encoding::test_helpers::test_object_encoding_roundtrip;
 ///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncoding, StrictDecoding)]
+/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 /// struct Data(pub Vec<u8>);
 ///
 /// let data = Data(vec![0x01, 0x02]);
-/// assert_eq!(test_object_encoding_roundtrip(&data)?.len(), 4);
+/// assert_eq!(test_object_encoding_roundtrip(&data).unwrap().len(), 4);
 /// ```
 #[inline]
 pub fn test_object_encoding_roundtrip<T>(
@@ -587,15 +607,16 @@ where
 /// # Example
 ///
 /// ```
+/// # #[macro_use] extern crate strict_encoding;
 /// # use strict_encoding::test_helpers::test_vec_decoding_roundtrip;
 ///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncoding, StrictDecoding)]
+/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 /// struct Data(pub Vec<u8>);
 ///
 /// let data = Data(vec![0x01, 0x02]);
 /// assert_eq!(
-///     test_vec_decoding_roundtrip(&[0x02, 0x00, 0x01, 0x02])?,
-///     data
+///     test_vec_decoding_roundtrip(&[0x02, 0x00, 0x01, 0x02]),
+///     Ok(data)
 /// );
 /// ```
 pub fn test_vec_decoding_roundtrip<T>(
@@ -642,13 +663,14 @@ where
 /// # Example
 ///
 /// ```
+/// # #[macro_use] extern crate strict_encoding;
 /// # use strict_encoding::test_helpers::test_encoding_roundtrip;
 ///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncoding, StrictDecoding)]
+/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 /// struct Data(pub Vec<u8>);
 ///
 /// let data = Data(vec![0x01, 0x02]);
-/// test_encoding_roundtrip(&data, &[0x02, 0x00, 0x01, 0x02])?;
+/// test_encoding_roundtrip(&data, &[0x02, 0x00, 0x01, 0x02]).unwrap();
 /// ```
 pub fn test_encoding_roundtrip<T>(
     object: &T,

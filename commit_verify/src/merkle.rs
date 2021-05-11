@@ -132,7 +132,7 @@ where
             iter.next()
                 .as_ref()
                 .map(|d| d.as_ref())
-                .unwrap_or(empty_node.as_ref()),
+                .unwrap_or_else(|| empty_node.as_ref()),
         );
         MerkleNode::from_engine(leaf1).commit_encode(&mut engine);
 
@@ -140,7 +140,7 @@ where
             iter.next()
                 .as_ref()
                 .map(|d| d.as_ref())
-                .unwrap_or(empty_node.as_ref()),
+                .unwrap_or_else(|| empty_node.as_ref()),
         );
         MerkleNode::from_engine(leaf_engine).commit_encode(&mut engine);
 
