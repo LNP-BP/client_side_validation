@@ -59,95 +59,16 @@ const MS_VERIFY: u8 = 0x18;
 const MS_NON_ZERO: u8 = 0x19;
 const MS_ZERO_NE: u8 = 0x1a;
 
-impl<Pk> StrictEncode for policy::Concrete<Pk>
-where
-    Pk: MiniscriptKey + StrictEncode,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
-{
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(match self {
-            Policy::Unsatisfiable => MS_FALSE.strict_encode(e)?,
-            Policy::Trivial => MS_TRUE.strict_encode(e)?,
-            Policy::Key(pk) => strict_encode_list!(e; MS_KEY, pk),
-            Policy::After(tl) => strict_encode_list!(e; MS_AFTER, tl),
-            Policy::Older(tl) => strict_encode_list!(e; MS_OLDER, tl),
-            Policy::Sha256(hash) => strict_encode_list!(e; MS_SHA256, hash),
-            Policy::Hash256(hash) => strict_encode_list!(e; MS_HASH256, hash),
-            Policy::Ripemd160(hash) => {
-                strict_encode_list!(e; MS_RIPEMD160, hash)
-            }
-            Policy::Hash160(hash) => strict_encode_list!(e; MS_HASH160, hash),
-            Policy::And(ast) => strict_encode_list!(e; MS_AND_B, ast),
-            Policy::Or(ast) => strict_encode_list!(e; MS_OR_B, ast),
-            Policy::Threshold(thresh, ast) => {
-                strict_encode_list!(e; MS_THRESH, thresh, ast)
-            }
-        })
-    }
-}
-
-impl<Pk> StrictDecode for policy::Concrete<Pk>
-where
-    Pk: MiniscriptKey + StrictDecode,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
-{
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let byte = u8::strict_decode(&mut d)?;
-        Ok(match byte {
-            MS_TRUE => Policy::Trivial,
-            MS_FALSE => Policy::Unsatisfiable,
-            MS_KEY => Policy::Key(Pk::strict_decode(&mut d)?),
-            MS_AFTER => Policy::After(u32::strict_decode(&mut d)?),
-            MS_OLDER => Policy::Older(u32::strict_decode(&mut d)?),
-            MS_SHA256 => Policy::Sha256(sha256::Hash::strict_decode(&mut d)?),
-            MS_HASH256 => {
-                Policy::Hash256(sha256d::Hash::strict_decode(&mut d)?)
-            }
-            MS_RIPEMD160 => {
-                Policy::Ripemd160(ripemd160::Hash::strict_decode(&mut d)?)
-            }
-            MS_HASH160 => {
-                Policy::Hash160(hash160::Hash::strict_decode(&mut d)?)
-            }
-            MS_AND_B => Policy::And(Vec::strict_decode(&mut d)?),
-            MS_OR_B => Policy::Or(Vec::strict_decode(&mut d)?),
-            MS_THRESH => Policy::Threshold(
-                usize::strict_decode(&mut d)?,
-                Vec::strict_decode(&mut d)?,
-            ),
-
-            MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF
-            | MS_VERIFY | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V | MS_AND_OR
-            | MS_OR_D | MS_OR_C | MS_OR_I | MS_MULTI => {
-                return Err(Error::DataIntegrityError(format!(
-                    "byte {:#04X} is a valid miniscript instruction, but does  \
-                     not belong to a set of concrete policy instructions. Try \
-                     to decode data using different miniscript type", 
-                    byte
-                )))
-            }
-
-            wrong => {
-                return Err(Error::DataIntegrityError(format!(
-                    "byte {:#04X} does not correspond to any of miniscript \
-                     concrete policy instructions",
-                    wrong
-                )))
-            }
-        })
-    }
-}
-
 /// We need this shit because of rust compiler limitations.
 ///
-/// The two macros below, as well as custom private function `encode_miniscript`
-/// were introduced because rust compiler dies on recursion overflow each time
-/// when a generic type calls itself in a recursive mode passing one of its
-/// arguments by a mutable reference to itself. Thus, we had to split the
-/// implementation logic in such a way that we do not pass a mutable reference
-/// to a variable, and just re-use the reference instead. This contradicts rust
-/// API guidelines, but in fact it is a rust compiler who contradicts them, we
-/// just do not have other choice.
+/// The two macros below, as well as custom private functions `decode_policy`,
+/// `encode_miniscript` and `decode_miniscript` were introduced because rust
+/// compiler dies on recursion overflow each time when a generic type calls
+/// itself in a recursive mode passing one of its arguments by a mutable
+/// reference to itself. Thus, we had to split the implementation logic in such
+/// a way that we do not pass a mutable reference to a variable, and just re-use
+/// the reference instead. This contradicts rust API guidelines, but in fact it
+/// is a rust compiler who contradicts them, we just do not have other choice.
 macro_rules! strict_encode_ms {
     ($encoder:ident; $tag:ident, $depth:expr, $($ms:expr),+) => { {
         let mut len = 0usize;
@@ -170,6 +91,108 @@ macro_rules! strict_encode_seq {
             len
         }
     };
+}
+
+impl<Pk> StrictEncode for policy::Concrete<Pk>
+where
+    Pk: MiniscriptKey + StrictEncode,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            Policy::Unsatisfiable => MS_FALSE.strict_encode(e)?,
+            Policy::Trivial => MS_TRUE.strict_encode(e)?,
+            Policy::Key(pk) => strict_encode_seq!(e; MS_KEY, pk),
+            Policy::After(tl) => strict_encode_seq!(e; MS_AFTER, tl),
+            Policy::Older(tl) => strict_encode_seq!(e; MS_OLDER, tl),
+            Policy::Sha256(hash) => strict_encode_seq!(e; MS_SHA256, hash),
+            Policy::Hash256(hash) => strict_encode_seq!(e; MS_HASH256, hash),
+            Policy::Ripemd160(hash) => {
+                strict_encode_seq!(e; MS_RIPEMD160, hash)
+            }
+            Policy::Hash160(hash) => strict_encode_seq!(e; MS_HASH160, hash),
+            Policy::And(ast) => strict_encode_seq!(e; MS_AND_B, ast),
+            Policy::Or(ast) => strict_encode_seq!(e; MS_OR_B, ast),
+            Policy::Threshold(thresh, vec) => {
+                strict_encode_seq!(e; MS_THRESH, thresh, vec)
+            }
+        })
+    }
+}
+
+fn decode_policy<Pk>(
+    d: &mut impl io::Read,
+) -> Result<policy::Concrete<Pk>, Error>
+where
+    Pk: MiniscriptKey + StrictDecode,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    let byte = d.read_u8()?;
+    Ok(match byte {
+        MS_TRUE => Policy::Trivial,
+        MS_FALSE => Policy::Unsatisfiable,
+        MS_KEY => Policy::Key(Pk::strict_decode(d)?),
+        MS_AFTER => Policy::After(u32::strict_decode(d)?),
+        MS_OLDER => Policy::Older(u32::strict_decode(d)?),
+        MS_SHA256 => Policy::Sha256(sha256::Hash::strict_decode(d)?),
+        MS_HASH256 => Policy::Hash256(sha256d::Hash::strict_decode(d)?),
+        MS_RIPEMD160 => Policy::Ripemd160(ripemd160::Hash::strict_decode(d)?),
+        MS_HASH160 => Policy::Hash160(hash160::Hash::strict_decode(d)?),
+        MS_AND_B => {
+            let len = d.read_u16()?;
+            let mut vec = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                vec.push(decode_policy(d)?);
+            }
+            Policy::And(vec)
+        }
+        MS_OR_B => {
+            let len = d.read_u16()?;
+            let mut vec = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                vec.push((d.read_u16()? as usize, decode_policy(d)?));
+            }
+            Policy::Or(vec)
+        }
+        MS_THRESH => {
+            let thresh = d.read_u16()? as usize;
+            let len = d.read_u16()?;
+            let mut vec = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                vec.push(decode_policy(d)?);
+            }
+            Policy::Threshold(thresh, vec)
+        }
+
+        MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF | MS_VERIFY
+        | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V | MS_AND_OR | MS_OR_D
+        | MS_OR_C | MS_OR_I | MS_MULTI => {
+            return Err(Error::DataIntegrityError(format!(
+                "byte {:#04X} is a valid miniscript instruction, but does  \
+                     not belong to a set of concrete policy instructions. Try \
+                     to decode data using different miniscript type",
+                byte
+            )))
+        }
+
+        wrong => {
+            return Err(Error::DataIntegrityError(format!(
+                "byte {:#04X} does not correspond to any of miniscript \
+                     concrete policy instructions",
+                wrong
+            )))
+        }
+    })
+}
+
+impl<Pk> StrictDecode for policy::Concrete<Pk>
+where
+    Pk: MiniscriptKey + StrictDecode,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        decode_policy(&mut d)
+    }
 }
 
 // We need this shit because of rust compiler generic limitations
@@ -585,7 +608,31 @@ where
 mod test {
     use crate::test_helpers::*;
     // use crate::StrictEncode;
-    use miniscript::{Descriptor, Legacy, Miniscript};
+    use miniscript::{policy, Descriptor, Miniscript, Segwitv0};
+    use std::str::FromStr;
+
+    #[test]
+    fn test_policy() {
+        const SET: [&str; 12] = [
+            "and(pk(A),or(and(after(9),pk(B)),and(after(1000000000),pk(C))))",
+            "pk(A)",
+            "after(9)",
+            "older(1)",
+            "sha256(1111111111111111111111111111111111111111111111111111111111111111)",
+            "and(pk(A),pk(B))",
+            "or(pk(A),pk(B))",
+            "thresh(2,pk(A),pk(B),pk(C))",
+            "thresh(2,after(9),after(9),pk(A))",
+            "and(pk(A),or(after(9),after(9)))",
+            "or(1@and(pk(A),pk(B)),127@pk(C))",
+            "and(and(and(or(127@thresh(2,pk(A),pk(B),thresh(2,or(127@pk(A),1@pk(B)),after(100),or(and(pk(C),after(200)),and(pk(D),sha256(66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925))),pk(E))),1@pk(F)),sha256(66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925)),or(127@pk(G),1@after(300))),or(127@after(400),pk(H)))",
+        ];
+
+        for s in &SET {
+            let policy = policy::Concrete::<String>::from_str(s).unwrap();
+            test_object_encoding_roundtrip(&policy).unwrap();
+        }
+    }
 
     #[test]
     fn test_miniscript() {
@@ -622,7 +669,7 @@ mod test {
 
         for s in &SET {
             let ms =
-                Miniscript::<bitcoin::PublicKey, Legacy>::from_str_insane(s)
+                Miniscript::<bitcoin::PublicKey, Segwitv0>::from_str_insane(s)
                     .unwrap();
             test_object_encoding_roundtrip(&ms).unwrap();
         }
