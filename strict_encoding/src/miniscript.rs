@@ -22,6 +22,7 @@ use miniscript::policy::concrete::Policy;
 use miniscript::{policy, Descriptor, Miniscript, MiniscriptKey, Terminal};
 
 use crate::{Error, StrictDecode, StrictEncode};
+use bitcoin::consensus::ReadExt;
 
 impl StrictEncode for DescriptorSinglePub {
     #[inline]
@@ -147,6 +148,115 @@ where
     }
 }
 
+/// We need this shit because of rust compiler limitations.
+///
+/// The two macros below, as well as custom private function `encode_miniscript`
+/// were introduced because rust compiler dies on recursion overflow each time
+/// when a generic type calls itself in a recursive mode passing one of its
+/// arguments by a mutable reference to itself. Thus, we had to split the
+/// implementation logic in such a way that we do not pass a mutable reference
+/// to a variable, and just re-use the reference instead. This contradicts rust
+/// API guidelines, but in fact it is a rust compiler who contradicts them, we
+/// just do not have other choice.
+macro_rules! strict_encode_ms {
+    ($encoder:ident; $tag:ident, $depth:expr, $($ms:expr),+) => { {
+        let mut len = 0usize;
+        $encoder.write(&$tag.strict_serialize()?)?;
+        len += 1;
+        $( len += encode_miniscript($ms, $encoder, $depth)?; )+
+        len
+    } };
+}
+
+macro_rules! strict_encode_seq {
+    ( $encoder:ident; $($item:expr),+ ) => {
+        {
+            let mut len = 0usize;
+            $(
+                let data = $item.strict_serialize()?;
+                $encoder.write(&data)?;
+                len += data.len();
+            )+
+            len
+        }
+    };
+}
+
+// We need this shit because of rust compiler generic limitations
+fn encode_miniscript<Pk, Ctx>(
+    ms: &Miniscript<Pk, Ctx>,
+    e: &mut impl io::Write,
+    mut depth: u8,
+) -> Result<usize, Error>
+where
+    Pk: MiniscriptKey,
+    Pk: MiniscriptKey + StrictEncode,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    Ctx: miniscript::ScriptContext,
+{
+    if depth > 64 {
+        return Err(Error::ExceedMaxItems(65));
+    }
+    depth += 1;
+    Ok(match &ms.node {
+        Terminal::False => MS_FALSE.strict_encode(e)?,
+        Terminal::True => MS_TRUE.strict_encode(e)?,
+        Terminal::PkK(pk) => strict_encode_seq!(e; MS_KEY, pk),
+        Terminal::PkH(hash) => strict_encode_seq!(e; MS_KEY_HASH, hash),
+        Terminal::After(tl) => strict_encode_seq!(e; MS_AFTER, tl),
+        Terminal::Older(tl) => strict_encode_seq!(e; MS_OLDER, tl),
+        Terminal::Sha256(hash) => strict_encode_seq!(e; MS_SHA256, hash),
+        Terminal::Hash256(hash) => strict_encode_seq!(e; MS_HASH256, hash),
+        Terminal::Ripemd160(hash) => {
+            strict_encode_seq!(e; MS_RIPEMD160, hash)
+        }
+        Terminal::Hash160(hash) => strict_encode_seq!(e; MS_HASH160, hash),
+
+        Terminal::Alt(ms) => strict_encode_ms!(e; MS_ALT, depth, ms),
+        Terminal::Swap(ms) => strict_encode_ms!(e; MS_SWAP, depth, ms),
+        Terminal::Check(ms) => strict_encode_ms!(e; MS_CHECK, depth, ms),
+        Terminal::DupIf(ms) => strict_encode_ms!(e; MS_DUP_IF, depth, ms),
+        Terminal::Verify(ms) => strict_encode_ms!(e; MS_VERIFY, depth, ms),
+        Terminal::NonZero(ms) => strict_encode_ms!(e; MS_NON_ZERO, depth, ms),
+        Terminal::ZeroNotEqual(ms) => {
+            strict_encode_ms!(e; MS_ZERO_NE, depth, ms)
+        }
+
+        Terminal::AndV(ms1, ms2) => {
+            strict_encode_ms!(e; MS_AND_V, depth, ms1, ms2)
+        }
+        Terminal::AndB(ms1, ms2) => {
+            strict_encode_ms!(e; MS_AND_B, depth, ms1, ms2)
+        }
+        Terminal::AndOr(ms1, ms2, ms3) => {
+            strict_encode_ms!(e; MS_AND_OR, depth, ms1, ms2, ms3)
+        }
+        Terminal::OrB(ms1, ms2) => {
+            strict_encode_ms!(e; MS_OR_B, depth, ms1, ms2)
+        }
+        Terminal::OrD(ms1, ms2) => {
+            strict_encode_ms!(e; MS_OR_D, depth, ms1, ms2)
+        }
+        Terminal::OrC(ms1, ms2) => {
+            strict_encode_ms!(e; MS_OR_C, depth, ms1, ms2)
+        }
+        Terminal::OrI(ms1, ms2) => {
+            strict_encode_ms!(e; MS_OR_I, depth, ms1, ms2)
+        }
+        Terminal::Multi(thresh, vec) => {
+            strict_encode_seq!(e; MS_MULTI, thresh, vec)
+        }
+        Terminal::Thresh(thresh, vec) => {
+            let mut len = 0usize;
+            len += strict_encode_seq!(e; MS_THRESH, thresh, vec.len());
+            for ms in vec {
+                len += encode_miniscript(ms, e, depth)?;
+            }
+            len
+        }
+    })
+}
+
 impl<Pk, Ctx> StrictEncode for Miniscript<Pk, Ctx>
 where
     Pk: MiniscriptKey,
@@ -155,59 +265,111 @@ where
     Ctx: miniscript::ScriptContext,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(match &self.node {
-            Terminal::False => MS_FALSE.strict_encode(e)?,
-            Terminal::True => MS_TRUE.strict_encode(e)?,
-            Terminal::PkK(pk) => strict_encode_list!(e; MS_KEY, pk),
-            Terminal::PkH(hash) => strict_encode_list!(e; MS_KEY_HASH, hash),
-            Terminal::After(tl) => strict_encode_list!(e; MS_AFTER, tl),
-            Terminal::Older(tl) => strict_encode_list!(e; MS_OLDER, tl),
-            Terminal::Sha256(hash) => strict_encode_list!(e; MS_SHA256, hash),
-            Terminal::Hash256(hash) => strict_encode_list!(e; MS_HASH256, hash),
-            Terminal::Ripemd160(hash) => {
-                strict_encode_list!(e; MS_RIPEMD160, hash)
-            }
-            Terminal::Hash160(hash) => strict_encode_list!(e; MS_HASH160, hash),
-
-            Terminal::Alt(ms) => strict_encode_list!(e; MS_ALT, ms),
-            Terminal::Swap(ms) => strict_encode_list!(e; MS_SWAP, ms),
-            Terminal::Check(ms) => strict_encode_list!(e; MS_CHECK, ms),
-            Terminal::DupIf(ms) => strict_encode_list!(e; MS_DUP_IF, ms),
-            Terminal::Verify(ms) => strict_encode_list!(e; MS_VERIFY, ms),
-            Terminal::NonZero(ms) => strict_encode_list!(e; MS_NON_ZERO, ms),
-            Terminal::ZeroNotEqual(ms) => {
-                strict_encode_list!(e; MS_ZERO_NE, ms)
-            }
-
-            Terminal::AndV(ms1, ms2) => {
-                strict_encode_list!(e; MS_AND_V, ms1, ms2)
-            }
-            Terminal::AndB(ms1, ms2) => {
-                strict_encode_list!(e; MS_AND_B, ms1, ms2)
-            }
-            Terminal::AndOr(ms1, ms2, ms3) => {
-                strict_encode_list!(e; MS_AND_OR, ms1, ms2, ms3)
-            }
-            Terminal::OrB(ms1, ms2) => {
-                strict_encode_list!(e; MS_OR_B, ms1, ms2)
-            }
-            Terminal::OrD(ms1, ms2) => {
-                strict_encode_list!(e; MS_OR_D, ms1, ms2)
-            }
-            Terminal::OrC(ms1, ms2) => {
-                strict_encode_list!(e; MS_OR_C, ms1, ms2)
-            }
-            Terminal::OrI(ms1, ms2) => {
-                strict_encode_list!(e; MS_OR_I, ms1, ms2)
-            }
-            Terminal::Multi(thresh, vec) => {
-                strict_encode_list!(e; MS_MULTI, thresh, vec)
-            }
-            Terminal::Thresh(thresh, vec) => {
-                strict_encode_list!(e; MS_THRESH, thresh, vec)
-            }
-        })
+        encode_miniscript(self, &mut e, 1)
     }
+}
+
+fn decode_miniscript<Pk, Ctx>(
+    d: &mut impl io::Read,
+    mut depth: u8,
+) -> Result<Miniscript<Pk, Ctx>, Error>
+where
+    Pk: MiniscriptKey,
+    Pk: MiniscriptKey + StrictDecode,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    Ctx: miniscript::ScriptContext,
+{
+    if depth > 64 {
+        return Err(Error::ExceedMaxItems(65));
+    }
+    depth += 1;
+    let term = match d.read_u8()? {
+        MS_TRUE => Terminal::True,
+        MS_FALSE => Terminal::False,
+        MS_KEY => Terminal::PkK(Pk::strict_decode(d)?),
+        MS_KEY_HASH => Terminal::PkH(Pk::Hash::strict_decode(d)?),
+
+        MS_AFTER => Terminal::After(u32::strict_decode(d)?),
+        MS_OLDER => Terminal::Older(u32::strict_decode(d)?),
+        MS_SHA256 => Terminal::Sha256(sha256::Hash::strict_decode(d)?),
+        MS_HASH256 => {
+            Terminal::Hash256(sha256d::Hash::strict_decode(d)?)
+        }
+        MS_RIPEMD160 => {
+            Terminal::Ripemd160(ripemd160::Hash::strict_decode(d)?)
+        }
+        MS_HASH160 => {
+            Terminal::Hash160(hash160::Hash::strict_decode(d)?)
+        }
+
+        MS_ALT => Terminal::Alt(decode_miniscript(d, depth)?.into()),
+        MS_SWAP => Terminal::Swap(decode_miniscript(d, depth)?.into()),
+        MS_CHECK => Terminal::Check(decode_miniscript(d, depth)?.into()),
+        MS_DUP_IF => Terminal::DupIf(decode_miniscript(d, depth)?.into()),
+        MS_VERIFY => Terminal::Verify(decode_miniscript(d, depth)?.into()),
+        MS_NON_ZERO => {
+            Terminal::NonZero(decode_miniscript(d, depth)?.into())
+        }
+        MS_ZERO_NE => {
+            Terminal::ZeroNotEqual(decode_miniscript(d, depth)?.into())
+        }
+
+        MS_AND_V => Terminal::AndV(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_AND_B => Terminal::AndB(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_AND_OR => Terminal::AndOr(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_OR_B => Terminal::OrB(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_OR_D => Terminal::OrD(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_OR_C => Terminal::OrC(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_OR_I => Terminal::OrI(
+            decode_miniscript(d, depth)?.into(),
+            decode_miniscript(d, depth)?.into(),
+        ),
+        MS_MULTI => Terminal::Multi(
+            d.read_u16()? as usize,
+            Vec::strict_decode(d)?,
+        ),
+        MS_THRESH => {
+            let thresh = d.read_u16()? as usize;
+            let len = d.read_u16()?;
+            let mut vec = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                vec.push(decode_miniscript(d, depth)?.into());
+            }
+            Terminal::Thresh(thresh, vec)
+        },
+
+        wrong => {
+            return Err(Error::DataIntegrityError(format!(
+                "byte {:#04X} does not correspond to any of miniscript instructions",
+                wrong
+            )))
+        }
+    };
+    Miniscript::from_ast(term).map_err(|err| {
+        Error::DataIntegrityError(format!(
+            "miniscript does not pass check: {}",
+            err
+        ))
+    })
 }
 
 impl<Pk, Ctx> StrictDecode for Miniscript<Pk, Ctx>
@@ -217,88 +379,7 @@ where
     Ctx: miniscript::ScriptContext,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let term = match u8::strict_decode(&mut d)? {
-            MS_TRUE => Terminal::True,
-            MS_FALSE => Terminal::False,
-            MS_KEY => Terminal::PkK(Pk::strict_decode(&mut d)?),
-            MS_KEY_HASH => Terminal::PkH(Pk::Hash::strict_decode(&mut d)?),
-
-            MS_AFTER => Terminal::After(u32::strict_decode(&mut d)?),
-            MS_OLDER => Terminal::Older(u32::strict_decode(&mut d)?),
-            MS_SHA256 => Terminal::Sha256(sha256::Hash::strict_decode(&mut d)?),
-            MS_HASH256 => {
-                Terminal::Hash256(sha256d::Hash::strict_decode(&mut d)?)
-            }
-            MS_RIPEMD160 => {
-                Terminal::Ripemd160(ripemd160::Hash::strict_decode(&mut d)?)
-            }
-            MS_HASH160 => {
-                Terminal::Hash160(hash160::Hash::strict_decode(&mut d)?)
-            }
-
-            MS_ALT => Terminal::Alt(StrictDecode::strict_decode(&mut d)?),
-            MS_SWAP => Terminal::Swap(StrictDecode::strict_decode(&mut d)?),
-            MS_CHECK => Terminal::Check(StrictDecode::strict_decode(&mut d)?),
-            MS_DUP_IF => Terminal::DupIf(StrictDecode::strict_decode(&mut d)?),
-            MS_VERIFY => Terminal::Verify(StrictDecode::strict_decode(&mut d)?),
-            MS_NON_ZERO => {
-                Terminal::NonZero(StrictDecode::strict_decode(&mut d)?)
-            }
-            MS_ZERO_NE => {
-                Terminal::ZeroNotEqual(StrictDecode::strict_decode(&mut d)?)
-            }
-
-            MS_AND_V => Terminal::AndV(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_AND_B => Terminal::AndB(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_AND_OR => Terminal::AndOr(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_OR_B => Terminal::OrB(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_OR_D => Terminal::OrD(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_OR_C => Terminal::OrC(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_OR_I => Terminal::OrI(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_MULTI => Terminal::Multi(
-                usize::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-            MS_THRESH => Terminal::Thresh(
-                usize::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            ),
-
-            wrong => {
-                return Err(Error::DataIntegrityError(format!(
-                    "byte {:#04X} does not correspond to any of miniscript instructions",
-                    wrong
-                )))
-            }
-        };
-        Miniscript::from_ast(term).map_err(|err| {
-            Error::DataIntegrityError(format!(
-                "miniscript does not pass check: {}",
-                err
-            ))
-        })
+        decode_miniscript(&mut d, 1)
     }
 }
 
@@ -414,5 +495,54 @@ where
                 )))
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::test_helpers::*;
+    // use crate::StrictEncode;
+    use miniscript::{Legacy, Miniscript};
+
+    #[test]
+    fn test_miniscript() {
+        const SET: [&str; 28] = [
+            "lltvln:after(1231488000)",
+            "uuj:and_v(v:multi(2,03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a,025601570cb47f238d2b0286db4a990fa0f3ba28d1a319f5e7cf55c2a2444da7cc),after(1231488000))",
+            "or_b(un:multi(2,03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729,024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),al:older(16))",
+            "j:and_v(vdv:after(1567547623),older(2016))",
+            "t:and_v(vu:hash256(131772552c01444cd81360818376a040b7c3b2b7b0a53550ee3edde216cec61b),v:sha256(ec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5))",
+            "t:andor(multi(3,02d7924d4f7d43ea965a465ae3095ff41131e5946f3c85f79e44adbcf8e27e080e,03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556,02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13),v:older(4194305),v:sha256(9267d3dbed802941483f1afa2a6bc68de5f653128aca9bf1461c5d0a3ad36ed2))",
+            "or_d(multi(1,02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9),or_b(multi(3,022f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01,032fa2104d6b38d11b0230010559879124e42ab8dfeff5ff29dc9cdadd4ecacc3f,03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a),su:after(500000)))",
+            "or_d(sha256(38df1c1f64a24a77b23393bca50dff872e31edc4f3b5aa3b90ad0b82f4f089b6),and_n(un:after(499999999),older(4194305)))",
+            "and_v(or_i(v:multi(2,02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5,03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb),v:multi(2,03e60fce93b59e9ec53011aabc21c23e97b2a31369b87a5ae9c44ee89e2a6dec0a,025cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc)),sha256(d1ec675902ef1633427ca360b290b0b3045a0d9058ddb5e648b4c3c3224c5c68))",
+            "j:and_b(multi(2,0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798,024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),s:or_i(older(1),older(4252898)))",
+            "and_b(older(16),s:or_d(sha256(e38990d0c7fc009880a9c07c23842e886c6bbdc964ce6bdd5817ad357335ee6f),n:after(1567547623)))",
+            "j:and_v(v:hash160(20195b5a3d650c17f0f29f91c33f8f6335193d07),or_d(sha256(96de8fc8c256fa1e1556d41af431cace7dca68707c78dd88c3acab8b17164c47),older(16)))",
+            "and_b(hash256(32ba476771d01e37807990ead8719f08af494723de1d228f2c2c07cc0aa40bac),a:and_b(hash256(131772552c01444cd81360818376a040b7c3b2b7b0a53550ee3edde216cec61b),a:older(1)))",
+            "thresh(2,multi(2,03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7,036d2b085e9e382ed10b69fc311a03f8641ccfff21574de0927513a49d9a688a00),a:multi(1,036d2b085e9e382ed10b69fc311a03f8641ccfff21574de0927513a49d9a688a00),ac:pk_k(022f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01))",
+            "and_n(sha256(d1ec675902ef1633427ca360b290b0b3045a0d9058ddb5e648b4c3c3224c5c68),t:or_i(v:older(4252898),v:older(144)))",
+            "or_d(d:and_v(v:older(4252898),v:older(4252898)),sha256(38df1c1f64a24a77b23393bca50dff872e31edc4f3b5aa3b90ad0b82f4f089b6))",
+            "c:and_v(or_c(sha256(9267d3dbed802941483f1afa2a6bc68de5f653128aca9bf1461c5d0a3ad36ed2),v:multi(1,02c44d12c7065d812e8acf28d7cbb19f9011ecd9e9fdf281b0e6a3b5e87d22e7db)),pk_k(03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe))",
+            "c:and_v(or_c(multi(2,036d2b085e9e382ed10b69fc311a03f8641ccfff21574de0927513a49d9a688a00,02352bbf4a4cdd12564f93fa332ce333301d9ad40271f8107181340aef25be59d5),v:ripemd160(1b0f3c404d12075c68c938f9f60ebea4f74941a0)),pk_k(03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556))",
+            "and_v(andor(hash256(8a35d9ca92a48eaade6f53a64985e9e2afeb74dcf8acb4c3721e0dc7e4294b25),v:hash256(939894f70e6c3a25da75da0cc2071b4076d9b006563cf635986ada2e93c0d735),v:older(50000)),after(499999999))",
+            "andor(hash256(5f8d30e655a7ba0d7596bb3ddfb1d2d20390d23b1845000e1e118b3be1b3f040),j:and_v(v:hash160(3a2bff0da9d96868e66abc4427bea4691cf61ccd),older(4194305)),ripemd160(44d90e2d3714c8663b632fcf0f9d5f22192cc4c8))",
+            "or_i(c:and_v(v:after(500000),pk_k(02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5)),sha256(d9147961436944f43cd99d28b2bbddbf452ef872b30c8279e255e7daafc7f946))",
+            "thresh(2,c:pk_h(5dedfbf9ea599dd4e3ca6a80b333c472fd0b3f69),s:sha256(e38990d0c7fc009880a9c07c23842e886c6bbdc964ce6bdd5817ad357335ee6f),a:hash160(dd69735817e0e3f6f826a9238dc2e291184f0131))",
+            "and_n(sha256(9267d3dbed802941483f1afa2a6bc68de5f653128aca9bf1461c5d0a3ad36ed2),uc:and_v(v:older(144),pk_k(03fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce)))",
+            "and_n(c:pk_k(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729),and_b(l:older(4252898),a:older(16)))",
+            "c:or_i(and_v(v:older(16),pk_h(9fc5dbe5efdce10374a4dd4053c93af540211718)),pk_h(2fbd32c8dd59ee7c17e66cb6ebea7e9846c3040f))",
+            "or_d(c:pk_h(c42e7ef92fdb603af844d064faad95db9bcdfd3d),andor(c:pk_k(024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),older(2016),after(1567547623)))",
+            "c:andor(ripemd160(6ad07d21fd5dfc646f0b30577045ce201616b9ba),pk_h(9fc5dbe5efdce10374a4dd4053c93af540211718),and_v(v:hash256(8a35d9ca92a48eaade6f53a64985e9e2afeb74dcf8acb4c3721e0dc7e4294b25),pk_h(dd100be7d9aea5721158ebde6d6a1fd8fff93bb1)))",
+            "c:or_i(andor(c:pk_h(fcd35ddacad9f2d5be5e464639441c6065e6955d),pk_h(9652d86bedf43ad264362e6e6eba6eb764508127),pk_h(06afd46bcdfd22ef94ac122aa11f241244a37ecc)),pk_k(02d7924d4f7d43ea965a465ae3095ff41131e5946f3c85f79e44adbcf8e27e080e))"
+        ];
+
+        for s in &SET {
+            let ms =
+                Miniscript::<bitcoin::PublicKey, Legacy>::from_str_insane(s)
+                    .unwrap();
+            // ms.strict_serialize().unwrap();
+            test_object_encoding_roundtrip(&ms).unwrap();
+        }
     }
 }

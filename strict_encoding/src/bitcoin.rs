@@ -242,7 +242,7 @@ impl StrictDecode for bitcoin::PublicKey {
                 })?)
             }
             invalid_flag => Err(Error::DataIntegrityError(format!(
-                "Invalid public key encoding flag {}; must be either 0x02, 0x03 or 0x4",
+                "Invalid public key encoding flag {:#04x}; must be either 0x02, 0x03 or 0x04",
                 invalid_flag
             ))),
         }
