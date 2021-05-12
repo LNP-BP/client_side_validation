@@ -14,42 +14,10 @@
 
 //! Taking implementation of little-endian integer encoding
 
-use bitcoin::util::uint::{Uint128, Uint256};
 use core::time::Duration;
 use std::io;
 
 use super::{strategies, Error, Strategy, StrictDecode, StrictEncode};
-
-impl Strategy for u8 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for u16 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for u32 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for u64 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for Uint128 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for Uint256 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for i8 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for i16 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for i32 {
-    type Strategy = strategies::BitcoinConsensus;
-}
-impl Strategy for i64 {
-    type Strategy = strategies::BitcoinConsensus;
-}
 
 impl StrictEncode for bool {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -67,46 +35,60 @@ impl StrictDecode for bool {
     }
 }
 
-/*
+impl Strategy for u8 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for u16 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for u32 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for u64 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for i8 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for i16 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for i32 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for i64 {
+    type Strategy = strategies::BitcoinConsensus;
+}
+
 impl StrictEncode for u128 {
-    type Error = Error;
     #[inline]
-    fn strict_encode<E: io::Write>(
-        &self,
-        mut e: E,
-    ) -> Result<usize, Error> {
-        e.write_u128(*self)?;
-        Ok(core::mem::size_of::<u128>())
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(16)
     }
 }
 
 impl StrictDecode for u128 {
-    type Error = Error;
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Self::Error> {
-        Ok(d.read_u128()?)
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(u128::from_le_bytes(<[u8; 16]>::strict_decode(d)?))
     }
 }
 
 impl StrictEncode for i128 {
-    type Error = Error;
     #[inline]
-    fn strict_encode<E: io::Write>(
-        &self,
-        mut e: E,
-    ) -> Result<usize, Error> {
-        e.write_i128(*self)?;
-        Ok(core::mem::size_of::<i128>())
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(16)
     }
 }
 
 impl StrictDecode for i128 {
-    type Error = Error;
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Self::Error> {
-        Ok(d.read_i128()?)
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(i128::from_le_bytes(<[u8; 16]>::strict_decode(d)?))
     }
-}*/
+}
 
 impl StrictEncode for usize {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
