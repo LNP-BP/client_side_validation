@@ -14,29 +14,19 @@
 
 use std::io;
 
+use bitcoin::consensus::ReadExt;
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
 use miniscript::descriptor::{
-    Bare, DescriptorSinglePub, Pkh, Sh, ShInner, Wpkh, Wsh, WshInner,
+    Bare, DescriptorSinglePub, DescriptorXKey, InnerXKey, Pkh, Sh, ShInner,
+    Wildcard, Wpkh, Wsh, WshInner,
 };
 use miniscript::policy::concrete::Policy;
-use miniscript::{policy, Descriptor, Miniscript, MiniscriptKey, Terminal};
+use miniscript::{
+    policy, Descriptor, DescriptorPublicKey, Miniscript, MiniscriptKey,
+    Terminal,
+};
 
 use crate::{Error, StrictDecode, StrictEncode};
-use bitcoin::consensus::ReadExt;
-
-impl StrictEncode for DescriptorSinglePub {
-    #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(strict_encode_list!(e; self.key, self.origin))
-    }
-}
-
-impl StrictDecode for DescriptorSinglePub {
-    #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        Ok(strict_decode_self!(d; key, origin; crate))
-    }
-}
 
 const MS_FALSE: u8 = 0;
 const MS_TRUE: u8 = 1;
@@ -161,7 +151,7 @@ where
 macro_rules! strict_encode_ms {
     ($encoder:ident; $tag:ident, $depth:expr, $($ms:expr),+) => { {
         let mut len = 0usize;
-        $encoder.write(&$tag.strict_serialize()?)?;
+        $encoder.write_all(&$tag.strict_serialize()?)?;
         len += 1;
         $( len += encode_miniscript($ms, $encoder, $depth)?; )+
         len
@@ -174,7 +164,7 @@ macro_rules! strict_encode_seq {
             let mut len = 0usize;
             $(
                 let data = $item.strict_serialize()?;
-                $encoder.write(&data)?;
+                $encoder.write_all(&data)?;
                 len += data.len();
             )+
             len
@@ -395,6 +385,99 @@ const DESCRIPTOR_WSH: u8 = 0x11;
 const DESCRIPTOR_WSH_SORTED_MULTI: u8 = 0x12;
 // Taproot: 0x2_
 
+impl StrictEncode for DescriptorPublicKey {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            DescriptorPublicKey::SinglePub(pk) => {
+                strict_encode_list!(e; 0x01u8, pk)
+            }
+            DescriptorPublicKey::XPub(xpub) => {
+                strict_encode_list!(e; 0x02u8, xpub)
+            }
+        })
+    }
+}
+
+impl StrictDecode for DescriptorPublicKey {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(match u8::strict_decode(&mut d)? {
+            0x01 => DescriptorPublicKey::SinglePub(
+                DescriptorSinglePub::strict_decode(&mut d)?,
+            ),
+            0x02 => DescriptorPublicKey::XPub(DescriptorXKey::strict_decode(
+                &mut d,
+            )?),
+            wrong => {
+                return Err(Error::DataIntegrityError(format!(
+                    "unknown descriptor key tag `{:#04X}",
+                    wrong
+                )))
+            }
+        })
+    }
+}
+
+impl StrictEncode for DescriptorSinglePub {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.origin, self.key))
+    }
+}
+
+impl StrictDecode for DescriptorSinglePub {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(strict_decode_self!(d; origin, key; crate))
+    }
+}
+
+impl<Pk> StrictEncode for DescriptorXKey<Pk>
+where
+    Pk: InnerXKey + StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(
+            strict_encode_list!(e; self.origin, self.derivation_path, self.xkey, self.wildcard),
+        )
+    }
+}
+
+impl<Pk> StrictDecode for DescriptorXKey<Pk>
+where
+    Pk: InnerXKey + StrictDecode,
+{
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(
+            strict_decode_self!(d; origin, derivation_path, xkey, wildcard; crate),
+        )
+    }
+}
+
+impl StrictEncode for Wildcard {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        match self {
+            Wildcard::None => 0u8,
+            Wildcard::Unhardened => 1u8,
+            Wildcard::Hardened => 2u8,
+        }
+        .strict_encode(e)
+    }
+}
+
+impl StrictDecode for Wildcard {
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(match u8::strict_decode(d)? {
+            0 => Wildcard::None,
+            1 => Wildcard::Unhardened,
+            2 => Wildcard::Hardened,
+            wrong => {
+                return Err(Error::DataIntegrityError(format!(
+                    "unknown descriptor xpub wildcard type `{:#04X}`",
+                    wrong
+                )))
+            }
+        })
+    }
+}
+
 impl<Pk> StrictEncode for Descriptor<Pk>
 where
     Pk: MiniscriptKey + StrictEncode,
@@ -502,7 +585,7 @@ where
 mod test {
     use crate::test_helpers::*;
     // use crate::StrictEncode;
-    use miniscript::{Legacy, Miniscript};
+    use miniscript::{Descriptor, Legacy, Miniscript};
 
     #[test]
     fn test_miniscript() {
@@ -541,8 +624,36 @@ mod test {
             let ms =
                 Miniscript::<bitcoin::PublicKey, Legacy>::from_str_insane(s)
                     .unwrap();
-            // ms.strict_serialize().unwrap();
             test_object_encoding_roundtrip(&ms).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_descriptor() {
+        const SET: [&str; 16] = [
+            "pk(020000000000000000000000000000000000000000000000000000000000000002)",
+            "multi(1,020000000000000000000000000000000000000000000000000000000000000002)",
+            "pkh(020000000000000000000000000000000000000000000000000000000000000002)",
+            "wsh(c:pk_k(020000000000000000000000000000000000000000000000000000000000000002))",
+            "sh(wsh(c:pk_k(020000000000000000000000000000000000000000000000000000000000000002)))",
+            "wsh(after(1000))",
+            "wsh(older(1000))",
+            "wpkh(025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357)",
+            "sh(wpkh(03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873))",
+            "wsh(multi(2,03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd,03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626))",
+            "sh(sortedmulti(1,03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556,0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352))#uetvewm2",
+            "wsh(sortedmulti(1,xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB,xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH))#7etm7zk7",
+            "sh(wsh(sortedmulti(1,xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB/1/0/*,xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH/0/0/*)))#u60cee0u",
+            "wpkh(tprv8ZgxMBicQKsPcwcD4gSnMti126ZiETsuX7qwrtMypr6FBwAP65puFn4v6c3jrN9VwtMRMph6nyT63NrfUL4C3nBzPcduzVSuHD7zbX2JKVc/44'/0'/0'/0/*)",
+            "wpkh([2cbe2a6d/44'/0'/0']tpubDCvNhURocXGZsLNqWcqD3syHTqPXrMSTwi8feKVwAcpi29oYKsDD3Vex7x2TDneKMVN23RbLprfxB69v94iYqdaYHsVz3kPR37NQXeqouVz/0/*)#nhdxg96s",
+            "sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggrsrxfy",
+        ];
+
+        let secp = bitcoin::secp256k1::Secp256k1::new();
+
+        for s in &SET {
+            let (descr, _) = Descriptor::parse_descriptor(&secp, s).unwrap();
+            test_object_encoding_roundtrip(&descr).unwrap();
         }
     }
 }
