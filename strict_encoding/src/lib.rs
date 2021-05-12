@@ -67,13 +67,13 @@ pub mod test_helpers;
 
 mod amplify_types;
 mod bitcoin;
-mod byte_str;
 mod collections;
 #[cfg(feature = "crypto")]
 mod crypto;
 #[cfg(feature = "miniscript")]
 mod miniscript;
 pub mod net;
+mod pointers;
 mod primitives;
 pub mod strategies;
 

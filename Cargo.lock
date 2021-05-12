@@ -134,7 +134,7 @@ version = "0.5.0-rc.1"
 dependencies = [
  "commit_verify",
  "single_use_seals",
- "strict_encoding 1.4.0",
+ "strict_encoding 1.5.0-beta.1",
 ]
 
 [[package]]
@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.4.0"
+version = "1.5.0-beta.1"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -707,7 +707,7 @@ dependencies = [
  "amplify_derive",
  "proc-macro2",
  "quote",
- "strict_encoding 1.4.0",
+ "strict_encoding 1.5.0-beta.1",
  "syn",
 ]
 

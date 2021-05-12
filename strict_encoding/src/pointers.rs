@@ -12,8 +12,11 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use std::cell::RefCell;
 use std::io;
 use std::ops::Deref;
+use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{Error, StrictDecode, StrictEncode};
 
@@ -25,6 +28,38 @@ impl StrictEncode for &[u8] {
         len += len.strict_encode(&mut e)?;
         e.write_all(self)?;
         Ok(len)
+    }
+}
+
+// TODO: 19 Re-implement with const generics once MSRV > 1.50
+
+impl StrictEncode for [u8; 16] {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(self)?;
+        Ok(self.len())
+    }
+}
+
+impl StrictDecode for [u8; 16] {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 16];
+        d.read_exact(&mut ret)?;
+        Ok(ret)
+    }
+}
+
+impl StrictEncode for [u8; 20] {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(self)?;
+        Ok(self.len())
+    }
+}
+
+impl StrictDecode for [u8; 20] {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 20];
+        d.read_exact(&mut ret)?;
+        Ok(ret)
     }
 }
 
@@ -43,6 +78,21 @@ impl StrictDecode for [u8; 32] {
     }
 }
 
+impl StrictEncode for [u8; 64] {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(self)?;
+        Ok(self.len())
+    }
+}
+
+impl StrictDecode for [u8; 64] {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 64];
+        d.read_exact(&mut ret)?;
+        Ok(ret)
+    }
+}
+
 impl StrictEncode for Box<[u8]> {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
         self.deref().strict_encode(e)
@@ -55,6 +105,60 @@ impl StrictDecode for Box<[u8]> {
         let mut ret = vec![0u8; len];
         d.read_exact(&mut ret)?;
         Ok(ret.into_boxed_slice())
+    }
+}
+
+impl<T> StrictEncode for Rc<T>
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.deref().strict_encode(e)
+    }
+}
+
+impl<T> StrictDecode for Rc<T>
+where
+    T: StrictDecode,
+{
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(Rc::new(T::strict_decode(d)?))
+    }
+}
+
+impl<T> StrictEncode for RefCell<T>
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.deref().strict_encode(e)
+    }
+}
+
+impl<T> StrictDecode for RefCell<T>
+where
+    T: StrictDecode,
+{
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(RefCell::new(T::strict_decode(d)?))
+    }
+}
+
+impl<T> StrictEncode for Arc<T>
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.deref().strict_encode(e)
+    }
+}
+
+impl<T> StrictDecode for Arc<T>
+where
+    T: StrictDecode,
+{
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(Arc::new(T::strict_decode(d)?))
     }
 }
 

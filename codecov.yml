@@ -10,7 +10,10 @@ coverage:
       default:
         target: 75%
         threshold: 1%
+        branches:
+          - master
     patch:
       default:
-        target: 90%
+        target: 80%
         threshold: 1%
+        only_pulls: true
