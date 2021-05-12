@@ -22,8 +22,7 @@ use miniscript::descriptor::{
 };
 use miniscript::policy::concrete::Policy;
 use miniscript::{
-    policy, Descriptor, DescriptorPublicKey, Miniscript, MiniscriptKey,
-    Terminal,
+    Descriptor, DescriptorPublicKey, Miniscript, MiniscriptKey, Terminal,
 };
 
 use crate::{Error, StrictDecode, StrictEncode};
@@ -93,7 +92,7 @@ macro_rules! strict_encode_seq {
     };
 }
 
-impl<Pk> StrictEncode for policy::Concrete<Pk>
+impl<Pk> StrictEncode for Policy<Pk>
 where
     Pk: MiniscriptKey + StrictEncode,
     <Pk as MiniscriptKey>::Hash: StrictEncode,
@@ -120,9 +119,7 @@ where
     }
 }
 
-fn decode_policy<Pk>(
-    d: &mut impl io::Read,
-) -> Result<policy::Concrete<Pk>, Error>
+fn decode_policy<Pk>(d: &mut impl io::Read) -> Result<Policy<Pk>, Error>
 where
     Pk: MiniscriptKey + StrictDecode,
     <Pk as MiniscriptKey>::Hash: StrictDecode,
@@ -185,7 +182,7 @@ where
     })
 }
 
-impl<Pk> StrictDecode for policy::Concrete<Pk>
+impl<Pk> StrictDecode for Policy<Pk>
 where
     Pk: MiniscriptKey + StrictDecode,
     <Pk as MiniscriptKey>::Hash: StrictDecode,

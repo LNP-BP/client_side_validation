@@ -191,49 +191,148 @@ mod _chrono {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::{strict_deserialize, strict_serialize};
+    use crate::strict_deserialize;
+    use crate::test_helpers::test_encoding_roundtrip;
     use chrono::{NaiveDateTime, Utc};
 
-    /// Checking that byte encoding and decoding works correctly for the most
-    /// common marginal and middle-probability cases
     #[test]
-    fn test_u8_encoding() {
-        let zero: u8 = 0;
-        let one: u8 = 1;
-        let thirteen: u8 = 13;
-        let confusing: u8 = 0xEF;
-        let nearly_full: u8 = 0xFE;
-        let full: u8 = 0xFF;
+    fn test_u_encoding() {
+        test_encoding_roundtrip(&0_u8, [0]).unwrap();
+        test_encoding_roundtrip(&1_u8, [1]).unwrap();
+        test_encoding_roundtrip(&0x10_u8, [0x10]).unwrap();
+        test_encoding_roundtrip(&0xFE_u8, [0xFE]).unwrap();
+        test_encoding_roundtrip(&0xFF_u8, [0xFF]).unwrap();
+        test_encoding_roundtrip(&54_u16, [54, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_u16, [0xa6, 0x45]).unwrap();
+        test_encoding_roundtrip(&54_usize, [54, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_usize, [0xa6, 0x45]).unwrap();
+        test_encoding_roundtrip(&54_u32, [54, 0, 0, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_u32, [0xa6, 0x45, 0, 0]).unwrap();
+        test_encoding_roundtrip(&0x56fe45a6_u32, [0xa6, 0x45, 0xfe, 0x56])
+            .unwrap();
+        test_encoding_roundtrip(&54_u64, [54, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_u64, [0xa6, 0x45, 0, 0, 0, 0, 0, 0])
+            .unwrap();
+        test_encoding_roundtrip(
+            &0x56fe45a6_u64,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0xcafedead56fe45a6_u64,
+            [0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &54_u128,
+            [54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0x45a6_u128,
+            [0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0x56fe45a6_u128,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0xcafedead56fe45a6_u128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0,
+                0, 0, 0,
+            ],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0xbadefeed65671331cafedead56fe45a6_u128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13,
+                0x67, 0x65, 0xed, 0xfe, 0xde, 0xba,
+            ],
+        )
+        .unwrap();
+    }
 
-        let byte_0 = &[0u8][..];
-        let byte_1 = &[1u8][..];
-        let byte_13 = &[13u8][..];
-        let byte_ef = &[0xEFu8][..];
-        let byte_fe = &[0xFEu8][..];
-        let byte_ff = &[0xFFu8][..];
+    #[test]
+    fn test_i_encoding() {
+        test_encoding_roundtrip(&0_i8, [0]).unwrap();
+        test_encoding_roundtrip(&1_i8, [1]).unwrap();
+        test_encoding_roundtrip(&0x10_i8, [0x10]).unwrap();
+        test_encoding_roundtrip(&0x7E_i8, [0x7E]).unwrap();
+        test_encoding_roundtrip(&0x7F_i8, [0x7F]).unwrap();
+        test_encoding_roundtrip(&-0x7F_i8, [0x81]).unwrap();
+        test_encoding_roundtrip(&54_i16, [54, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_i16, [0xa6, 0x45]).unwrap();
+        test_encoding_roundtrip(&54_i32, [54, 0, 0, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_i32, [0xa6, 0x45, 0, 0]).unwrap();
+        test_encoding_roundtrip(&0x56fe45a6_i32, [0xa6, 0x45, 0xfe, 0x56])
+            .unwrap();
+        test_encoding_roundtrip(&54_i64, [54, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        test_encoding_roundtrip(&0x45a6_i64, [0xa6, 0x45, 0, 0, 0, 0, 0, 0])
+            .unwrap();
+        test_encoding_roundtrip(
+            &0x56fe45a6_i64,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0x7afedead56fe45a6_i64,
+            [0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0x7a],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &54_i128,
+            [54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0x45a6_i128,
+            [0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0x56fe45a6_i128,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0xcafedead56fe45a6_i128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0,
+                0, 0, 0,
+            ],
+        )
+        .unwrap();
+        test_encoding_roundtrip(
+            &0x1adefeed65671331cafedead56fe45a6_i128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13,
+                0x67, 0x65, 0xed, 0xfe, 0xde, 0x1a,
+            ],
+        )
+        .unwrap();
+    }
 
-        assert_eq!(strict_serialize(&zero).unwrap(), byte_0);
-        assert_eq!(strict_serialize(&one).unwrap(), byte_1);
-        assert_eq!(strict_serialize(&thirteen).unwrap(), byte_13);
-        assert_eq!(strict_serialize(&confusing).unwrap(), byte_ef);
-        assert_eq!(strict_serialize(&nearly_full).unwrap(), byte_fe);
-        assert_eq!(strict_serialize(&full).unwrap(), byte_ff);
+    #[test]
+    #[should_panic(expected = "ExceedMaxItems(131071)")]
+    fn test_usize_encode_fail() {
+        0x01FFFF_usize.strict_serialize().unwrap();
+    }
 
-        assert_eq!(u8::strict_decode(byte_0).unwrap(), zero);
-        assert_eq!(u8::strict_decode(byte_1).unwrap(), one);
-        assert_eq!(u8::strict_decode(byte_13).unwrap(), thirteen);
-        assert_eq!(u8::strict_decode(byte_ef).unwrap(), confusing);
-        assert_eq!(u8::strict_decode(byte_fe).unwrap(), nearly_full);
-        assert_eq!(u8::strict_decode(byte_ff).unwrap(), full);
+    #[test]
+    #[should_panic(expected = "DataNotEntirelyConsumed")]
+    fn test_usize_decode_fail() {
+        let _: usize = strict_deserialize([0xFF, 0xFF, 0xFF, 0x54]).unwrap();
     }
 
     #[test]
     fn test_bool_encoding() {
-        assert_eq!(strict_serialize(&true), Ok(vec![0x01]));
-        assert_eq!(strict_serialize(&false), Ok(vec![0x00]));
+        test_encoding_roundtrip(&true, [0x01]).unwrap();
+        test_encoding_roundtrip(&false, [0x00]).unwrap();
 
-        assert_eq!(strict_deserialize(vec![0x01]), Ok(true));
-        assert_eq!(strict_deserialize(vec![0x00]), Ok(false));
         assert_eq!(
             bool::strict_decode(&[0x20][..]),
             Err(Error::ValueOutOfRange("boolean", 0..1, 0x20))
@@ -242,16 +341,12 @@ pub mod test {
 
     #[test]
     fn test_float_encoding() {
-        let f_32 = 5.7692_f32;
-        let f_32_ser = &[73, 157, 184, 64][..];
-        let f_64 = 54546457.76965676_f64;
-        let f_64_ser = &[206, 65, 40, 206, 128, 2, 138, 65][..];
-
-        assert_eq!(strict_serialize(&f_32).unwrap(), f_32_ser.to_vec());
-        assert_eq!(strict_serialize(&f_64).unwrap(), f_64_ser.to_vec());
-
-        assert_eq!(f32::strict_deserialize(f_32_ser), Ok(f_32));
-        assert_eq!(f64::strict_deserialize(f_64_ser), Ok(f_64));
+        test_encoding_roundtrip(&5.7692_f32, [73, 157, 184, 64]).unwrap();
+        test_encoding_roundtrip(
+            &54546457.76965676_f64,
+            [206, 65, 40, 206, 128, 2, 138, 65],
+        )
+        .unwrap();
     }
 
     #[test]
