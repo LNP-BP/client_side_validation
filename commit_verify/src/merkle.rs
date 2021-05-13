@@ -82,18 +82,20 @@ where
 /// according to [LNPBP-81] standard of client-side-validation merklization
 ///
 /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-pub fn merklize<N>(prefix: &str, data: &[N]) -> (MerkleNode, u8)
+pub fn merklize<I>(prefix: &str, data: I) -> (MerkleNode, u8)
 where
-    N: AsRef<[u8]>,
+    I: IntoIterator<Item = MerkleNode>,
+    <I as IntoIterator>::IntoIter: ExactSizeIterator<Item = MerkleNode>,
 {
     let mut tag_engine = sha256::Hash::engine();
     tag_engine.input(prefix.as_bytes());
     tag_engine.input(":merkle:".as_bytes());
 
-    let width = data.len();
+    let iter = data.into_iter();
+    let width = iter.len();
 
     // Tagging merkle tree root
-    let (root, height) = merklize_inner(&tag_engine, data, 0, false, None);
+    let (root, height) = merklize_inner(&tag_engine, iter, 0, false, None);
     tag_engine.input("root:height=".as_bytes());
     tag_engine.input(&height.to_string().into_bytes());
     tag_engine.input(":width=".as_bytes());
@@ -108,18 +110,14 @@ where
     (tagged_root, height)
 }
 
-fn merklize_inner<N>(
+fn merklize_inner(
     engine_proto: &sha256::HashEngine,
-    data: &[N],
+    mut iter: impl ExactSizeIterator<Item = MerkleNode>,
     depth: u8,
     extend: bool,
     empty_node: Option<MerkleNode>,
-) -> (MerkleNode, u8)
-where
-    N: AsRef<[u8]>,
-{
-    let len = data.len();
-    let mut iter = data.iter();
+) -> (MerkleNode, u8) {
+    let len = iter.len();
     let ext_len = len + if extend { 1 } else { 0 };
     let empty_node = empty_node.unwrap_or_else(|| MerkleNode::hash(&[0xFF]));
 
@@ -170,14 +168,16 @@ where
 
         let (node1, height1) = merklize_inner(
             engine_proto,
-            &data[..div],
+            // Normally we should use `iter.by_ref().take(div)`, but currently
+            // rust compilers is unable to parse recursion with generic types
+            iter.by_ref().take(div).collect::<Vec<_>>().into_iter(),
             depth + 1,
             false,
             Some(empty_node),
         );
         let (node2, height2) = merklize_inner(
             engine_proto,
-            &data[div..],
+            iter,
             depth + 1,
             len % 2 == 0,
             Some(empty_node),
@@ -231,12 +231,8 @@ where
     L: ConsensusMerkleCommit,
 {
     fn commit_encode<E: io::Write>(&self, e: E) -> usize {
-        let leafs = self
-            .0
-            .iter()
-            .map(L::consensus_commit)
-            .collect::<Vec<MerkleNode>>();
-        merklize(L::MERKLE_NODE_PREFIX, &leafs).0.commit_encode(e)
+        let leafs = self.0.iter().map(L::consensus_commit);
+        merklize(L::MERKLE_NODE_PREFIX, leafs).0.commit_encode(e)
     }
 }
 
