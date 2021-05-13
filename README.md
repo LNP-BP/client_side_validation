@@ -1,4 +1,4 @@
-# Client-side-validation library
+# Client-side-validation Foundation Libraries
 
 ![Build](https://github.com/LNP-BP/client_side_validation/workflows/Build/badge.svg)
 ![Tests](https://github.com/LNP-BP/client_side_validation/workflows/Tests/badge.svg)
@@ -10,8 +10,10 @@
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/client_side_validation)](./LICENSE)
 
-This is an implementation defining standard of client-side-validation, i.e. its
-Core library.
+This is an implementation defining standard of client-side-validation 
+representing a set of its Foundation libraries. The standards covered by the
+libraries include [LNPBP-4], [LNPBP-7], [LNPBP-8], [LNPBP-9], [LNPBP-42], and 
+[LNPBP-81] (see [Components](#components) section below for more details).
 
 Client-side-validation is a paradigm for distributed computing, based on top of
 proof-of-publication/commitment medium layer, which may be a bitcoin blockchain
@@ -44,6 +46,7 @@ functionality. These are:
 - Commit-verify scheme and its client-side-validation specific implementations
   * consensus commitments ([LNPBP-9] standard)
   * multi-commitments ([LNPBP-4] standard)
+  * merklization for client-side-validation ([LNPBP-81] standard)
 - Single-use-seals ([LNPBP-8] standard)
 
 
@@ -128,3 +131,4 @@ See [LICENCE](LICENSE) file for the license details.
 [LNPBP-8]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0008.md
 [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
 [LNPBP-42]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md
+[LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md

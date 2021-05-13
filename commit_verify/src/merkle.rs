@@ -1,5 +1,5 @@
-// LNP/BP client-side-validation library implementing respective LNPBP
-// specifications & standards (LNPBP-7, 8, 9, 42)
+// LNP/BP client-side-validation foundation libraries implementing LNPBP
+// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
 //
 // Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -78,6 +78,9 @@ where
 }
 
 /// Merklization procedure that uses tagged hashes with depth commitments
+/// according to [LNPBP-81] standard of client-side-validation merklization
+///
+/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
 pub fn merklize<N>(prefix: &str, data: &[N]) -> (MerkleNode, u8)
 where
     N: AsRef<[u8]>,
