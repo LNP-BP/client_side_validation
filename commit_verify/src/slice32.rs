@@ -22,7 +22,10 @@ use bitcoin_hashes::{sha256, Hash};
 use strict_encoding::{StrictDecode, StrictEncode};
 
 /// Wrapper type for all slice-based 256-bit types implementing many important
-/// traits, so types based on it can simply derive their implementations
+/// traits, so types based on it can simply derive their implementations.
+///
+/// Type keeps data in little-endian byte order and displays them in the same
+/// order (like bitcoin SHA256 single hash type).
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

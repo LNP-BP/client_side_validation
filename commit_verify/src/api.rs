@@ -18,17 +18,17 @@
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements
 /// `AsRef<[u8]>`).
-pub trait CommitVerify<MSG>
+pub trait CommitVerify<M>
 where
     Self: Eq + Sized,
 {
     /// Creates a commitment to a byte representation of a given message
-    fn commit(msg: &MSG) -> Self;
+    fn commit(msg: &M) -> Self;
 
     /// Verifies commitment against the message; default implementation just
     /// repeats the commitment to the message and check it against the `self`.
     #[inline]
-    fn verify(&self, msg: &MSG) -> bool {
+    fn verify(&self, msg: &M) -> bool {
         Self::commit(msg) == *self
     }
 }
@@ -36,7 +36,7 @@ where
 /// Trait for a failable version of commit-verify scheme. A message for the
 /// commitment may be any structure that can be represented as a byte array
 /// (i.e. implements `AsRef<[u8]>`).
-pub trait TryCommitVerify<MSG>
+pub trait TryCommitVerify<M>
 where
     Self: Eq + Sized,
 {
@@ -44,13 +44,13 @@ where
     type Error: std::error::Error;
 
     /// Tries to create commitment to a byte representation of a given message
-    fn try_commit(msg: &MSG) -> Result<Self, Self::Error>;
+    fn try_commit(msg: &M) -> Result<Self, Self::Error>;
 
     /// Tries to verify commitment against the message; default implementation
     /// just repeats the commitment to the message and check it against the
     /// `self`.
     #[inline]
-    fn try_verify(&self, msg: &MSG) -> Result<bool, Self::Error> {
+    fn try_verify(&self, msg: &M) -> Result<bool, Self::Error> {
         Ok(Self::try_commit(msg)? == *self)
     }
 }
@@ -72,7 +72,7 @@ where
 ///
 /// This trait is heavily used in **deterministic bitcoin commitments**
 /// [crate::dbc] module implementations
-pub trait EmbedCommitVerify<MSG>
+pub trait EmbedCommitVerify<M>
 where
     Self: Sized + Eq,
 {
@@ -87,7 +87,7 @@ where
     /// required to reconstruct the original container
     fn embed_commit(
         container: &mut Self::Container,
-        msg: &MSG,
+        msg: &M,
     ) -> Result<Self, Self::Error>;
 
     /// Verifies commitment against the message; default implementation just
@@ -107,7 +107,7 @@ where
     fn verify(
         &self,
         container: &Self::Container,
-        msg: &MSG,
+        msg: &M,
     ) -> Result<bool, Self::Error> {
         let mut container = container.clone();
         Ok(match Self::embed_commit(&mut container, msg) {

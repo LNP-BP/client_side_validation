@@ -14,13 +14,13 @@
 
 //! Multi-message commitments: implementation of [LNPBP-4] standard.
 //!
-//! LNPBP-4 defines a commit-verify scheme for committing to a multiple messages
-//! under distinct protocols with ability to partially reveal set of the
-//! commitments and still be able to prove the commitment for each message
+//! [LNPBP-4] defines a commit-verify scheme for committing to a multiple
+//! messages under distinct protocols with ability to partially reveal set of
+//! the commitments and still be able to prove the commitment for each message
 //! without exposing the exact number of other messages and their respective
 //! protocol identifiers.
 //!
-//! [LNPBP]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+//! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::BTreeMap;
 
@@ -30,26 +30,42 @@ use crate::Slice32;
 #[cfg(feature = "rand")]
 use crate::TryCommitVerify;
 
-/// Source data for creation of multi-message commitments according to LNPBP-4
-/// procedure
+/// Source data for creation of multi-message commitments according to [LNPBP-4]
+/// procedure.
+///
+/// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 pub type ProtocolId = Slice32;
 
 /// Original message participating in multi-message commitment.
 ///
 /// The message must be represented by a SHA256 tagged hash. Since each message
-/// may have a different tag, we can't use `sha256t` type directly and use its
-/// `sha256::Hash` equivalent.
+/// may have a different tag, we can't use [`sha256t`] type directly and use its
+/// [`sha256::Hash`] equivalent.
 pub type Message = sha256::Hash;
 
-/// Type alias for structured source multi-message data for commitment creation
-pub type MessageMap = BTreeMap<ProtocolId, Message>;
+/// Structured source multi-message data for commitment creation
+pub struct MessageMap {
+    /// Minimal length of the created LNPBP-4 commitment buffer
+    pub min_length: u16,
+    /// Map of the messages by their respective protocol ids
+    pub messages: BTreeMap<ProtocolId, Message>,
+}
 
-/// LNPBP-4 commitment procedure is limited to 2^16 messages
+/// Errors generated during multi-message commitment process by
+/// [`MultiCommitBlock::try_commit`]
 #[derive(
     Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, Debug, Display,
 )]
 #[display(doc_comments)]
-pub struct TooManyMessagesError;
+pub enum Error {
+    /// Number of messages ({0}) for LNPBP-4 commitment which exceeds the
+    /// protocol limit of 2^16
+    TooManyMessages(usize),
+
+    /// The provided number of messages can't fit LNPBP-4 commitment size
+    /// limits for a given set of protocol ids.
+    CantFitInMaxSlots,
+}
 
 #[cfg_attr(
     feature = "serde",
@@ -57,7 +73,7 @@ pub struct TooManyMessagesError;
     serde(crate = "serde_crate")
 )]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display)]
-#[display("{commitment}")]
+#[display("{message}")]
 #[derive(StrictEncode, StrictDecode)]
 /// Single item within a multi-message commitment, consisting of optional
 /// protocol information (if known) and the actual single message commitment
@@ -67,15 +83,15 @@ pub struct MultiCommitItem {
     pub protocol: Option<ProtocolId>,
 
     /// Message commitment (LNPBP-4 tagged hash of the message)
-    pub commitment: Message,
+    pub message: Message,
 }
 
 impl MultiCommitItem {
-    /// Constructs multi-message commitment item
-    pub fn new(protocol: Option<ProtocolId>, commitment: Message) -> Self {
+    /// Constructs multi-message commitment item for a given protocol
+    pub fn new(protocol: ProtocolId, message: Message) -> Self {
         Self {
-            protocol,
-            commitment,
+            protocol: Some(protocol),
+            message,
         }
     }
 }
@@ -97,9 +113,11 @@ impl MultiCommitItem {
     StrictEncode,
     StrictDecode,
 )]
-/// Multi-message commitment data according to LNPBP-4 specification.
+/// Multi-message commitment data according to [LNPBP-4] specification.
 ///
-/// To create commitment use [`TryCommitVerify::try_commit`] method
+/// To create commitment use [`TryCommitVerify::try_commit`] method.
+///
+/// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 pub struct MultiCommitBlock {
     /// Array of commitment items (see [`MultiCommitItem`])
     pub commitments: Vec<MultiCommitItem>,
@@ -110,66 +128,75 @@ pub struct MultiCommitBlock {
     pub entropy: Option<u64>,
 }
 
+const MIDSTATE_ENTROPY: [u8; 32] = [
+    0xF4, 0x0D, 0x86, 0x94, 0x9F, 0xFF, 0xAD, 0xEE, 0x19, 0xEA, 0x50, 0x20,
+    0x60, 0xAB, 0x6B, 0xAD, 0x11, 0x61, 0xB2, 0x35, 0x83, 0xD3, 0x78, 0x18,
+    0x52, 0x0D, 0xD4, 0xD1, 0xD8, 0x88, 0x1E, 0x61,
+];
+
 #[cfg(feature = "rand")]
 impl TryCommitVerify<MessageMap> for MultiCommitBlock {
-    type Error = TooManyMessagesError;
+    type Error = Error;
 
-    fn try_commit(
-        multi_msg: &MessageMap,
-    ) -> Result<Self, TooManyMessagesError> {
+    fn try_commit(source: &MessageMap) -> Result<Self, Error> {
         use amplify::num::u256;
+        use amplify::Wrapper;
         use bitcoin_hashes::{Hash, HashEngine};
         use rand::{thread_rng, Rng};
 
-        const SORT_LIMIT: usize = 2 << 16;
-
-        let mut n = multi_msg.len();
+        let m = source.messages.len();
+        if m > u16::MAX as usize {
+            return Err(Error::TooManyMessages(m));
+        }
+        let mut n = m as u16;
         // We use some minimum number of items, to increase privacy
-        n = n.max(3);
+        n = n.max(source.min_length);
+
         let ordered = loop {
+            if n > u16::MAX {
+                return Err(Error::CantFitInMaxSlots);
+            }
+
             let mut ordered = BTreeMap::<usize, (ProtocolId, Message)>::new();
-            // TODO #6: Modify arithmetics in LNPBP-4 spec
-            //       <https://github.com/LNP-BP/LNPBPs/issues/19>
-            if multi_msg.iter().all(|(protocol, digest)| {
-                let rem = u256::from_be_bytes(**protocol)
-                    % u256::from_u64(n as u64)
-                        .expect("Bitcoin U256 struct is broken");
+            if source.messages.iter().all(|(protocol, message)| {
+                let rem = u256::from_le_bytes(**protocol)
+                    % u256::from_u64(n as u64).expect("u256 type is broken");
+                let msg_tag_hash = sha256::Hash::hash(protocol.as_inner());
+                let mut engine = sha256::Hash::engine();
+                engine.input(&msg_tag_hash[..]);
+                engine.input(&msg_tag_hash[..]);
+                engine.input(&message[..]);
+                let digest = sha256::Hash::from_engine(engine);
                 ordered
-                    .insert(rem.low_u64() as usize, (*protocol, *digest))
+                    .insert(rem.low_u64() as usize, (*protocol, digest))
                     .is_none()
             }) {
                 break ordered;
             }
             n += 1;
-            if n > SORT_LIMIT {
-                // Memory allocation limit exceeded while trying to sort
-                // multi-message commitment
-                return Err(TooManyMessagesError);
-            }
         };
 
         let entropy = {
             let mut rng = thread_rng();
             rng.gen::<u64>()
         };
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
+        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
+        engine.input(&entropy.to_le_bytes());
 
-        let mut commitments = Vec::<_>::with_capacity(n);
+        let mut commitments = Vec::<_>::with_capacity(n as usize);
         for i in 0..n {
-            match ordered.get(&i) {
+            match ordered.get(&(i as usize)) {
                 None => {
-                    let mut engine = Message::engine();
-                    for _ in 0..4 {
-                        engine.input(&entropy.to_le_bytes());
-                        engine.input(&i.to_le_bytes());
-                    }
-                    commitments.push(MultiCommitItem::new(
-                        None,
-                        Message::from_engine(engine),
-                    ))
+                    let mut subengine = engine.clone();
+                    subengine.input(&i.to_le_bytes());
+                    commitments.push(MultiCommitItem {
+                        protocol: None,
+                        message: Message::from_engine(subengine),
+                    })
                 }
-                Some((contract_id, commitment)) => commitments.push(
-                    MultiCommitItem::new(Some(*contract_id), *commitment),
-                ),
+                Some((contract_id, commitment)) => commitments
+                    .push(MultiCommitItem::new(*contract_id, *commitment)),
             }
         }
 
