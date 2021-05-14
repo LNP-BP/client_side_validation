@@ -14,6 +14,6 @@ coverage:
           - master
     patch:
       default:
-        target: 80%
+        target: 60%
         threshold: 1%
         only_pulls: true

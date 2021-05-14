@@ -2,7 +2,6 @@ name: Pre-publishing check
 
 on:
   pull_request:
-    branches: [ master ]
     tags:
       - 'pre-publish'
 

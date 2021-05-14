@@ -398,128 +398,142 @@ mod test {
     use super::*;
     use crate::single_use_seals::SealMedium;
 
-    #[derive(
-        Clone, PartialEq, Eq, Hash, Debug, Default, StrictEncode, StrictDecode,
-    )]
-    struct Seal {}
-
-    impl SingleUseSeal for Seal {
-        type Witness = ();
-        type Definition = Self;
-        type Error = Issue;
-
-        fn close(
-            &self,
-            _over: impl AsRef<[u8]>,
-        ) -> Result<Self::Witness, Self::Error> {
-            Ok(())
-        }
-
-        fn verify(
-            &self,
-            _msg: impl AsRef<[u8]>,
-            _witness: &Self::Witness,
-            _medium: &impl SealMedium<Self>,
-        ) -> Result<bool, Self::Error>
-        where
-            Self: Sized,
-        {
-            Ok(true)
-        }
-    }
-
-    #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
-    struct Report {}
-
-    #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
-    struct Issue {
-        seal: Seal,
-    }
-    impl Display for Issue {
-        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            f.write_str("")
-        }
-    }
-    impl std::error::Error for Issue {}
-
-    impl ValidationLog for Issue {}
-
-    impl ValidationFailure for Issue {}
-
-    impl SealIssue for Issue {
-        type SingleUseSeal = Seal;
-
-        fn seal(&self) -> &Self::SingleUseSeal {
-            &self.seal
-        }
-    }
-
-    impl ValidationReport for Report {
-        type SealIssue = Issue;
-        type Failure = Issue;
-        type Warning = Issue;
-        type Info = Issue;
-    }
-
-    #[derive(Default)]
-    struct Data {
-        seal: Seal,
-    }
-
-    impl ClientData for Data {
-        type ValidationReport = Report;
-
-        fn single_use_seal(&self) -> Option<&Seal> {
-            Some(&self.seal)
-        }
-
-        fn validate_internal_consistency(
-            &self,
-        ) -> Status<Self::ValidationReport> {
-            Status::new()
-        }
-    }
-
-    struct State {
-        pub data: Vec<Data>,
-    }
-
-    impl ClientData for State {
-        type ValidationReport = Report;
-
-        fn single_use_seal(&self) -> Option<&Seal> {
-            None
-        }
-
-        fn validate_internal_consistency(
-            &self,
-        ) -> Status<Self::ValidationReport> {
-            Status::new()
-        }
-    }
-
-    impl<'a> ClientSideValidate<'a> for State {
-        type ValidationItem = Data;
-        type ValidationIter = std::slice::Iter<'a, Data>;
-
-        fn validation_iter(&'a self) -> Self::ValidationIter {
-            self.data.iter()
-        }
-    }
-
-    #[derive(Default)]
-    struct Resolver {}
-
-    impl SealResolver<Seal> for Resolver {
-        type Error = Issue;
-
-        fn resolve_trust(&mut self, _seal: &Seal) -> Result<(), Self::Error> {
-            Ok(())
-        }
-    }
-
     #[test]
     fn test() {
+        #[derive(
+            Clone,
+            PartialEq,
+            Eq,
+            Hash,
+            Debug,
+            Default,
+            StrictEncode,
+            StrictDecode,
+        )]
+        struct Seal {}
+
+        impl SingleUseSeal for Seal {
+            type Witness = ();
+            type Definition = Self;
+            type Error = Issue;
+
+            fn close(
+                &self,
+                _over: impl AsRef<[u8]>,
+            ) -> Result<Self::Witness, Self::Error> {
+                Ok(())
+            }
+
+            fn verify(
+                &self,
+                _msg: impl AsRef<[u8]>,
+                _witness: &Self::Witness,
+                _medium: &impl SealMedium<Self>,
+            ) -> Result<bool, Self::Error>
+            where
+                Self: Sized,
+            {
+                Ok(true)
+            }
+        }
+
+        #[derive(
+            Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode,
+        )]
+        struct Report {}
+
+        #[derive(
+            Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode,
+        )]
+        struct Issue {
+            seal: Seal,
+        }
+        impl Display for Issue {
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                f.write_str("")
+            }
+        }
+        impl std::error::Error for Issue {}
+
+        impl ValidationLog for Issue {}
+
+        impl ValidationFailure for Issue {}
+
+        impl SealIssue for Issue {
+            type SingleUseSeal = Seal;
+
+            fn seal(&self) -> &Self::SingleUseSeal {
+                &self.seal
+            }
+        }
+
+        impl ValidationReport for Report {
+            type SealIssue = Issue;
+            type Failure = Issue;
+            type Warning = Issue;
+            type Info = Issue;
+        }
+
+        #[derive(Default)]
+        struct Data {
+            seal: Seal,
+        }
+
+        impl ClientData for Data {
+            type ValidationReport = Report;
+
+            fn single_use_seal(&self) -> Option<&Seal> {
+                Some(&self.seal)
+            }
+
+            fn validate_internal_consistency(
+                &self,
+            ) -> Status<Self::ValidationReport> {
+                Status::new()
+            }
+        }
+
+        struct State {
+            pub data: Vec<Data>,
+        }
+
+        impl ClientData for State {
+            type ValidationReport = Report;
+
+            fn single_use_seal(&self) -> Option<&Seal> {
+                None
+            }
+
+            fn validate_internal_consistency(
+                &self,
+            ) -> Status<Self::ValidationReport> {
+                Status::new()
+            }
+        }
+
+        impl<'a> ClientSideValidate<'a> for State {
+            type ValidationItem = Data;
+            type ValidationIter = std::slice::Iter<'a, Data>;
+
+            fn validation_iter(&'a self) -> Self::ValidationIter {
+                self.data.iter()
+            }
+        }
+
+        #[derive(Default)]
+        struct Resolver {}
+
+        impl SealResolver<Seal> for Resolver {
+            type Error = Issue;
+
+            fn resolve_trust(
+                &mut self,
+                _seal: &Seal,
+            ) -> Result<(), Self::Error> {
+                Ok(())
+            }
+        }
+
         let state = State {
             data: vec![Data::default()],
         };

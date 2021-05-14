@@ -134,7 +134,7 @@ version = "0.5.0-rc.1"
 dependencies = [
  "commit_verify",
  "single_use_seals",
- "strict_encoding 1.5.0-beta.1",
+ "strict_encoding 1.5.0",
 ]
 
 [[package]]
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.5.0-rc.1"
+version = "0.5.0"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -624,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.5.0-beta.1"
+version = "1.5.0"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -634,7 +634,7 @@ dependencies = [
  "grin_secp256k1zkp",
  "miniscript",
  "rand 0.7.3",
- "strict_encoding_derive 1.1.1",
+ "strict_encoding_derive 1.5.0",
 ]
 
 [[package]]
@@ -651,13 +651,13 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_derive"
-version = "1.1.1"
+version = "1.5.0"
 dependencies = [
  "amplify",
  "amplify_derive",
  "proc-macro2",
  "quote",
- "strict_encoding 1.5.0-beta.1",
+ "strict_encoding 1.5.0",
  "syn",
 ]
 
