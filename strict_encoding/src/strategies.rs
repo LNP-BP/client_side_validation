@@ -22,12 +22,13 @@ use std::io;
 use super::net;
 use super::{Error, StrictDecode, StrictEncode};
 
-/// Encodes/decodes data as a [`bitcoin::hashes::Hash`]-based (wrapper) type,
-/// i.e. as a fixed-size byte string of [`bitcoin::hashes::Hash::LEN`] length.
+/// Encodes/decodes data as a [`bitcoin_hashes::Hash`]-based (wrapper) type,
+/// i.e. as a fixed-size byte string of [`bitcoin_hashes::Hash::LEN`] length.
 pub struct HashFixedBytes;
 
 /// Encodes/decodes data in the same way as they are encoded/decoded according
 /// to bitcoin consensus rules from Bitcoin Core
+#[cfg(feature = "bitcoin")]
 pub struct BitcoinConsensus;
 
 /// Encodes/decodes data as a wrapped type, i.e. according to the rules of
@@ -96,9 +97,8 @@ where
 
 impl<H> StrictEncode for amplify::Holder<H, HashFixedBytes>
 where
-    H: bitcoin::hashes::Hash,
+    H: bitcoin_hashes::Hash,
 {
-    // TODO #5: Verify byte order for hash encodings
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.as_inner()[..])?;
@@ -108,7 +108,7 @@ where
 
 impl<H> StrictDecode for amplify::Holder<H, HashFixedBytes>
 where
-    H: bitcoin::hashes::Hash,
+    H: bitcoin_hashes::Hash,
 {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
@@ -121,6 +121,7 @@ where
     }
 }
 
+#[cfg(feature = "bitcoin")]
 impl<B> StrictEncode for amplify::Holder<B, BitcoinConsensus>
 where
     B: bitcoin::consensus::Encodable,
@@ -131,6 +132,7 @@ where
     }
 }
 
+#[cfg(feature = "bitcoin")]
 impl<B> StrictDecode for amplify::Holder<B, BitcoinConsensus>
 where
     B: bitcoin::consensus::Decodable,
@@ -164,6 +166,7 @@ where
     }
 }
 
+#[cfg(feature = "bitcoin")]
 impl From<bitcoin::hashes::Error> for Error {
     #[inline]
     fn from(_: bitcoin::hashes::Error) -> Self {
@@ -171,6 +174,7 @@ impl From<bitcoin::hashes::Error> for Error {
     }
 }
 
+#[cfg(feature = "bitcoin")]
 impl From<bitcoin::consensus::encode::Error> for Error {
     #[inline]
     fn from(e: bitcoin::consensus::encode::Error) -> Self {

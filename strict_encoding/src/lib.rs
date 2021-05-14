@@ -66,6 +66,7 @@ mod macros;
 pub mod test_helpers;
 
 mod amplify_types;
+#[cfg(feature = "bitcoin")]
 mod bitcoin;
 mod collections;
 #[cfg(feature = "crypto")]
@@ -82,12 +83,13 @@ pub use strategies::Strategy;
 /// Re-exporting extended read and write functions from bitcoin consensus
 /// module so others may use semantic convenience
 /// `strict_encode::ReadExt`
+#[cfg(feature = "bitcoin")]
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 
 use amplify::IoError;
-use core::ops::Range;
 use std::fmt;
 use std::io;
+use std::ops::Range;
 use std::string::FromUtf8Error;
 
 /// Binary encoding according to the strict rules that usually apply to

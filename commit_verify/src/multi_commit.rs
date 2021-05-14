@@ -297,9 +297,11 @@ impl ConsensusCommit for MultiCommitBlock {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "rand")]
     use amplify::Wrapper;
     use bitcoin_hashes::{Hash, HashEngine};
 
+    #[cfg(feature = "rand")]
     fn entropy_tagged_engine() -> sha256::HashEngine {
         let tag_hash = sha256::Hash::hash("LNPBP4:entropy".as_bytes());
         let mut engine = Message::engine();
@@ -309,10 +311,14 @@ mod test {
     }
 
     #[test]
-    fn test_lnpbp4_tags() {
+    #[cfg(feature = "rand")]
+    fn test_entropy_tag() {
         let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
         assert_eq!(midstate, entropy_tagged_engine().midstate());
+    }
 
+    #[test]
+    fn test_lnpbp4_tag() {
         let midstate = sha256::Midstate::from_inner(MIDSTATE_LNPBP4);
         let tag_hash = sha256::Hash::hash("LNPBP4".as_bytes());
         let mut engine = Message::engine();

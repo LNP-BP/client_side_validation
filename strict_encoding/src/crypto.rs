@@ -158,10 +158,9 @@ impl StrictDecode for secp256k1zkp::pedersen::RangeProof {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bitcoin::secp256k1::PublicKey;
-    use std::str::FromStr;
 
     #[test]
+    #[cfg(feature = "ed25519-dalek")]
     fn ed25519() {
         let keypair = ed25519_dalek::Keypair::generate(&mut rand::thread_rng());
 
@@ -174,6 +173,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "ed25519-dalek")]
     fn x25519() {
         use ed25519_dalek::Signer;
 
@@ -190,7 +190,11 @@ mod test {
     }
 
     #[test]
+    #[cfg(all(feature = "grin_secp256k1zkp", feature = "bitcoin"))]
     fn pedersen() {
+        use bitcoin::secp256k1::PublicKey;
+        use std::str::FromStr;
+
         let pk = PublicKey::from_str("02d1780dd0e08f4d873f94faf49d878d909a1174291d3fcac3e02a6c45e7eda744").unwrap();
         let secp = secp256k1zkp::Secp256k1::new();
         let pedersen = secp256k1zkp::pedersen::Commitment::from_pubkey(
@@ -210,6 +214,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "grin_secp256k1zkp")]
     fn bulletproof() {
         let secp = secp256k1zkp::Secp256k1::new();
         let blind = secp256k1zkp::SecretKey::new(
@@ -234,22 +239,24 @@ mod test {
         );
     }
 
-    /*
+    /* TODO: #25 Uncomment this test once `grin_secp256k1zkp::Error` impl `Ord`
     #[test]
+    #[cfg(feature = "grin_secp256k1zkp")]
     fn error_encoding() {
-        test_enum_u8_exhaustive!(crate => secp256k1zkp::Error;
-            secp256k1zkp::Error::IncapableContext => 0,
-            secp256k1zkp::Error::IncorrectSignature => 1,
-            secp256k1zkp::Error::InvalidMessage => 2,
-            secp256k1zkp::Error::InvalidPublicKey => 3,
-            secp256k1zkp::Error::InvalidCommit => 4,
-            secp256k1zkp::Error::InvalidSignature => 5,
-            secp256k1zkp::Error::InvalidSecretKey => 6,
-            secp256k1zkp::Error::InvalidRecoveryId => 7,
-            secp256k1zkp::Error::IncorrectCommitSum => 8,
-            secp256k1zkp::Error::InvalidRangeProof => 9,
-            secp256k1zkp::Error::PartialSigFailure => 10
+        test_encoding_enum_u8_exhaustive!(crate => secp256k1zkp::Error;
+            secp256k1zkp::Error::IncapableContext => 0u8,
+            secp256k1zkp::Error::IncorrectSignature => 1u8,
+            secp256k1zkp::Error::InvalidMessage => 2u8,
+            secp256k1zkp::Error::InvalidPublicKey => 3u8,
+            secp256k1zkp::Error::InvalidCommit => 4u8,
+            secp256k1zkp::Error::InvalidSignature => 5u8,
+            secp256k1zkp::Error::InvalidSecretKey => 6u8,
+            secp256k1zkp::Error::InvalidRecoveryId => 7u8,
+            secp256k1zkp::Error::IncorrectCommitSum => 8u8,
+            secp256k1zkp::Error::InvalidRangeProof => 9u8,
+            secp256k1zkp::Error::PartialSigFailure => 10u8
         )
+        .unwrap()
     }
      */
 }
