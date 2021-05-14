@@ -23,12 +23,17 @@
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::BTreeMap;
+use std::io;
 
-use bitcoin_hashes::sha256;
+use bitcoin_hashes::{sha256, sha256t, Hash};
+use strict_encoding::StrictEncode;
 
-use crate::Slice32;
 #[cfg(feature = "rand")]
 use crate::TryCommitVerify;
+use crate::{
+    commit_encode, CommitEncode, CommitVerify, ConsensusCommit, Slice32,
+    TaggedHash,
+};
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
 /// procedure.
@@ -138,6 +143,16 @@ pub struct MultiCommitBlock {
     pub entropy: Option<u64>,
 }
 
+// When we commit to `MultiCommitBlock` we do not use `entropy`, since we
+// already committed to its value inside `MultiCommitItem` using the entropy
+impl CommitEncode for MultiCommitBlock {
+    fn commit_encode<E: io::Write>(&self, e: E) -> usize {
+        self.commitments
+            .strict_encode(e)
+            .expect("CommitEncode of Vec<MultiCommitItem> has failed")
+    }
+}
+
 const MIDSTATE_ENTROPY: [u8; 32] = [
     0xF4, 0x0D, 0x86, 0x94, 0x9F, 0xFF, 0xAD, 0xEE, 0x19, 0xEA, 0x50, 0x20,
     0x60, 0xAB, 0x6B, 0xAD, 0x11, 0x61, 0xB2, 0x35, 0x83, 0xD3, 0x78, 0x18,
@@ -150,7 +165,7 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
 
     fn try_commit(source: &MultiSource) -> Result<Self, Error> {
         use amplify::num::u256;
-        use bitcoin_hashes::{Hash, HashEngine};
+        use bitcoin_hashes::HashEngine;
         use rand::{thread_rng, Rng};
 
         let m = source.messages.len();
@@ -210,6 +225,64 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
     }
 }
 
+static MIDSTATE_LNPBP4: [u8; 32] = [
+    0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
+    0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
+    0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
+];
+
+/// Tag used for [`MultiCommitment`] hash type
+pub struct Lnpbp4Tag;
+
+impl sha256t::Tag for Lnpbp4Tag {
+    #[inline]
+    fn engine() -> sha256::HashEngine {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_LNPBP4);
+        sha256::HashEngine::from_midstate(midstate, 64)
+    }
+}
+
+/// Final [LNPBP-4] commitment value.
+///
+/// Represents tagged hash (with [`Lnpbp4Tag`]) of the sequentially serialized
+/// [`MultiCommitBlock::commitments`].
+///
+/// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", transparent)
+)]
+#[derive(
+    Wrapper, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, From,
+)]
+#[wrapper(
+    Debug, Display, LowerHex, Index, IndexRange, IndexFrom, IndexTo, IndexFull
+)]
+pub struct MultiCommitment(sha256t::Hash<Lnpbp4Tag>);
+
+impl<M> CommitVerify<M> for MultiCommitment
+where
+    M: AsRef<[u8]>,
+{
+    #[inline]
+    fn commit(msg: &M) -> MultiCommitment {
+        MultiCommitment::hash(msg)
+    }
+}
+
+impl strict_encoding::Strategy for MultiCommitment {
+    type Strategy = strict_encoding::strategies::Wrapped;
+}
+
+impl commit_encode::Strategy for MultiCommitment {
+    type Strategy = commit_encode::strategies::UsingStrict;
+}
+
+impl ConsensusCommit for MultiCommitBlock {
+    type Commitment = MultiCommitment;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -228,6 +301,13 @@ mod test {
     fn test_lnpbp4_tags() {
         let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
         assert_eq!(midstate, entropy_tagged_engine().midstate());
+
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_LNPBP4);
+        let tag_hash = sha256::Hash::hash("LNPBP4".as_bytes());
+        let mut engine = Message::engine();
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        assert_eq!(midstate, engine.midstate());
     }
 
     #[test]
@@ -259,6 +339,13 @@ mod test {
                 engine.input(&[others, 0u8]);
                 assert_eq!(slot.message, Message::from_engine(engine));
             }
+
+            let lnpbp4 = commitment.consensus_commit();
+            let crafted = MultiCommitment::hash(
+                commitment.commitments.strict_serialize().unwrap(),
+            );
+            assert_eq!(lnpbp4, crafted);
+            assert!(commitment.consensus_verify(&lnpbp4));
         }
 
         for index in 1u8..3 {
