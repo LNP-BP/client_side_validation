@@ -1,5 +1,5 @@
-// LNP/BP client-side-validation library implementing respective LNPBP
-// specifications & standards (LNPBP-7, 8, 9, 42)
+// LNP/BP client-side-validation foundation libraries implementing LNPBP
+// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
 //
 // Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -26,6 +26,17 @@ use miniscript::{
 };
 
 use crate::{Error, StrictDecode, StrictEncode};
+
+/// Maximum level of nested miniscript and miniscript concrete policy levels
+/// supported by strict encoding process.
+///
+/// This is required in order to prevent attacks in client-side-validated data
+/// when limitations on the maximum number of items is bypassed due to the
+/// nested nature of miniscript AST. While this may is controlled by miniscript
+/// implementation and bitcoin consensus script length rules, this control does
+/// not takes place during deserialization (plus miniscript may be used outside
+/// of bitcoin transactions), and thus we need this redundant control.
+pub const MINISCRIPT_DEPTH_LIMIT: u8 = 64;
 
 const MS_FALSE: u8 = 0;
 const MS_TRUE: u8 = 1;
@@ -58,38 +69,31 @@ const MS_VERIFY: u8 = 0x18;
 const MS_NON_ZERO: u8 = 0x19;
 const MS_ZERO_NE: u8 = 0x1a;
 
-/// We need this shit because of rust compiler limitations.
+/// We need this because of rust compiler limitations.
 ///
-/// The two macros below, as well as custom private functions `decode_policy`,
-/// `encode_miniscript` and `decode_miniscript` were introduced because rust
-/// compiler dies on recursion overflow each time when a generic type calls
-/// itself in a recursive mode passing one of its arguments by a mutable
-/// reference to itself. Thus, we had to split the implementation logic in such
-/// a way that we do not pass a mutable reference to a variable, and just re-use
-/// the reference instead. This contradicts rust API guidelines, but in fact it
-/// is a rust compiler who contradicts them, we just do not have other choice.
-macro_rules! strict_encode_ms {
-    ($encoder:ident; $tag:ident, $depth:expr, $($ms:expr),+) => { {
-        let mut len = 0usize;
-        $encoder.write_all(&$tag.strict_serialize()?)?;
-        len += 1;
-        $( len += encode_miniscript($ms, $encoder, $depth)?; )+
-        len
-    } };
+/// The macros below were introduced because rust compiler dies on recursion
+/// overflow each time when a generic type calls itself in a recursive mode
+/// passing one of its arguments by a mutable reference to itself. Thus, we had
+/// to split the implementation logic in such a way that we do not pass a
+/// mutable reference to a variable, and just re-use the reference instead. This
+/// contradicts rust API guidelines, but in fact it is a rust compiler who
+/// contradicts them, we just do not have other choice.
+macro_rules! strict_encode_tuple {
+    ( $encoder:ident; $tag:ident, $item:ident ) => {{
+        $encoder.write_all(&[$tag])?;
+        1 + $item.strict_encode($encoder)?
+    }};
 }
 
-macro_rules! strict_encode_seq {
-    ( $encoder:ident; $($item:expr),+ ) => {
-        {
-            let mut len = 0usize;
-            $(
-                let data = $item.strict_serialize()?;
-                $encoder.write_all(&data)?;
-                len += data.len();
-            )+
-            len
+macro_rules! strict_encode_usize {
+    ( $encoder:ident; $int:expr ) => { {
+        let count = $int; // Evaluating expression to reduce number of function calls
+        if count > u16::MAX as usize {
+            return Err(Error::ExceedMaxItems(count));
         }
-    };
+        $encoder.write_all(&(count as u16).to_le_bytes())?;
+        2 // We know that we write exactly two bytes
+    } };
 }
 
 impl<Pk> StrictEncode for Policy<Pk>
@@ -98,88 +102,76 @@ where
     <Pk as MiniscriptKey>::Hash: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(match self {
-            Policy::Unsatisfiable => MS_FALSE.strict_encode(e)?,
-            Policy::Trivial => MS_TRUE.strict_encode(e)?,
-            Policy::Key(pk) => strict_encode_seq!(e; MS_KEY, pk),
-            Policy::After(tl) => strict_encode_seq!(e; MS_AFTER, tl),
-            Policy::Older(tl) => strict_encode_seq!(e; MS_OLDER, tl),
-            Policy::Sha256(hash) => strict_encode_seq!(e; MS_SHA256, hash),
-            Policy::Hash256(hash) => strict_encode_seq!(e; MS_HASH256, hash),
-            Policy::Ripemd160(hash) => {
-                strict_encode_seq!(e; MS_RIPEMD160, hash)
+        // We need this because of the need to control maximum number of nested
+        // miniscript code
+        fn encode_policy_inner<Pk>(
+            policy: &Policy<Pk>,
+            e: &mut impl io::Write,
+            mut depth: u8,
+        ) -> Result<usize, Error>
+        where
+            Pk: MiniscriptKey + StrictEncode,
+            <Pk as MiniscriptKey>::Hash: StrictEncode,
+        {
+            if depth > MINISCRIPT_DEPTH_LIMIT {
+                return Err(Error::ExceedMaxItems(
+                    MINISCRIPT_DEPTH_LIMIT as usize,
+                ));
             }
-            Policy::Hash160(hash) => strict_encode_seq!(e; MS_HASH160, hash),
-            Policy::And(ast) => strict_encode_seq!(e; MS_AND_B, ast),
-            Policy::Or(ast) => strict_encode_seq!(e; MS_OR_B, ast),
-            Policy::Threshold(thresh, vec) => {
-                strict_encode_seq!(e; MS_THRESH, thresh, vec)
-            }
-        })
+            depth += 1;
+
+            Ok(match policy {
+                Policy::Unsatisfiable => MS_FALSE.strict_encode(e)?,
+                Policy::Trivial => MS_TRUE.strict_encode(e)?,
+                Policy::Key(pk) => strict_encode_tuple!(e; MS_KEY, pk),
+                Policy::After(tl) => strict_encode_tuple!(e; MS_AFTER, tl),
+                Policy::Older(tl) => strict_encode_tuple!(e; MS_OLDER, tl),
+                Policy::Sha256(hash) => {
+                    strict_encode_tuple!(e; MS_SHA256, hash)
+                }
+                Policy::Hash256(hash) => {
+                    strict_encode_tuple!(e; MS_HASH256, hash)
+                }
+                Policy::Ripemd160(hash) => {
+                    strict_encode_tuple!(e; MS_RIPEMD160, hash)
+                }
+                Policy::Hash160(hash) => {
+                    strict_encode_tuple!(e; MS_HASH160, hash)
+                }
+                Policy::And(vec) => {
+                    let mut len = 1usize;
+                    e.write_all(&[MS_AND_B])?;
+                    len += strict_encode_usize!(e; vec.len());
+                    for p in vec {
+                        len += encode_policy_inner(p, e, depth)?;
+                    }
+                    len
+                }
+                Policy::Or(vec) => {
+                    let mut len = 1usize;
+                    e.write_all(&[MS_OR_B])?;
+                    len += strict_encode_usize!(e; vec.len());
+                    for (x, p) in vec {
+                        len += strict_encode_usize!(e; *x);
+                        len += encode_policy_inner(p, e, depth)?;
+                    }
+                    len
+                }
+                Policy::Threshold(thresh, vec) => {
+                    let mut len = 1usize;
+                    e.write_all(&[MS_THRESH])?;
+                    len += strict_encode_usize!(e; *thresh);
+                    len += strict_encode_usize!(e; vec.len());
+                    for p in vec {
+                        len += encode_policy_inner(p, e, depth)?;
+                    }
+                    len
+                }
+            })
+        }
+
+        encode_policy_inner(self, &mut e, 1)
     }
-}
-
-fn decode_policy<Pk>(d: &mut impl io::Read) -> Result<Policy<Pk>, Error>
-where
-    Pk: MiniscriptKey + StrictDecode,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
-{
-    let byte = d.read_u8()?;
-    Ok(match byte {
-        MS_TRUE => Policy::Trivial,
-        MS_FALSE => Policy::Unsatisfiable,
-        MS_KEY => Policy::Key(Pk::strict_decode(d)?),
-        MS_AFTER => Policy::After(u32::strict_decode(d)?),
-        MS_OLDER => Policy::Older(u32::strict_decode(d)?),
-        MS_SHA256 => Policy::Sha256(sha256::Hash::strict_decode(d)?),
-        MS_HASH256 => Policy::Hash256(sha256d::Hash::strict_decode(d)?),
-        MS_RIPEMD160 => Policy::Ripemd160(ripemd160::Hash::strict_decode(d)?),
-        MS_HASH160 => Policy::Hash160(hash160::Hash::strict_decode(d)?),
-        MS_AND_B => {
-            let len = d.read_u16()?;
-            let mut vec = Vec::with_capacity(len as usize);
-            for _ in 0..len {
-                vec.push(decode_policy(d)?);
-            }
-            Policy::And(vec)
-        }
-        MS_OR_B => {
-            let len = d.read_u16()?;
-            let mut vec = Vec::with_capacity(len as usize);
-            for _ in 0..len {
-                vec.push((d.read_u16()? as usize, decode_policy(d)?));
-            }
-            Policy::Or(vec)
-        }
-        MS_THRESH => {
-            let thresh = d.read_u16()? as usize;
-            let len = d.read_u16()?;
-            let mut vec = Vec::with_capacity(len as usize);
-            for _ in 0..len {
-                vec.push(decode_policy(d)?);
-            }
-            Policy::Threshold(thresh, vec)
-        }
-
-        MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF | MS_VERIFY
-        | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V | MS_AND_OR | MS_OR_D
-        | MS_OR_C | MS_OR_I | MS_MULTI => {
-            return Err(Error::DataIntegrityError(format!(
-                "byte {:#04X} is a valid miniscript instruction, but does  \
-                     not belong to a set of concrete policy instructions. Try \
-                     to decode data using different miniscript type",
-                byte
-            )))
-        }
-
-        wrong => {
-            return Err(Error::DataIntegrityError(format!(
-                "byte {:#04X} does not correspond to any of miniscript \
-                     concrete policy instructions",
-                wrong
-            )))
-        }
-    })
 }
 
 impl<Pk> StrictDecode for Policy<Pk>
@@ -188,198 +180,209 @@ where
     <Pk as MiniscriptKey>::Hash: StrictDecode,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        decode_policy(&mut d)
-    }
-}
-
-// We need this shit because of rust compiler generic limitations
-fn encode_miniscript<Pk, Ctx>(
-    ms: &Miniscript<Pk, Ctx>,
-    e: &mut impl io::Write,
-    mut depth: u8,
-) -> Result<usize, Error>
-where
-    Pk: MiniscriptKey,
-    Pk: MiniscriptKey + StrictEncode,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
-    Ctx: miniscript::ScriptContext,
-{
-    if depth > 64 {
-        return Err(Error::ExceedMaxItems(65));
-    }
-    depth += 1;
-    Ok(match &ms.node {
-        Terminal::False => MS_FALSE.strict_encode(e)?,
-        Terminal::True => MS_TRUE.strict_encode(e)?,
-        Terminal::PkK(pk) => strict_encode_seq!(e; MS_KEY, pk),
-        Terminal::PkH(hash) => strict_encode_seq!(e; MS_KEY_HASH, hash),
-        Terminal::After(tl) => strict_encode_seq!(e; MS_AFTER, tl),
-        Terminal::Older(tl) => strict_encode_seq!(e; MS_OLDER, tl),
-        Terminal::Sha256(hash) => strict_encode_seq!(e; MS_SHA256, hash),
-        Terminal::Hash256(hash) => strict_encode_seq!(e; MS_HASH256, hash),
-        Terminal::Ripemd160(hash) => {
-            strict_encode_seq!(e; MS_RIPEMD160, hash)
-        }
-        Terminal::Hash160(hash) => strict_encode_seq!(e; MS_HASH160, hash),
-
-        Terminal::Alt(ms) => strict_encode_ms!(e; MS_ALT, depth, ms),
-        Terminal::Swap(ms) => strict_encode_ms!(e; MS_SWAP, depth, ms),
-        Terminal::Check(ms) => strict_encode_ms!(e; MS_CHECK, depth, ms),
-        Terminal::DupIf(ms) => strict_encode_ms!(e; MS_DUP_IF, depth, ms),
-        Terminal::Verify(ms) => strict_encode_ms!(e; MS_VERIFY, depth, ms),
-        Terminal::NonZero(ms) => strict_encode_ms!(e; MS_NON_ZERO, depth, ms),
-        Terminal::ZeroNotEqual(ms) => {
-            strict_encode_ms!(e; MS_ZERO_NE, depth, ms)
-        }
-
-        Terminal::AndV(ms1, ms2) => {
-            strict_encode_ms!(e; MS_AND_V, depth, ms1, ms2)
-        }
-        Terminal::AndB(ms1, ms2) => {
-            strict_encode_ms!(e; MS_AND_B, depth, ms1, ms2)
-        }
-        Terminal::AndOr(ms1, ms2, ms3) => {
-            strict_encode_ms!(e; MS_AND_OR, depth, ms1, ms2, ms3)
-        }
-        Terminal::OrB(ms1, ms2) => {
-            strict_encode_ms!(e; MS_OR_B, depth, ms1, ms2)
-        }
-        Terminal::OrD(ms1, ms2) => {
-            strict_encode_ms!(e; MS_OR_D, depth, ms1, ms2)
-        }
-        Terminal::OrC(ms1, ms2) => {
-            strict_encode_ms!(e; MS_OR_C, depth, ms1, ms2)
-        }
-        Terminal::OrI(ms1, ms2) => {
-            strict_encode_ms!(e; MS_OR_I, depth, ms1, ms2)
-        }
-        Terminal::Multi(thresh, vec) => {
-            strict_encode_seq!(e; MS_MULTI, thresh, vec)
-        }
-        Terminal::Thresh(thresh, vec) => {
-            let mut len = 0usize;
-            len += strict_encode_seq!(e; MS_THRESH, thresh, vec.len());
-            for ms in vec {
-                len += encode_miniscript(ms, e, depth)?;
+        // We need this first because of the need to control maximum number of
+        // nested miniscript code, and than because of the rust compiler
+        // limitations in working with recursive generic functions
+        fn decode_policy_inner<Pk>(
+            d: &mut impl io::Read,
+            mut depth: u8,
+        ) -> Result<Policy<Pk>, Error>
+        where
+            Pk: MiniscriptKey + StrictDecode,
+            <Pk as MiniscriptKey>::Hash: StrictDecode,
+        {
+            if depth > MINISCRIPT_DEPTH_LIMIT {
+                return Err(Error::ExceedMaxItems(
+                    MINISCRIPT_DEPTH_LIMIT as usize,
+                ));
             }
-            len
+            depth += 1;
+
+            let byte = d.read_u8()?;
+            Ok(match byte {
+                MS_TRUE => Policy::Trivial,
+                MS_FALSE => Policy::Unsatisfiable,
+                MS_KEY => Policy::Key(Pk::strict_decode(d)?),
+                MS_AFTER => Policy::After(u32::strict_decode(d)?),
+                MS_OLDER => Policy::Older(u32::strict_decode(d)?),
+                MS_SHA256 => Policy::Sha256(sha256::Hash::strict_decode(d)?),
+                MS_HASH256 => Policy::Hash256(sha256d::Hash::strict_decode(d)?),
+                MS_RIPEMD160 => Policy::Ripemd160(ripemd160::Hash::strict_decode(d)?),
+                MS_HASH160 => Policy::Hash160(hash160::Hash::strict_decode(d)?),
+                MS_AND_B => {
+                    let len = d.read_u16()?;
+                    let mut vec = Vec::with_capacity(len as usize);
+                    for _ in 0..len {
+                        vec.push(decode_policy_inner(d, depth)?);
+                    }
+                    Policy::And(vec)
+                }
+                MS_OR_B => {
+                    let len = d.read_u16()?;
+                    let mut vec = Vec::with_capacity(len as usize);
+                    for _ in 0..len {
+                        vec.push((d.read_u16()? as usize, decode_policy_inner(d, depth)?));
+                    }
+                    Policy::Or(vec)
+                }
+                MS_THRESH => {
+                    let thresh = d.read_u16()? as usize;
+                    let len = d.read_u16()?;
+                    let mut vec = Vec::with_capacity(len as usize);
+                    for _ in 0..len {
+                        vec.push(decode_policy_inner(d, depth)?);
+                    }
+                    Policy::Threshold(thresh, vec)
+                }
+
+                MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF | MS_VERIFY
+                | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V | MS_AND_OR | MS_OR_D
+                | MS_OR_C | MS_OR_I | MS_MULTI => {
+                    return Err(Error::DataIntegrityError(format!(
+                        "byte {:#04X} is a valid miniscript instruction, but does  \
+                     not belong to a set of concrete policy instructions. Try \
+                     to decode data using different miniscript type",
+                        byte
+                    )))
+                }
+
+                wrong => {
+                    return Err(Error::DataIntegrityError(format!(
+                        "byte {:#04X} does not correspond to any of miniscript \
+                     concrete policy instructions",
+                        wrong
+                    )))
+                }
+            })
         }
-    })
+
+        decode_policy_inner(&mut d, 1)
+    }
 }
 
 impl<Pk, Ctx> StrictEncode for Miniscript<Pk, Ctx>
 where
-    Pk: MiniscriptKey,
     Pk: MiniscriptKey + StrictEncode,
     <Pk as MiniscriptKey>::Hash: StrictEncode,
     Ctx: miniscript::ScriptContext,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        encode_miniscript(self, &mut e, 1)
-    }
-}
+        // We need this macro and inner function because of the need to control
+        // maximum number of nested miniscript code, and because of the rust
+        // compiler limitations in working with recursive generic functions
 
-fn decode_miniscript<Pk, Ctx>(
-    d: &mut impl io::Read,
-    mut depth: u8,
-) -> Result<Miniscript<Pk, Ctx>, Error>
-where
-    Pk: MiniscriptKey,
-    Pk: MiniscriptKey + StrictDecode,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
-    Ctx: miniscript::ScriptContext,
-{
-    if depth > 64 {
-        return Err(Error::ExceedMaxItems(65));
-    }
-    depth += 1;
-    let term = match d.read_u8()? {
-        MS_TRUE => Terminal::True,
-        MS_FALSE => Terminal::False,
-        MS_KEY => Terminal::PkK(Pk::strict_decode(d)?),
-        MS_KEY_HASH => Terminal::PkH(Pk::Hash::strict_decode(d)?),
-
-        MS_AFTER => Terminal::After(u32::strict_decode(d)?),
-        MS_OLDER => Terminal::Older(u32::strict_decode(d)?),
-        MS_SHA256 => Terminal::Sha256(sha256::Hash::strict_decode(d)?),
-        MS_HASH256 => {
-            Terminal::Hash256(sha256d::Hash::strict_decode(d)?)
-        }
-        MS_RIPEMD160 => {
-            Terminal::Ripemd160(ripemd160::Hash::strict_decode(d)?)
-        }
-        MS_HASH160 => {
-            Terminal::Hash160(hash160::Hash::strict_decode(d)?)
+        macro_rules! strict_encode_ms {
+            ($encoder:ident; $tag:ident, $depth:expr, $($ms:expr),+) => { {
+                let mut len = 1usize;
+                $encoder.write_all(&[$tag])?;
+                $( len += encode_miniscript_inner($ms, $encoder, $depth)?; )+
+                len
+            } };
         }
 
-        MS_ALT => Terminal::Alt(decode_miniscript(d, depth)?.into()),
-        MS_SWAP => Terminal::Swap(decode_miniscript(d, depth)?.into()),
-        MS_CHECK => Terminal::Check(decode_miniscript(d, depth)?.into()),
-        MS_DUP_IF => Terminal::DupIf(decode_miniscript(d, depth)?.into()),
-        MS_VERIFY => Terminal::Verify(decode_miniscript(d, depth)?.into()),
-        MS_NON_ZERO => {
-            Terminal::NonZero(decode_miniscript(d, depth)?.into())
-        }
-        MS_ZERO_NE => {
-            Terminal::ZeroNotEqual(decode_miniscript(d, depth)?.into())
-        }
-
-        MS_AND_V => Terminal::AndV(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_AND_B => Terminal::AndB(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_AND_OR => Terminal::AndOr(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_OR_B => Terminal::OrB(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_OR_D => Terminal::OrD(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_OR_C => Terminal::OrC(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_OR_I => Terminal::OrI(
-            decode_miniscript(d, depth)?.into(),
-            decode_miniscript(d, depth)?.into(),
-        ),
-        MS_MULTI => Terminal::Multi(
-            d.read_u16()? as usize,
-            Vec::strict_decode(d)?,
-        ),
-        MS_THRESH => {
-            let thresh = d.read_u16()? as usize;
-            let len = d.read_u16()?;
-            let mut vec = Vec::with_capacity(len as usize);
-            for _ in 0..len {
-                vec.push(decode_miniscript(d, depth)?.into());
+        fn encode_miniscript_inner<Pk, Ctx>(
+            ms: &Miniscript<Pk, Ctx>,
+            mut e: &mut impl io::Write,
+            mut depth: u8,
+        ) -> Result<usize, Error>
+        where
+            Pk: MiniscriptKey + StrictEncode,
+            <Pk as MiniscriptKey>::Hash: StrictEncode,
+            Ctx: miniscript::ScriptContext,
+        {
+            if depth > MINISCRIPT_DEPTH_LIMIT {
+                return Err(Error::ExceedMaxItems(
+                    MINISCRIPT_DEPTH_LIMIT as usize,
+                ));
             }
-            Terminal::Thresh(thresh, vec)
-        },
+            depth += 1;
 
-        wrong => {
-            return Err(Error::DataIntegrityError(format!(
-                "byte {:#04X} does not correspond to any of miniscript instructions",
-                wrong
-            )))
+            Ok(match &ms.node {
+                Terminal::False => MS_FALSE.strict_encode(e)?,
+                Terminal::True => MS_TRUE.strict_encode(e)?,
+                Terminal::PkK(pk) => strict_encode_tuple!(e; MS_KEY, pk),
+                Terminal::PkH(hash) => {
+                    strict_encode_tuple!(e; MS_KEY_HASH, hash)
+                }
+                Terminal::After(tl) => strict_encode_tuple!(e; MS_AFTER, tl),
+                Terminal::Older(tl) => strict_encode_tuple!(e; MS_OLDER, tl),
+                Terminal::Sha256(hash) => {
+                    strict_encode_tuple!(e; MS_SHA256, hash)
+                }
+                Terminal::Hash256(hash) => {
+                    strict_encode_tuple!(e; MS_HASH256, hash)
+                }
+                Terminal::Ripemd160(hash) => {
+                    strict_encode_tuple!(e; MS_RIPEMD160, hash)
+                }
+                Terminal::Hash160(hash) => {
+                    strict_encode_tuple!(e; MS_HASH160, hash)
+                }
+
+                Terminal::Alt(ms) => strict_encode_ms!(e; MS_ALT, depth, ms),
+                Terminal::Swap(ms) => strict_encode_ms!(e; MS_SWAP, depth, ms),
+                Terminal::Check(ms) => {
+                    strict_encode_ms!(e; MS_CHECK, depth, ms)
+                }
+                Terminal::DupIf(ms) => {
+                    strict_encode_ms!(e; MS_DUP_IF, depth, ms)
+                }
+                Terminal::Verify(ms) => {
+                    strict_encode_ms!(e; MS_VERIFY, depth, ms)
+                }
+                Terminal::NonZero(ms) => {
+                    strict_encode_ms!(e; MS_NON_ZERO, depth, ms)
+                }
+                Terminal::ZeroNotEqual(ms) => {
+                    strict_encode_ms!(e; MS_ZERO_NE, depth, ms)
+                }
+
+                Terminal::AndV(ms1, ms2) => {
+                    strict_encode_ms!(e; MS_AND_V, depth, ms1, ms2)
+                }
+                Terminal::AndB(ms1, ms2) => {
+                    strict_encode_ms!(e; MS_AND_B, depth, ms1, ms2)
+                }
+                Terminal::AndOr(ms1, ms2, ms3) => {
+                    strict_encode_ms!(e; MS_AND_OR, depth, ms1, ms2, ms3)
+                }
+                Terminal::OrB(ms1, ms2) => {
+                    strict_encode_ms!(e; MS_OR_B, depth, ms1, ms2)
+                }
+                Terminal::OrD(ms1, ms2) => {
+                    strict_encode_ms!(e; MS_OR_D, depth, ms1, ms2)
+                }
+                Terminal::OrC(ms1, ms2) => {
+                    strict_encode_ms!(e; MS_OR_C, depth, ms1, ms2)
+                }
+                Terminal::OrI(ms1, ms2) => {
+                    strict_encode_ms!(e; MS_OR_I, depth, ms1, ms2)
+                }
+                Terminal::Multi(thresh, vec) => {
+                    let mut len = 1usize;
+                    e.write_all(&[MS_MULTI])?;
+                    len += strict_encode_usize!(e; *thresh);
+                    len += strict_encode_usize!(e; vec.len());
+                    for pk in vec {
+                        len += pk.strict_encode(&mut e)?;
+                    }
+                    len
+                }
+                Terminal::Thresh(thresh, vec) => {
+                    let mut len = 1usize;
+                    e.write_all(&[MS_THRESH])?;
+                    len += strict_encode_usize!(e; *thresh);
+                    len += strict_encode_usize!(e; vec.len());
+                    for ms in vec {
+                        len += encode_miniscript_inner(ms, e, depth)?;
+                    }
+                    len
+                }
+            })
         }
-    };
-    Miniscript::from_ast(term).map_err(|err| {
-        Error::DataIntegrityError(format!(
-            "miniscript does not pass check: {}",
-            err
-        ))
-    })
+
+        encode_miniscript_inner(self, &mut e, 1)
+    }
 }
 
 impl<Pk, Ctx> StrictDecode for Miniscript<Pk, Ctx>
@@ -389,7 +392,114 @@ where
     Ctx: miniscript::ScriptContext,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        decode_miniscript(&mut d, 1)
+        // We need this first because of the need to control maximum number of
+        // nested miniscript code, and than because of the rust compiler
+        // limitations in working with recursive generic functions
+        fn decode_miniscript_inner<Pk, Ctx>(
+            d: &mut impl io::Read,
+            mut depth: u8,
+        ) -> Result<Miniscript<Pk, Ctx>, Error>
+        where
+            Pk: MiniscriptKey + StrictDecode,
+            <Pk as MiniscriptKey>::Hash: StrictDecode,
+            Ctx: miniscript::ScriptContext,
+        {
+            if depth > MINISCRIPT_DEPTH_LIMIT {
+                return Err(Error::ExceedMaxItems(
+                    MINISCRIPT_DEPTH_LIMIT as usize,
+                ));
+            }
+            depth += 1;
+            let term = match d.read_u8()? {
+                MS_TRUE => Terminal::True,
+                MS_FALSE => Terminal::False,
+                MS_KEY => Terminal::PkK(Pk::strict_decode(d)?),
+                MS_KEY_HASH => Terminal::PkH(Pk::Hash::strict_decode(d)?),
+
+                MS_AFTER => Terminal::After(u32::strict_decode(d)?),
+                MS_OLDER => Terminal::Older(u32::strict_decode(d)?),
+                MS_SHA256 => Terminal::Sha256(sha256::Hash::strict_decode(d)?),
+                MS_HASH256 => {
+                    Terminal::Hash256(sha256d::Hash::strict_decode(d)?)
+                }
+                MS_RIPEMD160 => {
+                    Terminal::Ripemd160(ripemd160::Hash::strict_decode(d)?)
+                }
+                MS_HASH160 => {
+                    Terminal::Hash160(hash160::Hash::strict_decode(d)?)
+                }
+
+                MS_ALT => Terminal::Alt(decode_miniscript_inner(d, depth)?.into()),
+                MS_SWAP => Terminal::Swap(decode_miniscript_inner(d, depth)?.into()),
+                MS_CHECK => Terminal::Check(decode_miniscript_inner(d, depth)?.into()),
+                MS_DUP_IF => Terminal::DupIf(decode_miniscript_inner(d, depth)?.into()),
+                MS_VERIFY => Terminal::Verify(decode_miniscript_inner(d, depth)?.into()),
+                MS_NON_ZERO => {
+                    Terminal::NonZero(decode_miniscript_inner(d, depth)?.into())
+                }
+                MS_ZERO_NE => {
+                    Terminal::ZeroNotEqual(decode_miniscript_inner(d, depth)?.into())
+                }
+
+                MS_AND_V => Terminal::AndV(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_AND_B => Terminal::AndB(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_AND_OR => Terminal::AndOr(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_OR_B => Terminal::OrB(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_OR_D => Terminal::OrD(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_OR_C => Terminal::OrC(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_OR_I => Terminal::OrI(
+                    decode_miniscript_inner(d, depth)?.into(),
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
+                MS_MULTI => Terminal::Multi(
+                    d.read_u16()? as usize,
+                    Vec::strict_decode(d)?,
+                ),
+                MS_THRESH => {
+                    let thresh = d.read_u16()? as usize;
+                    let len = d.read_u16()?;
+                    let mut vec = Vec::with_capacity(len as usize);
+                    for _ in 0..len {
+                        vec.push(decode_miniscript_inner(d, depth)?.into());
+                    }
+                    Terminal::Thresh(thresh, vec)
+                },
+
+                wrong => {
+                    return Err(Error::DataIntegrityError(format!(
+                        "byte {:#04X} does not correspond to any of miniscript instructions",
+                        wrong
+                    )))
+                }
+            };
+            Miniscript::from_ast(term).map_err(|err| {
+                Error::DataIntegrityError(format!(
+                    "miniscript does not pass check: {}",
+                    err
+                ))
+            })
+        }
+
+        decode_miniscript_inner(&mut d, 1)
     }
 }
 

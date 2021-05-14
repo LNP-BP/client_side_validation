@@ -1,5 +1,5 @@
-// LNP/BP client-side-validation library implementing respective LNPBP
-// specifications & standards (LNPBP-7, 8, 9, 42)
+// LNP/BP client-side-validation foundation libraries implementing LNPBP
+// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
 //
 // Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -22,7 +22,10 @@ use bitcoin_hashes::{sha256, Hash};
 use strict_encoding::{StrictDecode, StrictEncode};
 
 /// Wrapper type for all slice-based 256-bit types implementing many important
-/// traits, so types based on it can simply derive their implementations
+/// traits, so types based on it can simply derive their implementations.
+///
+/// Type keeps data in little-endian byte order and displays them in the same
+/// order (like bitcoin SHA256 single hash type).
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
