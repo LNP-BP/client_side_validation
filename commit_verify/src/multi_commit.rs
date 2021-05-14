@@ -25,7 +25,7 @@
 use std::collections::BTreeMap;
 use std::io;
 
-use bitcoin_hashes::{sha256, sha256t, Hash};
+use bitcoin_hashes::{sha256, sha256t};
 use strict_encoding::StrictEncode;
 
 #[cfg(feature = "rand")]
@@ -166,7 +166,7 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
 
     fn try_commit(source: &MultiSource) -> Result<Self, Error> {
         use amplify::num::u256;
-        use bitcoin_hashes::HashEngine;
+        use bitcoin_hashes::{Hash, HashEngine};
         use rand::{thread_rng, Rng};
 
         let m = source.messages.len();
@@ -273,6 +273,7 @@ where
     }
 }
 
+#[cfg(feature = "rand")]
 impl TryCommitVerify<MultiSource> for MultiCommitment {
     type Error = Error;
 
