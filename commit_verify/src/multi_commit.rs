@@ -153,6 +153,7 @@ impl CommitEncode for MultiCommitBlock {
     }
 }
 
+#[cfg(feature = "rand")]
 const MIDSTATE_ENTROPY: [u8; 32] = [
     0xF4, 0x0D, 0x86, 0x94, 0x9F, 0xFF, 0xAD, 0xEE, 0x19, 0xEA, 0x50, 0x20,
     0x60, 0xAB, 0x6B, 0xAD, 0x11, 0x61, 0xB2, 0x35, 0x83, 0xD3, 0x78, 0x18,
@@ -172,12 +173,12 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
         if m > u16::MAX as usize {
             return Err(Error::TooManyMessages(m));
         }
-        let mut n = m as u16;
+        let mut n = m;
         // We use some minimum number of items, to increase privacy
-        n = n.max(source.min_length);
+        n = n.max(source.min_length as usize);
 
         let ordered = loop {
-            if n > u16::MAX {
+            if n > u16::MAX as usize {
                 return Err(Error::CantFitInMaxSlots);
             }
 
@@ -193,6 +194,7 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
             }
             n += 1;
         };
+        let n = n as u16;
 
         let entropy = {
             let mut rng = thread_rng();
@@ -268,6 +270,14 @@ where
     #[inline]
     fn commit(msg: &M) -> MultiCommitment {
         MultiCommitment::hash(msg)
+    }
+}
+
+impl TryCommitVerify<MultiSource> for MultiCommitment {
+    type Error = Error;
+
+    fn try_commit(msg: &MultiSource) -> Result<Self, Self::Error> {
+        Ok(MultiCommitBlock::try_commit(msg)?.consensus_commit())
     }
 }
 
@@ -358,5 +368,19 @@ mod test {
             assert_eq!(slot.protocol, None);
             assert_ne!(slot.message, message);
         }
+    }
+
+    #[test]
+    #[cfg(feature = "rand")]
+    fn test_extension() {
+        let source = MultiSource {
+            min_length: 1,
+            messages: bmap! {
+                ProtocolId::from_inner([0u8; 32]) => Message::hash("First message".as_bytes()),
+                ProtocolId::from_inner([1u8; 32]) => Message::hash("Second message".as_bytes())
+            },
+        };
+
+        MultiCommitment::try_commit(&source).unwrap();
     }
 }
