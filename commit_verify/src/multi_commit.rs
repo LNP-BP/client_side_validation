@@ -44,11 +44,21 @@ pub type ProtocolId = Slice32;
 pub type Message = sha256::Hash;
 
 /// Structured source multi-message data for commitment creation
-pub struct MessageMap {
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct MultiSource {
     /// Minimal length of the created LNPBP-4 commitment buffer
     pub min_length: u16,
     /// Map of the messages by their respective protocol ids
     pub messages: BTreeMap<ProtocolId, Message>,
+}
+
+impl Default for MultiSource {
+    fn default() -> Self {
+        MultiSource {
+            min_length: 3,
+            messages: Default::default(),
+        }
+    }
 }
 
 /// Errors generated during multi-message commitment process by
@@ -135,12 +145,11 @@ const MIDSTATE_ENTROPY: [u8; 32] = [
 ];
 
 #[cfg(feature = "rand")]
-impl TryCommitVerify<MessageMap> for MultiCommitBlock {
+impl TryCommitVerify<MultiSource> for MultiCommitBlock {
     type Error = Error;
 
-    fn try_commit(source: &MessageMap) -> Result<Self, Error> {
+    fn try_commit(source: &MultiSource) -> Result<Self, Error> {
         use amplify::num::u256;
-        use amplify::Wrapper;
         use bitcoin_hashes::{Hash, HashEngine};
         use rand::{thread_rng, Rng};
 
@@ -161,14 +170,8 @@ impl TryCommitVerify<MessageMap> for MultiCommitBlock {
             if source.messages.iter().all(|(protocol, message)| {
                 let rem = u256::from_le_bytes(**protocol)
                     % u256::from_u64(n as u64).expect("u256 type is broken");
-                let msg_tag_hash = sha256::Hash::hash(protocol.as_inner());
-                let mut engine = sha256::Hash::engine();
-                engine.input(&msg_tag_hash[..]);
-                engine.input(&msg_tag_hash[..]);
-                engine.input(&message[..]);
-                let digest = sha256::Hash::from_engine(engine);
                 ordered
-                    .insert(rem.low_u64() as usize, (*protocol, digest))
+                    .insert(rem.low_u64() as usize, (*protocol, *message))
                     .is_none()
             }) {
                 break ordered;
@@ -204,5 +207,69 @@ impl TryCommitVerify<MessageMap> for MultiCommitBlock {
             commitments,
             entropy: Some(entropy),
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use amplify::Wrapper;
+    use bitcoin_hashes::{Hash, HashEngine};
+
+    fn entropy_tagged_engine() -> sha256::HashEngine {
+        let tag_hash = sha256::Hash::hash("LNPBP4:entropy".as_bytes());
+        let mut engine = Message::engine();
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        engine
+    }
+
+    #[test]
+    fn test_lnpbp4_tags() {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
+        assert_eq!(midstate, entropy_tagged_engine().midstate());
+    }
+
+    #[test]
+    #[cfg(feature = "rand")]
+    fn test_commit() {
+        let mut protocol = ProtocolId::from_inner([0u8; 32]);
+        let message = Message::hash("First message".as_bytes());
+
+        for index in 0u8..3 {
+            let mut source = MultiSource::default();
+            protocol[0] = index;
+            source.messages.insert(protocol, message);
+            let commitment = MultiCommitBlock::try_commit(&source).unwrap();
+
+            let slot = commitment.commitments[index as usize];
+            assert_eq!(slot.protocol, Some(protocol));
+            assert_eq!(slot.message, message);
+
+            for others in 0u8..3 {
+                if index == others {
+                    continue;
+                }
+                let slot = commitment.commitments[others as usize];
+                assert_eq!(slot.protocol, None);
+                assert_ne!(slot.message, message);
+
+                let mut engine = entropy_tagged_engine();
+                engine.input(&commitment.entropy.unwrap().to_le_bytes());
+                engine.input(&[others, 0u8]);
+                assert_eq!(slot.message, Message::from_engine(engine));
+            }
+        }
+
+        for index in 1u8..3 {
+            let mut source = MultiSource::default();
+            protocol[31] = index; // Checking endianness
+            source.messages.insert(protocol, message);
+            let commitment = MultiCommitBlock::try_commit(&source).unwrap();
+
+            let slot = commitment.commitments[index as usize];
+            assert_eq!(slot.protocol, None);
+            assert_ne!(slot.message, message);
+        }
     }
 }
