@@ -17,3 +17,8 @@ path = "src/lib.rs"
 
 [dependencies]
 amplify_derive = "2.7"
+
+[features]
+default = []
+all = [] # ["async"]
+# async = [] // When async will become part of MSRV

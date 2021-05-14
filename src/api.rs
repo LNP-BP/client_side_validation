@@ -257,12 +257,24 @@ where
 /// represented or accessed through a single structure; and MUST be able to
 /// deterministically validate this set giving an external validation function,
 /// that is able to provide validator with
-pub trait ClientSideValidate: ClientData {
+pub trait ClientSideValidate<'a>: ClientData
+where
+    Self::ValidationItem: 'a,
+{
+    /// Data type for data sub-entries contained withing the current
+    /// client-side-validated data item.
+    ///
+    /// If the client-side-validated data contain different types of internal
+    /// entries, this may be a special enum type with a per-data-type variant.
+    ///
+    /// If the data do not contain internal data, set this type to `()`.
+    type ValidationItem: ClientData<ValidationReport = Self::ValidationReport>;
+
     /// Iterator over the list of specific validation items.
     ///
     /// If the client-side-validated data contain different types of internal
     /// entries, this may be a special enum type with a per-data-type variant.
-    type ValidationIter: Iterator<Item = Self::ValidationItem>;
+    type ValidationIter: Iterator<Item = &'a Self::ValidationItem>;
 
     /// The mein method performing client-side-validation for the whole block of
     /// client-side-validated data.
@@ -282,8 +294,8 @@ pub trait ClientSideValidate: ClientData {
     /// reported issues withing [`Status`] object, returned by the function at
     /// the end.
     fn client_side_validate<Resolver>(
-        &self,
-        resolver: &mut Resolver,
+        &'a self,
+        resolver: &'a mut Resolver,
     ) -> Status<Self::ValidationReport>
     where
         Resolver: SealResolver<
@@ -297,7 +309,7 @@ pub trait ClientSideValidate: ClientData {
         for item in self.validation_iter() {
             if let Some(seal) = item.single_use_seal() {
                 let _ = resolver
-                    .resolve_trust(&seal, self.context_for(&item))
+                    .resolve_trust(&seal)
                     .map_err(|issue| status.add_seal_issue(issue));
             }
             status += item.validate_internal_consistency();
@@ -306,26 +318,13 @@ pub trait ClientSideValidate: ClientData {
         status
     }
 
-    /// Returns context object used by seal resolver for a given item of
-    /// client-side-validated data within data hierarchy.
-    fn context_for<Ctx>(&self, item: &Self::ValidationItem) -> &Ctx;
-
     /// Returns iterator over hierarchy of individual data items inside
     /// client-side-validation data.
-    fn validation_iter(&self) -> Self::ValidationIter;
+    fn validation_iter(&'a self) -> Self::ValidationIter;
 }
 
 /// Marker trait for client-side-validation data at any level of data hierarchy.
 pub trait ClientData {
-    /// Data type for data sub-entries contained withing the current
-    /// client-side-validated data item.
-    ///
-    /// If the client-side-validated data contain different types of internal
-    /// entries, this may be a special enum type with a per-data-type variant.
-    ///
-    /// If the data do not contain internal data, set this type to `()`.
-    type ValidationItem: ClientData<ValidationReport = Self::ValidationReport>;
-
     /// Data type that stores validation report configuration for the validation
     /// [`Status`] object.
     ///
@@ -340,7 +339,7 @@ pub trait ClientData {
     fn single_use_seal(
         &self,
     ) -> Option<
-        <<Self::ValidationReport as ValidationReport>::SealIssue as SealIssue>::SingleUseSeal,
+        &<<Self::ValidationReport as ValidationReport>::SealIssue as SealIssue>::SingleUseSeal,
     >;
 
     /// Validates internal consistency of the current client-side-validated data
@@ -377,10 +376,6 @@ pub trait SealResolver<Seal: SingleUseSeal> {
     /// connectivity) or evidences of the facts the seal was not (yet) closed.
     type Error: SealIssue<SingleUseSeal = Seal>;
 
-    /// Context object providing information required for the access to
-    /// single-use-seal medium.
-    type Context; // = () once `associated_type_defaults` feature will be present in MSRV
-
     /// Resolves trust to the provided single-use-seal giving the context object
     /// of [`SealResolver::Context`] type, which may store single-use-seal
     /// medium access configuration and parameters defining seal status.
@@ -389,10 +384,147 @@ pub trait SealResolver<Seal: SingleUseSeal> {
     /// data from a single-use-seal medium.
     ///
     /// Method must fail on both errors in accessing single-use-seal medium
-    /// (like network connectivity) or if the seal is not (yet) closed.
-    fn resolve_trust(
-        &mut self,
-        seal: &Seal,
-        context: &Self::Context,
-    ) -> Result<(), Self::Error>;
+    /// (like network connectivity) usually defined by [`SealMediumError`] or if
+    /// the seal is not (yet) closed.
+    fn resolve_trust(&mut self, seal: &Seal) -> Result<(), Self::Error>;
+}
+
+#[cfg(test)]
+mod test {
+    //! Tests use emulation of a simple client-side-validated state, consisting
+    //! of an array of data items, each of which has a name bound to a certain
+    //! bitcoin single-use-seal.
+
+    use super::*;
+    use crate::single_use_seals::SealMedium;
+
+    #[derive(
+        Clone, PartialEq, Eq, Hash, Debug, Default, StrictEncode, StrictDecode,
+    )]
+    struct Seal {}
+
+    impl SingleUseSeal for Seal {
+        type Witness = ();
+        type Definition = Self;
+        type Error = Issue;
+
+        fn close(
+            &self,
+            _over: impl AsRef<[u8]>,
+        ) -> Result<Self::Witness, Self::Error> {
+            Ok(())
+        }
+
+        fn verify(
+            &self,
+            _msg: impl AsRef<[u8]>,
+            _witness: &Self::Witness,
+            _medium: &impl SealMedium<Self>,
+        ) -> Result<bool, Self::Error>
+        where
+            Self: Sized,
+        {
+            Ok(true)
+        }
+    }
+
+    #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
+    struct Report {}
+
+    #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
+    struct Issue {
+        seal: Seal,
+    }
+    impl Display for Issue {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            f.write_str("")
+        }
+    }
+    impl std::error::Error for Issue {}
+
+    impl ValidationLog for Issue {}
+
+    impl ValidationFailure for Issue {}
+
+    impl SealIssue for Issue {
+        type SingleUseSeal = Seal;
+
+        fn seal(&self) -> &Self::SingleUseSeal {
+            &self.seal
+        }
+    }
+
+    impl ValidationReport for Report {
+        type SealIssue = Issue;
+        type Failure = Issue;
+        type Warning = Issue;
+        type Info = Issue;
+    }
+
+    #[derive(Default)]
+    struct Data {
+        seal: Seal,
+    }
+
+    impl ClientData for Data {
+        type ValidationReport = Report;
+
+        fn single_use_seal(&self) -> Option<&Seal> {
+            Some(&self.seal)
+        }
+
+        fn validate_internal_consistency(
+            &self,
+        ) -> Status<Self::ValidationReport> {
+            Status::new()
+        }
+    }
+
+    struct State {
+        pub data: Vec<Data>,
+    }
+
+    impl ClientData for State {
+        type ValidationReport = Report;
+
+        fn single_use_seal(&self) -> Option<&Seal> {
+            None
+        }
+
+        fn validate_internal_consistency(
+            &self,
+        ) -> Status<Self::ValidationReport> {
+            Status::new()
+        }
+    }
+
+    impl<'a> ClientSideValidate<'a> for State {
+        type ValidationItem = Data;
+        type ValidationIter = std::slice::Iter<'a, Data>;
+
+        fn validation_iter(&'a self) -> Self::ValidationIter {
+            self.data.iter()
+        }
+    }
+
+    #[derive(Default)]
+    struct Resolver {}
+
+    impl SealResolver<Seal> for Resolver {
+        type Error = Issue;
+
+        fn resolve_trust(&mut self, _seal: &Seal) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test() {
+        let state = State {
+            data: vec![Data::default()],
+        };
+        let mut resolver = Resolver::default();
+        let status = state.client_side_validate(&mut resolver);
+        assert_eq!(status, Status::new());
+    }
 }

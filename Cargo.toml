@@ -22,7 +22,7 @@ commit_verify = { version = "0.5.0-rc.1", path = "./commit_verify" }
 single_use_seals = { version = "0.5.0-rc.1", path = "./single_use_seals" }
 
 [features]
-default = ["crypto"]
+default = []
 all = ["serde", "rand", "bitcoin"]
 rand = ["commit_verify/rand"]
 serde = ["commit_verify/serde"]
