@@ -68,6 +68,7 @@ pub mod test_helpers;
 mod amplify_types;
 #[cfg(feature = "bitcoin")]
 mod bitcoin;
+mod bitcoin_hashes;
 mod collections;
 #[cfg(feature = "crypto")]
 mod crypto;

@@ -32,7 +32,9 @@ jobs:
           - rand
           - crypto
           - serde
+          # - async
           - bitcoin
+          - rand,crypto,bitcoin
           - all
     steps:
       - uses: actions/checkout@v2

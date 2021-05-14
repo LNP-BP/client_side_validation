@@ -15,9 +15,6 @@
 use std::io;
 
 use bitcoin::bech32::u5;
-use bitcoin::hashes::{
-    hash160, hmac, ripemd160, sha256, sha256d, sha256t, sha512, Hash,
-};
 use bitcoin::util::address::{self, Address};
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{
@@ -53,34 +50,6 @@ impl Strategy for WScriptHash {
     type Strategy = strategies::HashFixedBytes;
 }
 impl Strategy for SigHash {
-    type Strategy = strategies::HashFixedBytes;
-}
-
-impl Strategy for sha256::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for sha256d::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl<T> Strategy for sha256t::Hash<T>
-where
-    T: sha256t::Tag,
-{
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for sha512::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for ripemd160::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for hash160::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl<T> Strategy for hmac::Hmac<T>
-where
-    T: Hash,
-{
     type Strategy = strategies::HashFixedBytes;
 }
 
@@ -486,6 +455,7 @@ pub(crate) mod test {
     use bitcoin::{
         consensus, hashes::hex::FromHex, hashes::Hash, secp256k1::Message,
     };
+    use bitcoin_hashes::{hash160, hmac, ripemd160, sha256, sha256d, sha256t};
 
     use super::*;
     use crate::test_helpers::*;

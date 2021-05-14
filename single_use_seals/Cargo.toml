@@ -1,6 +1,6 @@
 [package]
 name = "single_use_seals"
-version = "0.5.0"
+version = "0.5.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Single-use-seals foundation API. For bitcoin-specific implementation check bp-seals"
@@ -17,3 +17,8 @@ path = "src/lib.rs"
 
 [dependencies]
 amplify_derive = "2.7"
+
+[features]
+default = []
+all = [] # ["async"]
+# async = [] // When async will become part of MSRV

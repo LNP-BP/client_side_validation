@@ -1,12 +1,12 @@
 [package]
 name = "commit_verify"
-version = "0.5.0-rc.1"
+version = "0.5.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Commit-verify API for client-side validation"
 repository = "https://github.com/LNP-BP/client_side_validation"
 homepage = "https://github.com/LNP-BP"
-keywords = ["lnp-bp", "cryptography", "smart-contracts", "client-side-validation"]
+keywords = ["lnp-bp", "cryptography", "smart-contracts", "commit-verify"]
 categories = ["cryptography", "encoding"]
 readme = "README.md"
 edition = "2018"
@@ -18,7 +18,7 @@ path = "src/lib.rs"
 [dependencies]
 amplify = "3.5.3"
 bitcoin_hashes = "0.9.6"
-strict_encoding = "1.2.3"
+strict_encoding = "1.5.1"
 rand = { version = "0.7", optional = true } # We need older version since secp256k1 depends on it
 serde_crate = { version = "1", package = "serde", optional = true }
 serde_with = { version = "1.8", optional = true }

@@ -41,13 +41,16 @@ and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwAr
 This library consists of the following main three components, which define
 independent parts constituting together client-side-validation API and its core
 functionality. These are:
-- Strict encoding ([LNPBP-7] and [LNPBP-42] standards): binary standard of  
-  encoding client-side-validated data and network addresses
-- Commit-verify scheme and its client-side-validation specific implementations
-  * consensus commitments ([LNPBP-9] standard)
+- [Strict encoding](strict_encoding/README.md) ([LNPBP-7] and [LNPBP-42] 
+  standards): binary standard of encoding client-side-validated data and network 
+  addresses.
+- [Commit-verify](commit_verify/README.md) client-side-validation-specific APIs:
+  * consensus commitments (part of [LNPBP-8] standard)
   * multi-commitments ([LNPBP-4] standard)
   * merklization for client-side-validation ([LNPBP-81] standard)
-- Single-use-seals ([LNPBP-8] standard)
+- [Single-use-seals](single_use_seals/README.md) API ([LNPBP-8] standard)
+- Client-side-validation API from the library root, linking those components 
+  together according to [LNPBP-9] standard.
 
 
 ## Usage
@@ -79,14 +82,15 @@ default-features = false
 features = [] # Your set of features goes here
 ```
 
-The library has just a three feature flags, all of which are not used by default:
+The library has four feature flags, all of which are not used by default:
 - `rand`, providing support for generating random 32-byte sequences of `Slice32`
   type, used in many LNP/BP applications (for instance as hash-lock preimages or
   during LNPBP-4 multi-commitments);
 - `serde`, providing support for data structure serialization with serde across
   all library;
-- `crypto`, adding strict encoding support for Ed25519/X25519 and Grin 
-  Secp256k1zkp Pedersen commitments and bulletproofs data types.
+- `bitcoin`, providing implementation of strint encoding for bitcoin data types;
+- `crypto`, adding strict encoding support for Ed25519/X25519, Grin Secp256k1zkp
+  Pedersen commitments and bulletproofs data types.
 
 For specific features which may be enabled for the libraries, please check
 library-specific guidelines, located in `README.md` files in each of library

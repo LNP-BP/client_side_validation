@@ -16,23 +16,31 @@
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
 
-//! Primitives module defines core strict interfaces from informational LNPBP
-//! standards specifying secure and robust practices for function calls
-//! used in main LNP/BP development paradigms:
-//! * Cryptographic commitments and verification
-//! * Single-use seals
+//! The LNP/BP client-side-validation foundation libraries implementing LNPBP
+//! specifications & standards (LNPBP-4, 7, 8, 9, 42, 81).
+//!
+//! Defines core interfaces from LNPBP standards specifying secure and robust
+//! practices via well-formet APIs. Consists of the following main components:
 //! * Client-side validation
+//! * Cryptographic commitments and verification
+//! * Single-use-seals
 //! * Strict binary data serialization used by client-side validation
 //!
 //! The goal of this module is to maximally reduce the probability of errors and
 //! mistakes within particular implementations of this paradigms by
-//! standartizing typical workflow processes in a form of interfaces that
-//! will be nearly impossible to use in the wrong form.
+//! standardizing typical workflow processes in a form of interfaces that
+//! will be nearly impossible to use in a wrong way.
 
 pub extern crate commit_verify;
 pub extern crate single_use_seals;
 pub extern crate strict_encoding;
 
+mod api;
+
+pub use api::{
+    ClientData, ClientSideValidate, SealIssue, SealResolver, Status,
+    ValidationFailure, ValidationLog, ValidationReport, Validity,
+};
 pub use commit_verify::commit_encode;
 pub use commit_verify::merkle;
 pub use commit_verify::multi_commit;
