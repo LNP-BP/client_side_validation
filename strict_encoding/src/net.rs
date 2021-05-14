@@ -737,9 +737,7 @@ impl Strategy for SocketAddrV6 {
 mod test {
     use super::*;
     use crate::strict_deserialize;
-    use bitcoin::secp256k1::PublicKey;
     use std::convert::TryInto;
-    use std::str::FromStr;
 
     fn gen_ipv4_addrs() -> Vec<Ipv4Addr> {
         let vars = [0u8, 1, 32, 48, 64, 127, 168, 192, 254, 255];
@@ -1106,7 +1104,11 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "bitcoin")]
     fn uniform_raw_roundtrip_other() {
+        use bitcoin::secp256k1::PublicKey;
+        use std::str::FromStr;
+
         let lk = PublicKey::from_str("02d1780dd0e08f4d873f94faf49d878d909a1174291d3fcac3e02a6c45e7eda744").unwrap();
         let addr = lk.serialize();
 
@@ -1146,7 +1148,7 @@ mod test {
 
     #[test]
     fn uniform_raw_conversion() {
-        use bitcoin::hashes::hex::ToHex;
+        use bitcoin_hashes::hex::ToHex;
         use std::str::FromStr;
 
         let ips = vec![

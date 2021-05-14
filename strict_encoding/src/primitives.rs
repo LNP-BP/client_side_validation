@@ -17,7 +17,7 @@
 use core::time::Duration;
 use std::io;
 
-use super::{strategies, Error, Strategy, StrictDecode, StrictEncode};
+use super::{Error, StrictDecode, StrictEncode};
 
 impl StrictEncode for bool {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -35,29 +35,140 @@ impl StrictDecode for bool {
     }
 }
 
-impl Strategy for u8 {
-    type Strategy = strategies::BitcoinConsensus;
+impl StrictEncode for u8 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&[*self][..])?;
+        Ok(1)
+    }
 }
-impl Strategy for u16 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictDecode for u8 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 1];
+        d.read_exact(&mut ret)?;
+        Ok(ret[0])
+    }
 }
-impl Strategy for u32 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictEncode for i8 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(1)
+    }
 }
-impl Strategy for u64 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictDecode for i8 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 1];
+        d.read_exact(&mut ret)?;
+        Ok(ret[0] as i8)
+    }
 }
-impl Strategy for i8 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictEncode for u16 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(2)
+    }
 }
-impl Strategy for i16 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictDecode for u16 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 2];
+        d.read_exact(&mut ret)?;
+        Ok(u16::from_le_bytes(ret))
+    }
 }
-impl Strategy for i32 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictEncode for i16 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(2)
+    }
 }
-impl Strategy for i64 {
-    type Strategy = strategies::BitcoinConsensus;
+
+impl StrictDecode for i16 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 2];
+        d.read_exact(&mut ret)?;
+        Ok(i16::from_le_bytes(ret))
+    }
+}
+
+impl StrictEncode for u32 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(4)
+    }
+}
+
+impl StrictDecode for u32 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 4];
+        d.read_exact(&mut ret)?;
+        Ok(u32::from_le_bytes(ret))
+    }
+}
+
+impl StrictEncode for i32 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(4)
+    }
+}
+
+impl StrictDecode for i32 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 4];
+        d.read_exact(&mut ret)?;
+        Ok(i32::from_le_bytes(ret))
+    }
+}
+
+impl StrictEncode for u64 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(8)
+    }
+}
+
+impl StrictDecode for u64 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 8];
+        d.read_exact(&mut ret)?;
+        Ok(u64::from_le_bytes(ret))
+    }
+}
+
+impl StrictEncode for i64 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(8)
+    }
+}
+
+impl StrictDecode for i64 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 8];
+        d.read_exact(&mut ret)?;
+        Ok(i64::from_le_bytes(ret))
+    }
 }
 
 impl StrictEncode for u128 {
@@ -92,7 +203,7 @@ impl StrictDecode for i128 {
 
 impl StrictEncode for usize {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        if *self > core::u16::MAX as usize {
+        if *self > u16::MAX as usize {
             return Err(Error::ExceedMaxItems(*self));
         }
         let size = *self as u16;

@@ -10,6 +10,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  default:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Default build
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
   features:
     runs-on: ubuntu-latest
     strategy:
@@ -19,6 +32,7 @@ jobs:
           - rand
           - crypto
           - serde
+          - bitcoin
           - all
     steps:
       - uses: actions/checkout@v2
