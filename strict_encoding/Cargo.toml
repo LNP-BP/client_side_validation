@@ -1,6 +1,6 @@
 [package]
 name = "strict_encoding"
-version = "1.5.1"
+version = "1.5.2"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Strict encoding: deterministic binary serialization for networking & client-side validation"
@@ -19,12 +19,12 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 amplify = { version = "3.5.1", features = ["proc_attr"] }
-strict_encoding_derive = { version = "1.1", path = "./derive", optional = true }
-bitcoin_hashes = "0.9.6" # We need this separately since bitcoin is an optional dependency
+strict_encoding_derive = { version = "1.5.2", path = "./derive", optional = true }
+bitcoin_hashes = "0.9.7" # We need this separately since bitcoin is an optional dependency
 # TODO #1: Replace with a dedicated bitcoin encoding crate once it will be
 #          ready (0.27 release presumably)
-bitcoin = { version = "0.26", optional = true }
-miniscript = { version = "5", optional = true }
+bitcoin = { version = "0.26.2", optional = true }
+miniscript = { version = "5.1", optional = true }
 ed25519-dalek = { version = "1", optional = true }
 grin_secp256k1zkp = { version = "0.7", optional = true }
 chrono = { version = "0.4", optional = true }

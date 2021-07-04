@@ -184,8 +184,8 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
 
             let mut ordered = BTreeMap::<usize, (ProtocolId, Message)>::new();
             if source.messages.iter().all(|(protocol, message)| {
-                let rem = u256::from_le_bytes(**protocol)
-                    % u256::from_u64(n as u64).expect("u256 type is broken");
+                let rem =
+                    u256::from_le_bytes(**protocol) % u256::from(n as u64);
                 ordered
                     .insert(rem.low_u64() as usize, (*protocol, *message))
                     .is_none()
