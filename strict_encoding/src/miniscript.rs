@@ -13,6 +13,7 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use std::io;
+use std::io::{Read, Write};
 
 use bitcoin::consensus::ReadExt;
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
@@ -22,7 +23,8 @@ use miniscript::descriptor::{
 };
 use miniscript::policy::concrete::Policy;
 use miniscript::{
-    Descriptor, DescriptorPublicKey, Miniscript, MiniscriptKey, Terminal,
+    BareCtx, Descriptor, DescriptorPublicKey, Legacy, Miniscript,
+    MiniscriptKey, Segwitv0, Terminal,
 };
 
 use crate::{Error, StrictDecode, StrictEncode};
@@ -94,6 +96,45 @@ macro_rules! strict_encode_usize {
         $encoder.write_all(&(count as u16).to_le_bytes())?;
         2 // We know that we write exactly two bytes
     } };
+}
+
+impl StrictEncode for BareCtx {
+    #[inline]
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
+}
+
+impl StrictDecode for BareCtx {
+    fn strict_decode<D: Read>(_: D) -> Result<Self, Error> {
+        unreachable!("attempt to construct miniscript context object")
+    }
+}
+
+impl StrictEncode for Legacy {
+    #[inline]
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
+}
+
+impl StrictDecode for Legacy {
+    fn strict_decode<D: Read>(_: D) -> Result<Self, Error> {
+        unreachable!("attempt to construct miniscript context object")
+    }
+}
+
+impl StrictEncode for Segwitv0 {
+    #[inline]
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
+}
+
+impl StrictDecode for Segwitv0 {
+    fn strict_decode<D: Read>(_: D) -> Result<Self, Error> {
+        unreachable!("attempt to construct miniscript context object")
+    }
 }
 
 impl<Pk> StrictEncode for Policy<Pk>
@@ -715,8 +756,29 @@ where
 mod test {
     use crate::test_helpers::*;
     // use crate::StrictEncode;
-    use miniscript::{policy, Descriptor, Miniscript, Segwitv0};
+    use crate::StrictDecode;
+    use miniscript::{
+        policy, BareCtx, Descriptor, Legacy, Miniscript, Segwitv0,
+    };
     use std::str::FromStr;
+
+    #[test]
+    #[should_panic]
+    fn test_bare_ctx() {
+        BareCtx::strict_deserialize(&[0u8]).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_legacy_ctx() {
+        Legacy::strict_deserialize(&[0u8]).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_segwitv0_ctx() {
+        Segwitv0::strict_deserialize(&[0u8]).unwrap();
+    }
 
     #[test]
     fn test_policy() {
