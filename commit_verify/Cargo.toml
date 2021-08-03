@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.5.3"
+version = "0.5.4"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Commit-verify API for client-side validation"

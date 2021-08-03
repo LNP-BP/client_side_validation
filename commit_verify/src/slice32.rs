@@ -57,16 +57,13 @@ pub struct Slice32(
 );
 
 impl Slice32 {
-    #[cfg(feature = "keygen")]
+    #[cfg(feature = "rand")]
     /// Generates 256-bit array from `bitcoin::secp256k1::rand::thread_rng`
     /// random number generator
     pub fn random() -> Self {
-        use bitcoin::secp256k1::rand;
-
+        use rand::RngCore;
         let mut entropy = [0u8; 32];
-        entropy.copy_from_slice(
-            &bitcoin::secp256k1::SecretKey::new(&mut rand::thread_rng())[..],
-        );
+        rand::thread_rng().fill_bytes(&mut entropy);
         Slice32::from_inner(entropy)
     }
 
