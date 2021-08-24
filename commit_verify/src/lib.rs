@@ -15,6 +15,7 @@
 // Coding conventions
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
+#![allow(clippy::branches_sharing_code)]
 
 //! Library providing primitives for cryptographic commit-verify schemes used in
 //! client-side-validation
@@ -41,7 +42,6 @@ pub mod commit_encode;
 mod digests;
 pub mod merkle;
 pub mod multi_commit;
-mod slice32;
 pub mod tagged_hash;
 
 #[doc(hidden)]
@@ -53,6 +53,5 @@ pub use merkle::{
 };
 #[doc(hidden)]
 pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
-pub use slice32::Slice32;
 #[doc(hidden)]
 pub use tagged_hash::TaggedHash;

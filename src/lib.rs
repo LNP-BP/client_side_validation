@@ -20,7 +20,7 @@
 //! specifications & standards (LNPBP-4, 7, 8, 9, 42, 81).
 //!
 //! Defines core interfaces from LNPBP standards specifying secure and robust
-//! practices via well-formet APIs. Consists of the following main components:
+//! practices via well-format APIs. Consists of the following main components:
 //! * Client-side validation
 //! * Cryptographic commitments and verification
 //! * Single-use-seals
@@ -45,5 +45,4 @@ pub use commit_verify::commit_encode;
 pub use commit_verify::merkle;
 pub use commit_verify::multi_commit;
 pub use commit_verify::tagged_hash;
-pub use commit_verify::Slice32;
 pub use strict_encoding::derive::{StrictDecode, StrictEncode};

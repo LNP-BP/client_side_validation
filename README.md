@@ -5,7 +5,7 @@
 ![Lints](https://github.com/LNP-BP/client_side_validation/workflows/Lints/badge.svg)
 [![codecov](https://codecov.io/gh/LNP-BP/client_side_validation/branch/master/graph/badge.svg)](https://codecov.io/gh/LNP-BP/client_side_validation)
 
-[![crates.io](https://meritbadge.herokuapp.com/client_side_validation)](https://crates.io/crates/client_side_validation)
+[![crates.io](https://img.shields.io/crates/v/client_side_validation)](https://crates.io/crates/client_side_validation)
 [![Docs](https://docs.rs/client_side_validation/badge.svg)](https://docs.rs/client_side_validation)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/client_side_validation)](./LICENSE)

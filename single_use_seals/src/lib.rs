@@ -20,6 +20,7 @@
 // Coding conventions
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
+#![allow(clippy::branches_sharing_code)]
 
 //! # Single-use-seals
 //!
@@ -85,12 +86,11 @@
 //! proof of publication medium on which the seals are defined.
 //!
 //! The module provides two options of implementing sch medium: synchronous
-//! [`SealMedium`] and asynchronous [`AsyncSealMedium`].
+//! [`SealMedium`] and asynchronous `AsyncSealMedium`.
 //!
 //! ## Sample implementation
 //!
-//! Examples of implementations can be found in [`bp::seals`][crate::bp::seals]
-//! module of the crate source code.
+//! Examples of implementations can be found in `bp::seals`.
 //!
 //! ## Further reading
 //!
@@ -111,7 +111,7 @@ extern crate amplify_derive;
 ///
 /// NB: It is recommended that single-use-seal instances to be instantiated
 /// not by a constructor, but by a factory, i.e. "seal medium": data type
-/// implementing either [`SealMedium`] or [`AsyncSealMedium`] traits.
+/// implementing either [`SealMedium`] or `AsyncSealMedium` traits.
 #[cfg_attr(feature = "async", async_trait)]
 pub trait SingleUseSeal {
     /// Associated type for the witness produced by the single-use-seal close
@@ -168,7 +168,7 @@ pub trait SingleUseSeal {
 ///
 /// Since the medium may require network communications or extensive computing
 /// involved (like in case with blockchain) there is a special asynchronous
-/// version of the SealMedium [`AsyncSealMedium`], which requires use of
+/// version of the seal medium `AsyncSealMedium`, which requires use of
 /// `async` feature of this crate.
 ///
 /// All these operations are medium-specific; for the same single-use-seal type
@@ -209,10 +209,10 @@ where
         Err(SealMediumError::PublicationIdNotSupported)
     }
 
-    /// Returns [Self::PublicationId] for a given witness, if any; the id is
+    /// Returns [`Self::PublicationId`] for a given witness, if any; the id is
     /// returned as an option. Function has default implementation doing
-    /// nothing and just returning [SealMediumError::PublicationIdNotSupported]
-    /// error.
+    /// nothing and just returning
+    /// [`SealMediumError::PublicationIdNotSupported`] error.
     fn get_witness_publication_id(
         &self,
         _witness: &Seal::Witness,
@@ -222,7 +222,7 @@ where
 
     /// Validates whether a given publication id is present in the medium.
     /// Function has default implementation doing nothing and returning
-    /// [SealMediumError::PublicationIdNotSupported] error.
+    /// [`SealMediumError::PublicationIdNotSupported`] error.
     fn validate_publication_id(
         &self,
         _publication_id: &Self::PublicationId,
@@ -301,7 +301,7 @@ where
 }
 
 /// Single-use-seal status returned by [`SealMedium::get_seal_status`] and
-/// [`AsyncSealMedium::get_seal_status`] functions.
+/// `AsyncSealMedium::get_seal_status` functions.
 ///
 /// NB: It's important to note, that while its possible to deterministically
 ///   define was a given seal closed it yet may be not possible to find out
@@ -322,13 +322,13 @@ pub enum SealStatus {
     Closed = 1,
 }
 
-/// Error returned by [`SealMedium`] and [`AsyncSealMedium`] functions related
+/// Error returned by [`SealMedium`] and `AsyncSealMedium` functions related
 /// to work with publication id ([`SealMedium::PublicationId`]). Required since
-/// not all implementation of [`SealMedia`] may define publication identifier,
+/// not all implementation of [`SealMedium`] may define publication identifier,
 /// and the traits provide default implementation for these functions always
-/// returning [`SealMediumError::OperationNotSupported`]. If the implementation
-/// would like to provide custom implementation, it may embed standard error
-/// related to [`SealMedium`] operations within
+/// returning [`SealMediumError::PublicationIdNotSupported`]. If the
+/// implementation would like to provide custom implementation, it may embed
+/// standard error related to [`SealMedium`] operations within
 /// [`SealMediumError::MediumAccessError`] case; the type of MediumAccessError
 /// is defined through generic argument to [`SealMediumError`].
 #[derive(Clone, Copy, Debug, Display, Error, From)]

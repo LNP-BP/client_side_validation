@@ -40,7 +40,8 @@ pub trait TryCommitVerify<M>
 where
     Self: Eq + Sized,
 {
-    /// Error type that may be reported during [commit] and [verify] procedures
+    /// Error type that may be reported during [`TryCommitVerify::try_commit`]
+    /// and [`TryCommitVerify::try_verify`] procedures
     type Error: std::error::Error;
 
     /// Tries to create commitment to a byte representation of a given message
@@ -71,7 +72,6 @@ where
 /// is required for the verification procedure.
 ///
 /// This trait is heavily used in **deterministic bitcoin commitments**
-/// [crate::dbc] module implementations
 pub trait EmbedCommitVerify<M>
 where
     Self: Sized + Eq,
@@ -79,7 +79,8 @@ where
     /// External container type that will be used to host commitment to a
     /// message
     type Container: Clone;
-    /// Error type that may be reported during [commit_embed] procedure
+    /// Error type that may be reported during
+    /// [`EmbedCommitVerify::embed_commit``] procedure
     type Error: std::error::Error;
 
     /// Creates a commitment and embeds it into the provided container returning
@@ -91,8 +92,8 @@ where
     ) -> Result<Self, Self::Error>;
 
     /// Verifies commitment against the message; default implementation just
-    /// reconstructs the original container with [container] function,
-    /// repeats the commitment to the message and check it against the `self`.
+    /// takes original `container`, repeats the commitment to the message and
+    /// check it against the `self`.
     ///
     /// Verification is a failable procedure returning bool. The difference
     /// between returning `Ok(false)` and `Err(_)` is the following:

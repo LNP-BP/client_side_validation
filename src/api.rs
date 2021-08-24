@@ -284,9 +284,8 @@ where
     /// [`ClientSideValidate::validation_iter`] and for each of the items
     /// - validates internal data consistency with
     ///   [`ClientData::validate_internal_consistency`] method,
-    /// - validates single-use-seal for the item returned by
-    ///   [`ClientData::single_use_seal`] method using the provided `resolver`
-    ///   object and a context returned by [`ClientSideValidate::context_for`],
+    /// - validates single-use-seal for the item using the provided `resolver`
+    ///   object,
     /// adding reported issues to the [`Status`] log returned by the function.
     ///
     /// The function should not fail on any validation failures and run the
@@ -309,7 +308,7 @@ where
         for item in self.validation_iter() {
             if let Some(seal) = item.single_use_seal() {
                 let _ = resolver
-                    .resolve_trust(&seal)
+                    .resolve_trust(seal)
                     .map_err(|issue| status.add_seal_issue(issue));
             }
             status += item.validate_internal_consistency();
@@ -329,7 +328,7 @@ pub trait ClientData {
     /// [`Status`] object.
     ///
     /// This type defines also a type of single-use-seals via
-    /// [`ValidationReports::SealIssue::SingleUseSeal`].
+    /// [`ValidationReport::SealIssue`] - [`SealIssue::SingleUseSeal`].
     type ValidationReport: ValidationReport;
 
     /// Method returning single-use-seal reference which corresponds to the
@@ -361,10 +360,8 @@ pub trait ClientData {
 /// decision about seal status must be solved at upper protocol levels or by a
 /// informed user action.
 ///
-/// Seal resolver for a given client data type MUST work with a single type
-/// of [`SealResolver::Context`], defined by an associated type. Seal
-/// resolution MUST always produce a singular success type (defined by `()`) or
-/// fail with a well-defined type of [`SealResolver::Error`].
+/// Seal resolution MUST always produce a singular success type (defined by
+/// `()`) or fail with a well-defined type of [`SealResolver::Error`].
 ///
 /// Seal resolver may have an internal state (represented by `self` reference)
 /// and it does not require to produce a deterministic result for the same
@@ -376,16 +373,13 @@ pub trait SealResolver<Seal: SingleUseSeal> {
     /// connectivity) or evidences of the facts the seal was not (yet) closed.
     type Error: SealIssue<SingleUseSeal = Seal>;
 
-    /// Resolves trust to the provided single-use-seal giving the context object
-    /// of [`SealResolver::Context`] type, which may store single-use-seal
-    /// medium access configuration and parameters defining seal status.
+    /// Resolves trust to the provided single-use-seal.
     ///
     /// The method mutates resolver such that it can be able to store cached
     /// data from a single-use-seal medium.
     ///
     /// Method must fail on both errors in accessing single-use-seal medium
-    /// (like network connectivity) usually defined by [`SealMediumError`] or if
-    /// the seal is not (yet) closed.
+    /// (like network connectivity) or if the seal is not (yet) closed.
     fn resolve_trust(&mut self, seal: &Seal) -> Result<(), Self::Error>;
 }
 

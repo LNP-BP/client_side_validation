@@ -42,7 +42,7 @@ impl StrictDecode for ed25519_dalek::PublicKey {
 #[cfg(feature = "ed25519-dalek")]
 impl StrictEncode for ed25519_dalek::Signature {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.as_bytes())?)
+        Ok(e.write(self.as_bytes())?)
     }
 }
 
