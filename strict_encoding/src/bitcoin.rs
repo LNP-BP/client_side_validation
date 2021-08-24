@@ -16,11 +16,12 @@ use std::io;
 
 use bitcoin::bech32::u5;
 use bitcoin::util::address::{self, Address};
+use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{
-    secp256k1, util::bip32, Amount, BlockHash, OutPoint, PubkeyHash, Script,
-    ScriptHash, SigHash, Transaction, TxIn, TxOut, Txid, WPubkeyHash,
-    WScriptHash, Wtxid, XpubIdentifier,
+    secp256k1, Amount, BlockHash, OutPoint, PubkeyHash, Script, ScriptHash,
+    SigHash, Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Wtxid,
+    XpubIdentifier,
 };
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
@@ -84,10 +85,13 @@ impl StrictDecode for secp256k1::PublicKey {
         let mut buf = [0u8; secp256k1::constants::PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
         if buf[0] == 0x04 {
-            return Err(Error::DataIntegrityError(s!(
-                "invalid public key data: uncompressed Secp256k1 public key \
-                format is not allowed, use compressed form instead"
-            )));
+            return Err(Error::DataIntegrityError(s!("invalid public key \
+                                                     data: uncompressed \
+                                                     Secp256k1 public key \
+                                                     format is not \
+                                                     allowed, use \
+                                                     compressed form \
+                                                     instead")));
         }
         Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
@@ -109,10 +113,11 @@ impl StrictDecode for secp256k1::schnorrsig::PublicKey {
             [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE + 1];
         d.read_exact(&mut buf)?;
         if buf[0] != 0x02 {
-            return Err(Error::DataIntegrityError(s!(
-                "invalid public key data: BIP340 keys must be serialized \
-                with `0x02` prefix byte"
-            )));
+            return Err(Error::DataIntegrityError(s!("invalid public key \
+                                                     data: BIP340 keys \
+                                                     must be serialized \
+                                                     with `0x02` prefix \
+                                                     byte")));
         }
         Self::from_slice(&buf[1..]).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
@@ -195,11 +200,14 @@ impl StrictDecode for bitcoin::PublicKey {
         let marker = u8::strict_decode(&mut d)?;
         match marker {
             0x04 => {
-                let mut buf = [0u8; secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE];
+                let mut buf =
+                    [0u8; secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE];
                 buf[0] = marker;
                 d.read_exact(&mut buf[1..])?;
                 Ok(Self::from_slice(&buf).map_err(|_| {
-                    Error::DataIntegrityError("Wrong public key data sequence".to_string())
+                    Error::DataIntegrityError(
+                        "Wrong public key data sequence".to_string(),
+                    )
                 })?)
             }
             0x03 | 0x02 => {
@@ -207,11 +215,14 @@ impl StrictDecode for bitcoin::PublicKey {
                 buf[0] = marker;
                 d.read_exact(&mut buf[1..])?;
                 Ok(Self::from_slice(&buf).map_err(|_| {
-                    Error::DataIntegrityError("Wrong public key data sequence".to_string())
+                    Error::DataIntegrityError(
+                        "Wrong public key data sequence".to_string(),
+                    )
                 })?)
             }
             invalid_flag => Err(Error::DataIntegrityError(format!(
-                "Invalid public key encoding flag {:#04x}; must be either 0x02, 0x03 or 0x04",
+                "Invalid public key encoding flag {:#04x}; must be either \
+                 0x02, 0x03 or 0x04",
                 invalid_flag
             ))),
         }
@@ -452,9 +463,10 @@ impl StrictDecode for bip32::ExtendedPrivKey {
 pub(crate) mod test {
     use std::str::FromStr;
 
-    use bitcoin::{
-        consensus, hashes::hex::FromHex, hashes::Hash, secp256k1::Message,
-    };
+    use bitcoin::consensus;
+    use bitcoin::hashes::hex::FromHex;
+    use bitcoin::hashes::Hash;
+    use bitcoin::secp256k1::Message;
     use bitcoin_hashes::{hash160, hmac, ripemd160, sha256, sha256d, sha256t};
 
     use super::*;
@@ -478,9 +490,7 @@ pub(crate) mod test {
             221, 198, 240, 201,
         ];
 
-        #[derive(
-            Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash,
-        )]
+        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
         pub struct TestHashTag;
 
         impl sha256t::Tag for TestHashTag {
@@ -622,10 +632,11 @@ pub(crate) mod test {
         test_encoding_roundtrip(&secp_pk_one, PK_BYTES_ONEKEY).unwrap();
         assert_eq!(
             secp256k1::PublicKey::strict_deserialize(&PK_BYTES_04),
-            Err(Error::DataIntegrityError(s!(
-                "invalid public key data: uncompressed Secp256k1 public key \
-                format is not allowed, use compressed form instead"
-            )))
+            Err(Error::DataIntegrityError(s!("invalid public key data: \
+                                              uncompressed Secp256k1 \
+                                              public key format is not \
+                                              allowed, use compressed \
+                                              form instead")))
         );
 
         let sk_one = secp256k1::PublicKey::from_secret_key(
@@ -661,17 +672,17 @@ pub(crate) mod test {
         test_encoding_roundtrip(&xcoordonly_one, PK_BYTES_ONEKEY).unwrap();
         assert_eq!(
             secp256k1::schnorrsig::PublicKey::strict_decode(&PK_BYTES_03[..]),
-            Err(Error::DataIntegrityError(s!(
-                "invalid public key data: BIP340 keys must be serialized \
-                with `0x02` prefix byte"
-            )))
+            Err(Error::DataIntegrityError(s!("invalid public key data: \
+                                              BIP340 keys must be \
+                                              serialized with `0x02` \
+                                              prefix byte")))
         );
         assert_eq!(
             secp256k1::schnorrsig::PublicKey::strict_decode(&PK_BYTES_04[..]),
-            Err(Error::DataIntegrityError(s!(
-                "invalid public key data: BIP340 keys must be serialized \
-                with `0x02` prefix byte"
-            )))
+            Err(Error::DataIntegrityError(s!("invalid public key data: \
+                                              BIP340 keys must be \
+                                              serialized with `0x02` \
+                                              prefix byte")))
         );
         assert_eq!(xcoordonly_02.serialize(), secp_pk_02.serialize()[1..]);
         assert_eq!(xcoordonly_02.serialize(), secp_pk_03.serialize()[1..]);
@@ -782,22 +793,18 @@ pub(crate) mod test {
     #[test]
     fn test_encoding_network(
     ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
-        test_encoding_roundtrip(
-            &bitcoin::Network::Bitcoin,
-            &[0xF9, 0xBE, 0xB4, 0xD9],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Testnet,
-            &[0x0B, 0x11, 0x09, 0x07],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Signet,
-            &[0x0A, 0x03, 0xCF, 0x40],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Regtest,
-            &[0xFA, 0xBF, 0xB5, 0xDA],
-        )
+        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, &[
+            0xF9, 0xBE, 0xB4, 0xD9,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Testnet, &[
+            0x0B, 0x11, 0x09, 0x07,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Signet, &[
+            0x0A, 0x03, 0xCF, 0x40,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Regtest, &[
+            0xFA, 0xBF, 0xB5, 0xDA,
+        ])
     }
 
     #[test]

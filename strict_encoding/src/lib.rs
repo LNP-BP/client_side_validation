@@ -81,19 +81,17 @@ mod primitives;
 mod slice32;
 pub mod strategies;
 
-pub use strategies::Strategy;
+use std::ops::Range;
+use std::string::FromUtf8Error;
+use std::{fmt, io};
 
 /// Re-exporting extended read and write functions from bitcoin consensus
 /// module so others may use semantic convenience
 /// `strict_encode::ReadExt`
 #[cfg(feature = "bitcoin")]
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
-
 use amplify::IoError;
-use std::fmt;
-use std::io;
-use std::ops::Range;
-use std::string::FromUtf8Error;
+pub use strategies::Strategy;
 
 /// Binary encoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications;
@@ -191,8 +189,8 @@ pub enum Error {
     /// encoded non-0 or non-1 length Vec will result in
     /// `Error::WrongOptionalEncoding`.
     #[display(
-        "Invalid value {0} met as an optional type byte, which must be equal to \
-        either 0 (no value) or 1"
+        "Invalid value {0} met as an optional type byte, which must be equal \
+         to either 0 (no value) or 1"
     )]
     WrongOptionalEncoding(u8),
 
@@ -229,9 +227,7 @@ pub enum Error {
 
 impl From<Error> for fmt::Error {
     #[inline]
-    fn from(_: Error) -> Self {
-        fmt::Error
-    }
+    fn from(_: Error) -> Self { fmt::Error }
 }
 
 impl From<FromUtf8Error> for Error {

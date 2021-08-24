@@ -28,9 +28,7 @@ where
     /// Verifies commitment against the message; default implementation just
     /// repeats the commitment to the message and check it against the `self`.
     #[inline]
-    fn verify(&self, msg: &M) -> bool {
-        Self::commit(msg) == *self
-    }
+    fn verify(&self, msg: &M) -> bool { Self::commit(msg) == *self }
 }
 
 /// Trait for a failable version of commit-verify scheme. A message for the
@@ -121,11 +119,13 @@ where
 /// Helpers for writing test functions working with commit-verify scheme
 #[cfg(test)]
 pub mod test_helpers {
-    use super::*;
-    use bitcoin_hashes::hex::FromHex;
     use core::fmt::Debug;
     use core::hash::Hash;
     use std::collections::HashSet;
+
+    use bitcoin_hashes::hex::FromHex;
+
+    use super::*;
 
     /// Generates a set of messages for testing purposes
     ///
@@ -251,11 +251,13 @@ pub mod test_helpers {
 
 #[cfg(test)]
 mod test {
-    use super::test_helpers::*;
-    use super::*;
-    use bitcoin_hashes::sha256d;
     use core::fmt::Debug;
     use core::hash::Hash;
+
+    use bitcoin_hashes::sha256d;
+
+    use super::test_helpers::*;
+    use super::*;
 
     #[derive(Debug, Display, Error)]
     #[display(Debug)]

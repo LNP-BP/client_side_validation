@@ -60,7 +60,7 @@ pub type RawUniformAddr = [u8; UNIFORM_LEN];
 
 /// Uniform ecoding error types
 #[derive(
-    Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error,
+    Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error
 )]
 #[display(doc_comments)]
 #[non_exhaustive]
@@ -197,9 +197,7 @@ pub trait Uniform {
     /// Produces unniformally-encoded byte representation of the address
     /// (see [`RawUniformAddr`]).
     #[inline]
-    fn to_raw_uniform(&self) -> RawUniformAddr {
-        self.to_uniform_addr().into()
-    }
+    fn to_raw_uniform(&self) -> RawUniformAddr { self.to_uniform_addr().into() }
 
     /// Constructs  address of a given type from a structure uniform address
     /// data.
@@ -262,29 +260,19 @@ pub trait Uniform {
 
 impl Uniform for UniformAddr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        self.addr_format
-    }
+    fn addr_format(&self) -> AddrFormat { self.addr_format }
 
     #[inline]
-    fn addr(&self) -> RawAddr {
-        self.addr
-    }
+    fn addr(&self) -> RawAddr { self.addr }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        self.port
-    }
+    fn port(&self) -> Option<u16> { self.port }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        self.transport
-    }
+    fn transport(&self) -> Option<Transport> { self.transport }
 
     #[inline]
-    fn to_uniform_addr(&self) -> UniformAddr {
-        *self
-    }
+    fn to_uniform_addr(&self) -> UniformAddr { *self }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -385,14 +373,10 @@ impl Uniform for IpAddr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -424,9 +408,7 @@ impl Uniform for IpAddr {
 
 impl Uniform for Ipv4Addr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV4
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV4 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -436,14 +418,10 @@ impl Uniform for Ipv4Addr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -472,9 +450,7 @@ impl Uniform for Ipv4Addr {
 
 impl Uniform for Ipv6Addr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV6
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV6 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -484,14 +460,10 @@ impl Uniform for Ipv6Addr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -536,14 +508,10 @@ impl Uniform for SocketAddr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port())
-    }
+    fn port(&self) -> Option<u16> { Some(self.port()) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -579,9 +547,7 @@ impl Uniform for SocketAddr {
 
 impl Uniform for SocketAddrV4 {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV4
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV4 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -591,14 +557,10 @@ impl Uniform for SocketAddrV4 {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port())
-    }
+    fn port(&self) -> Option<u16> { Some(self.port()) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -628,9 +590,7 @@ impl Uniform for SocketAddrV4 {
 
 impl Uniform for SocketAddrV6 {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV6
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV6 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -640,14 +600,10 @@ impl Uniform for SocketAddrV6 {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port())
-    }
+    fn port(&self) -> Option<u16> { Some(self.port()) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -735,9 +691,10 @@ impl Strategy for SocketAddrV6 {
 
 #[cfg(test)]
 mod test {
+    use std::convert::TryInto;
+
     use super::*;
     use crate::strict_deserialize;
-    use std::convert::TryInto;
 
     fn gen_ipv4_addrs() -> Vec<Ipv4Addr> {
         let vars = [0u8, 1, 32, 48, 64, 127, 168, 192, 254, 255];
@@ -1106,8 +1063,9 @@ mod test {
     #[test]
     #[cfg(feature = "bitcoin")]
     fn uniform_raw_roundtrip_other() {
-        use bitcoin::secp256k1::PublicKey;
         use std::str::FromStr;
+
+        use bitcoin::secp256k1::PublicKey;
 
         let lk = PublicKey::from_str("02d1780dd0e08f4d873f94faf49d878d909a1174291d3fcac3e02a6c45e7eda744").unwrap();
         let addr = lk.serialize();
@@ -1148,8 +1106,9 @@ mod test {
 
     #[test]
     fn uniform_raw_conversion() {
-        use bitcoin_hashes::hex::ToHex;
         use std::str::FromStr;
+
+        use bitcoin_hashes::hex::ToHex;
 
         let ips = vec![
             "0.0.0.0",

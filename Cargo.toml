@@ -32,4 +32,4 @@ crypto = ["strict_encoding/crypto"]
 
 [workspace]
 members = [".", "strict_encoding", "commit_verify", "single_use_seals", "strict_encoding/derive"]
-default-members = [".", "strict_encoding", "commit_verify", "single_use_seals", "strict_encoding/derive"]
+default-members = ["."]

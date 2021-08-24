@@ -192,8 +192,9 @@ mod test {
     #[test]
     #[cfg(all(feature = "grin_secp256k1zkp", feature = "bitcoin"))]
     fn pedersen() {
-        use bitcoin::secp256k1::PublicKey;
         use std::str::FromStr;
+
+        use bitcoin::secp256k1::PublicKey;
 
         let pk = PublicKey::from_str("02d1780dd0e08f4d873f94faf49d878d909a1174291d3fcac3e02a6c45e7eda744").unwrap();
         let secp = secp256k1zkp::Secp256k1::new();

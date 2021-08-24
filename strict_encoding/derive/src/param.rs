@@ -12,13 +12,13 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use proc_macro2::Span;
 use std::convert::TryInto;
-use syn::{Error, Ident, LitInt, Path, Result};
 
 use amplify::proc_attr::{
     ArgValue, ArgValueReq, AttrReq, LiteralClass, ParametrizedAttr, ValueClass,
 };
+use proc_macro2::Span;
+use syn::{Error, Ident, LitInt, Path, Result};
 
 #[derive(Clone)]
 pub(crate) struct EncodingDerive {
@@ -67,7 +67,8 @@ impl EncodingDerive {
         {
             return Err(Error::new(
                 Span::call_site(),
-                "`by_value` and `by_order` attributes can't be present together",
+                "`by_value` and `by_order` attributes can't be present \
+                 together",
             ));
         }
 
@@ -98,12 +99,17 @@ impl EncodingDerive {
             .cloned()
             .unwrap_or_else(|| ArgValue::from(ident!(strict_encoding)))
             .try_into()
-            .expect("amplify_syn is broken: requirements for crate arg are not satisfied");
+            .expect(
+                "amplify_syn is broken: requirements for crate arg are not \
+                 satisfied",
+            );
 
-        let value = attr
-            .args
-            .get("value")
-            .map(|a| a.clone().try_into().expect("amplify_syn is broken: requirements for value arg are not satisfied"));
+        let value = attr.args.get("value").map(|a| {
+            a.clone().try_into().expect(
+                "amplify_syn is broken: requirements for value arg are not \
+                 satisfied",
+            )
+        });
 
         let skip = attr.args.get("skip").is_some();
 

@@ -105,7 +105,14 @@ pub trait ValidationReport {
 /// Client-side-validation status containing all reports from the validation
 /// process
 #[derive(
-    Clone, PartialEq, Eq, Hash, Debug, Default, StrictEncode, StrictDecode,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Default,
+    StrictEncode,
+    StrictDecode
 )]
 pub struct Status<R>
 where
@@ -402,7 +409,7 @@ mod test {
             Debug,
             Default,
             StrictEncode,
-            StrictDecode,
+            StrictDecode
         )]
         struct Seal {}
 
@@ -431,14 +438,10 @@ mod test {
             }
         }
 
-        #[derive(
-            Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode,
-        )]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
         struct Report {}
 
-        #[derive(
-            Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode,
-        )]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
         struct Issue {
             seal: Seal,
         }
@@ -456,9 +459,7 @@ mod test {
         impl SealIssue for Issue {
             type SingleUseSeal = Seal;
 
-            fn seal(&self) -> &Self::SingleUseSeal {
-                &self.seal
-            }
+            fn seal(&self) -> &Self::SingleUseSeal { &self.seal }
         }
 
         impl ValidationReport for Report {
@@ -476,9 +477,7 @@ mod test {
         impl ClientData for Data {
             type ValidationReport = Report;
 
-            fn single_use_seal(&self) -> Option<&Seal> {
-                Some(&self.seal)
-            }
+            fn single_use_seal(&self) -> Option<&Seal> { Some(&self.seal) }
 
             fn validate_internal_consistency(
                 &self,
@@ -494,9 +493,7 @@ mod test {
         impl ClientData for State {
             type ValidationReport = Report;
 
-            fn single_use_seal(&self) -> Option<&Seal> {
-                None
-            }
+            fn single_use_seal(&self) -> Option<&Seal> { None }
 
             fn validate_internal_consistency(
                 &self,

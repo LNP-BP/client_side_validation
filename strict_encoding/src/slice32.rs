@@ -36,9 +36,10 @@ impl StrictDecode for Slice32 {
 
 #[cfg(test)]
 mod test {
-    use crate::{StrictDecode, StrictEncode};
     use amplify::hex::FromHex;
     use amplify::{Slice32, Wrapper};
+
+    use crate::{StrictDecode, StrictEncode};
 
     #[test]
     fn test_encoding() {

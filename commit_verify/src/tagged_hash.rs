@@ -30,17 +30,8 @@ use serde_with::{As, DisplayFromStr};
     serde(crate = "serde_crate", transparent)
 )]
 #[derive(
-    Wrapper,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Debug,
-    Display,
-    From,
+    Wrapper, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display,
+    From
 )]
 #[display(LowerHex)]
 #[wrapper(FromStr, LowerHex, UpperHex)]
@@ -97,9 +88,7 @@ where
     }
 
     /// Returns 32-byte slice array representing internal hash data
-    fn as_slice(&'a self) -> &'a [u8; 32] {
-        self.as_inner().as_inner()
-    }
+    fn as_slice(&'a self) -> &'a [u8; 32] { self.as_inner().as_inner() }
 
     /// Constructs tagged hash from a given hexadecimal string
     fn from_hex(hex: &str) -> Result<Self, hex::Error>

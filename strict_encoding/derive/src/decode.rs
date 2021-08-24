@@ -12,6 +12,7 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use amplify::proc_attr::ParametrizedAttr;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{ToTokens, TokenStreamExt};
 use syn::spanned::Spanned;
@@ -19,8 +20,6 @@ use syn::{
     Data, DataEnum, DataStruct, DeriveInput, Error, Field, Fields, Ident,
     ImplGenerics, Index, LitStr, Result, TypeGenerics, WhereClause,
 };
-
-use amplify::proc_attr::ParametrizedAttr;
 
 use crate::param::EncodingDerive;
 use crate::ATTR_NAME;

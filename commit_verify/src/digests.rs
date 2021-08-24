@@ -23,9 +23,7 @@ where
     MSG: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> sha1::Hash {
-        sha1::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &MSG) -> sha1::Hash { sha1::Hash::hash(msg.as_ref()) }
 }
 
 impl<MSG> CommitVerify<MSG> for ripemd160::Hash
@@ -43,9 +41,7 @@ where
     MSG: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> hash160::Hash {
-        hash160::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &MSG) -> hash160::Hash { hash160::Hash::hash(msg.as_ref()) }
 }
 
 impl<MSG> CommitVerify<MSG> for sha256::Hash
@@ -53,9 +49,7 @@ where
     MSG: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> sha256::Hash {
-        sha256::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &MSG) -> sha256::Hash { sha256::Hash::hash(msg.as_ref()) }
 }
 
 impl<MSG> CommitVerify<MSG> for sha256d::Hash
@@ -63,9 +57,7 @@ where
     MSG: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> sha256d::Hash {
-        sha256d::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &MSG) -> sha256d::Hash { sha256d::Hash::hash(msg.as_ref()) }
 }
 
 impl<MSG, T> CommitVerify<MSG> for sha256t::Hash<T>
@@ -94,15 +86,14 @@ where
     MSG: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> sha512::Hash {
-        sha512::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &MSG) -> sha512::Hash { sha512::Hash::hash(msg.as_ref()) }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::api::test_helpers::*;
     use bitcoin_hashes::*;
+
+    use crate::api::test_helpers::*;
 
     #[test]
     fn test_sha256_commitment() {

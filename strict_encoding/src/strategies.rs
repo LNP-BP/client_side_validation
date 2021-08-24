@@ -16,11 +16,11 @@
 //!
 //! Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 
-use amplify::Wrapper;
 use std::io;
 
-use super::net;
-use super::{Error, StrictDecode, StrictEncode};
+use amplify::Wrapper;
+
+use super::{net, Error, StrictDecode, StrictEncode};
 
 /// Encodes/decodes data as a [`bitcoin_hashes::Hash`]-based (wrapper) type,
 /// i.e. as a fixed-size byte string of [`bitcoin_hashes::Hash::LEN`] length.
@@ -116,7 +116,7 @@ where
         d.read_exact(&mut buf)?;
         Ok(Self::new(H::from_slice(&buf).expect(
             "internal hash data representation length mismatch between \
-            `from_slice` requirements and `LEN` constant balue",
+             `from_slice` requirements and `LEN` constant balue",
         )))
     }
 }
