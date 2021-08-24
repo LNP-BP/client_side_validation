@@ -14,13 +14,11 @@
 
 //! Bitcoin tagged hash helper types.
 
-use amplify::Wrapper;
+use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{hex, sha256, sha256t, Error, Hash, HashEngine};
 #[cfg(feature = "serde")]
 use serde_with::{As, DisplayFromStr};
-
-use crate::Slice32;
 
 /// Helper class for tests and creation of tagged hashes with dynamically-
 /// defined tags. Do not use in all other cases; utilize

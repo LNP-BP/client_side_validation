@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "amplify"
-version = "3.7.1"
+version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa9b1af9b1bce6079e2c058fe1d0f0488e4e7370eca5c983b86aa43c11def6b0"
+checksum = "bd9d13205223b1cf865d14b73cdd094eca420aac56953f564bd4082f262d1cea"
 dependencies = [
  "amplify_derive",
  "amplify_num",
@@ -32,9 +32,9 @@ dependencies = [
 
 [[package]]
 name = "amplify_num"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2a0b9009be0d79a4d38db02d2c8cc0abb8255ff79e7685940340622cdbd0a2f"
+checksum = "1b6747d933bb75844ac9daa21498f608dcb943f1b46497faa5046c49bb1f626e"
 dependencies = [
  "serde",
 ]
@@ -158,7 +158,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.5.4"
+version = "0.5.6"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "amplify",
  "bitcoin",

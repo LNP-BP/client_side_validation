@@ -25,14 +25,14 @@
 use std::collections::BTreeMap;
 use std::io;
 
+use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t};
 use strict_encoding::StrictEncode;
 
 #[cfg(feature = "rand")]
 use crate::TryCommitVerify;
 use crate::{
-    commit_encode, CommitEncode, CommitVerify, ConsensusCommit, Slice32,
-    TaggedHash,
+    commit_encode, CommitEncode, CommitVerify, ConsensusCommit, TaggedHash,
 };
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
@@ -184,8 +184,8 @@ impl TryCommitVerify<MultiSource> for MultiCommitBlock {
 
             let mut ordered = BTreeMap::<usize, (ProtocolId, Message)>::new();
             if source.messages.iter().all(|(protocol, message)| {
-                let rem =
-                    u256::from_le_bytes(**protocol) % u256::from(n as u64);
+                let rem = u256::from_le_bytes(protocol.into_inner())
+                    % u256::from(n as u64);
                 ordered
                     .insert(rem.low_u64() as usize, (*protocol, *message))
                     .is_none()
@@ -335,7 +335,7 @@ mod test {
 
         for index in 0u8..3 {
             let mut source = MultiSource::default();
-            protocol[0] = index;
+            protocol[0u8] = index;
             source.messages.insert(protocol, message);
             let commitment = MultiCommitBlock::try_commit(&source).unwrap();
 
@@ -367,7 +367,7 @@ mod test {
 
         for index in 1u8..3 {
             let mut source = MultiSource::default();
-            protocol[31] = index; // Checking endianness
+            protocol[31u8] = index; // Checking endianness
             source.messages.insert(protocol, message);
             let commitment = MultiCommitBlock::try_commit(&source).unwrap();
 

@@ -77,6 +77,7 @@ mod miniscript;
 pub mod net;
 mod pointers;
 mod primitives;
+mod slice32;
 pub mod strategies;
 
 pub use strategies::Strategy;

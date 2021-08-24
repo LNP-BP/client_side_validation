@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.5.4"
+version = "0.5.6"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Commit-verify API for client-side validation"
@@ -16,7 +16,7 @@ name = "commit_verify"
 path = "src/lib.rs"
 
 [dependencies]
-amplify = "3.7.1"
+amplify = "3.8.0"
 bitcoin_hashes = "0.10"
 strict_encoding = { version = "1.5.2", path = "../strict_encoding" }
 rand = { version = "0.7", optional = true } # We need older version since secp256k1 depends on it
