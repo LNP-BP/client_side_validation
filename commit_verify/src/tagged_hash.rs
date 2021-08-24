@@ -22,8 +22,8 @@ use serde_with::{As, DisplayFromStr};
 
 /// Helper class for tests and creation of tagged hashes with dynamically-
 /// defined tags. Do not use in all other cases; utilize
-/// [`bitcoin::hashes::sha256t`] type and [`bitcoin::sha256t_hash_newtype!`]
-/// macro instead.
+/// [`bitcoin_hashes::sha256t`] type and
+/// [`bitcoin_hashes::sha256t_hash_newtype`] macro instead.
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

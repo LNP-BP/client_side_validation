@@ -614,7 +614,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "single_use_seals"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "amplify_derive",
 ]

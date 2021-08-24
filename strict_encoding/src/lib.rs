@@ -15,6 +15,7 @@
 // Coding conventions
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
+#![allow(clippy::branches_sharing_code)]
 
 //! Library implementing **strict encoding** standard, defined by
 //! [LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md).
@@ -33,7 +34,7 @@
 //! Library defines two main traits, [`StrictEncode`] and [`StrictDecode`],
 //! which should be implemented on each type that requires to be represented
 //! for client-side-validation. It also defines possible encoding error cases
-//! with [`Error`] and provides derivation macros
+//! with [`derive@Error`] and provides derivation macros
 //! `#[derive(StrictEncode, StrictDecode)]`, which are a part of
 //! `strict_encode_derive` sub-crate and represented by a default feature
 //! `derive`. Finally, it implements strict encoding traits for main data types
@@ -100,15 +101,16 @@ use std::string::FromUtf8Error;
 /// be kept in mind that sometime commitment may follow "fold" scheme
 /// (Merklization or nested commitments) and in such cases this trait can't be
 /// applied. It is generally recommended for consensus-related commitments to
-/// utilize [CommitVerify], [TryCommitVerify] and [EmbedCommitVerify] traits  
-/// from [paradigms::commit_verify] module.
+/// utilize `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits  
+/// from `commit_verify` module.
 pub trait StrictEncode {
-    /// Encode with the given [std::io::Writer] instance; must return result
+    /// Encode with the given [`std::io::Write`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error>;
 
-    /// Serializes data as a byte array using [`strict_encode()`] function
+    /// Serializes data as a byte array using [`StrictEncode::strict_encode`]
+    /// function
     fn strict_serialize(&self) -> Result<Vec<u8>, Error> {
         let mut e = vec![];
         let _ = self.strict_encode(&mut e)?;
@@ -119,25 +121,25 @@ pub trait StrictEncode {
 /// Binary decoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications.
 /// MUST NOT be used for commitment verification: even if the commit procedure
-/// uses [StrictEncode], the actual commit verification MUST be done with
-/// [CommitVerify], [TryCommitVerify] and [EmbedCommitVerify] traits, which,
+/// uses [`StrictEncode`], the actual commit verification MUST be done with
+/// `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits, which,
 /// instead of deserializing (nonce operation for commitments) repeat the
 /// commitment procedure for the revealed message and verify it against the
 /// provided commitment.
 pub trait StrictDecode: Sized {
-    /// Decode with the given [std::io::Reader] instance; must either
+    /// Decode with the given [`std::io::Read`] instance; must either
     /// construct an instance or return implementation-specific error type.
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error>;
 
     /// Tries to deserialize byte array into the current type using
-    /// [`strict_decode()`]
+    /// [`StrictDecode::strict_decode`]
     fn strict_deserialize(data: impl AsRef<[u8]>) -> Result<Self, Error> {
         Self::strict_decode(data.as_ref())
     }
 }
 
 /// Convenience method for strict encoding of data structures implementing
-/// [StrictEncode] into a byte vector.
+/// [`StrictEncode`] into a byte vector.
 pub fn strict_serialize<T>(data: &T) -> Result<Vec<u8>, Error>
 where
     T: StrictEncode,
@@ -148,7 +150,7 @@ where
 }
 
 /// Convenience method for strict decoding of data structures implementing
-/// [StrictDecode] from any byt data source.
+/// [`StrictDecode`] from any byt data source.
 pub fn strict_deserialize<T>(data: impl AsRef<[u8]>) -> Result<T, Error>
 where
     T: StrictDecode,
@@ -214,8 +216,8 @@ pub enum Error {
     /// A repeated value for `{0}` found during set collection deserialization
     RepeatedValue(String),
 
-    /// Returned by the convenience method [`strict_decode()`] if not all
-    /// provided data were consumed during decoding process
+    /// Returned by the convenience method [`StrictDecode::strict_decode`] if
+    /// not all provided data were consumed during decoding process
     #[display(
         "Data were not consumed entirely during strict decoding procedure"
     )]

@@ -17,7 +17,7 @@
 #![deny(dead_code, missing_docs, warnings)]
 
 //! Derivation macros for strict encoding. To learn more about the strict
-//! encoding please check [`::strict_encoding`] crate.
+//! encoding please check `strict_encoding` crate.
 //!
 //! # Derivation macros
 //!
@@ -187,7 +187,7 @@ use syn::DeriveInput;
 
 pub(crate) const ATTR_NAME: &str = "strict_encoding";
 
-/// Derives [`::strict_encoding::StrictEncode`] implementation for the type.
+/// Derives [`StrictEncode`] implementation for the type.
 #[proc_macro_derive(StrictEncode, attributes(strict_encoding))]
 pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
@@ -196,7 +196,7 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Derives [`::strict_encoding::StrictDncode`] implementation for the type.
+/// Derives [`StrictDecode`] implementation for the type.
 #[proc_macro_derive(StrictDecode, attributes(strict_encoding))]
 pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);

@@ -76,9 +76,9 @@ macro_rules! commit_encode_list {
 /// automatic implementation of [`CommitEncode`].
 pub trait Strategy {
     /// Specific strategy. List of supported strategies:
-    /// - [`strategy::UsingStrict`]
-    /// - [`strategy::UsingConceal`]
-    /// - [`strategy::UsingHash`]
+    /// - [`strategies::UsingStrict`]
+    /// - [`strategies::UsingConceal`]
+    /// - [`strategies::UsingHash`]
     type Strategy;
 }
 
