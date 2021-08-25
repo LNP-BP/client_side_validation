@@ -12,6 +12,8 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+// TODO: Extract into separate `strict_encoding_test` crate
+
 //! Helping macros and functions for creating test coverage for strict-encoded
 //! data.
 //!

@@ -15,7 +15,6 @@
 // Coding conventions
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
-#![allow(clippy::branches_sharing_code)]
 
 //! Library implementing **strict encoding** standard, defined by
 //! [LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md).
