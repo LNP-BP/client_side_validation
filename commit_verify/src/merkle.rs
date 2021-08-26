@@ -56,9 +56,7 @@ where
     MSG: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> MerkleNode {
-        MerkleNode::hash(msg.as_ref())
-    }
+    fn commit(msg: &MSG) -> MerkleNode { MerkleNode::hash(msg.as_ref()) }
 }
 
 impl<A, B> ConsensusCommit for (A, B)
@@ -183,7 +181,11 @@ fn merklize_inner(
             Some(empty_node),
         );
 
-        assert_eq!(height1, height2, "merklization algorithm failure: height of two subtrees is not equal");
+        assert_eq!(
+            height1, height2,
+            "merklization algorithm failure: height of two subtrees is not \
+             equal"
+        );
 
         tag_engine.input(height1.to_string().as_bytes());
         tag_engine.input(":".as_bytes());
@@ -212,9 +214,7 @@ where
     I: IntoIterator<Item = L>,
     L: CommitEncode,
 {
-    fn from(collection: I) -> Self {
-        Self(collection.into_iter().collect())
-    }
+    fn from(collection: I) -> Self { Self(collection.into_iter().collect()) }
 }
 
 impl<L> FromIterator<L> for MerkleSource<L>
@@ -274,14 +274,16 @@ pub trait ToMerkleSource {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::commit_encode::{strategies, Strategy};
-    use crate::CommitConceal;
+    use std::collections::BTreeMap;
+
     use amplify::{bmap, s};
     use bitcoin_hashes::hex::ToHex;
     use bitcoin_hashes::{sha256d, Hash};
-    use std::collections::BTreeMap;
     use strict_encoding::StrictEncode;
+
+    use super::*;
+    use crate::commit_encode::{strategies, Strategy};
+    use crate::CommitConceal;
 
     #[test]
     fn collections() {
@@ -295,7 +297,7 @@ mod test {
             Hash,
             Debug,
             StrictEncode,
-            StrictDecode,
+            StrictDecode
         )]
         struct Item(pub String);
         // Next, we say that it should be concealed using some function

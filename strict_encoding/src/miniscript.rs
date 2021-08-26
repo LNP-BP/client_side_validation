@@ -81,7 +81,7 @@ const MS_ZERO_NE: u8 = 0x1a;
 /// contradicts rust API guidelines, but in fact it is a rust compiler who
 /// contradicts them, we just do not have other choice.
 macro_rules! strict_encode_tuple {
-    ( $encoder:ident; $tag:ident, $item:ident ) => {{
+    ($encoder:ident; $tag:ident, $item:ident) => {{
         $encoder.write_all(&[$tag])?;
         1 + $item.strict_encode($encoder)?
     }};
@@ -100,9 +100,7 @@ macro_rules! strict_encode_usize {
 
 impl StrictEncode for BareCtx {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for BareCtx {
@@ -113,9 +111,7 @@ impl StrictDecode for BareCtx {
 
 impl StrictEncode for Legacy {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for Legacy {
@@ -126,9 +122,7 @@ impl StrictDecode for Legacy {
 
 impl StrictEncode for Segwitv0 {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for Segwitv0 {
@@ -248,7 +242,9 @@ where
                 MS_OLDER => Policy::Older(u32::strict_decode(d)?),
                 MS_SHA256 => Policy::Sha256(sha256::Hash::strict_decode(d)?),
                 MS_HASH256 => Policy::Hash256(sha256d::Hash::strict_decode(d)?),
-                MS_RIPEMD160 => Policy::Ripemd160(ripemd160::Hash::strict_decode(d)?),
+                MS_RIPEMD160 => {
+                    Policy::Ripemd160(ripemd160::Hash::strict_decode(d)?)
+                }
                 MS_HASH160 => Policy::Hash160(hash160::Hash::strict_decode(d)?),
                 MS_AND_B => {
                     let len = d.read_u16()?;
@@ -262,7 +258,10 @@ where
                     let len = d.read_u16()?;
                     let mut vec = Vec::with_capacity(len as usize);
                     for _ in 0..len {
-                        vec.push((d.read_u16()? as usize, decode_policy_inner(d, depth)?));
+                        vec.push((
+                            d.read_u16()? as usize,
+                            decode_policy_inner(d, depth)?,
+                        ));
                     }
                     Policy::Or(vec)
                 }
@@ -276,21 +275,22 @@ where
                     Policy::Threshold(thresh, vec)
                 }
 
-                MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF | MS_VERIFY
-                | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V | MS_AND_OR | MS_OR_D
-                | MS_OR_C | MS_OR_I | MS_MULTI => {
+                MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF
+                | MS_VERIFY | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V
+                | MS_AND_OR | MS_OR_D | MS_OR_C | MS_OR_I | MS_MULTI => {
                     return Err(Error::DataIntegrityError(format!(
-                        "byte {:#04X} is a valid miniscript instruction, but does  \
-                     not belong to a set of concrete policy instructions. Try \
-                     to decode data using different miniscript type",
+                        "byte {:#04X} is a valid miniscript instruction, but \
+                         does  not belong to a set of concrete policy \
+                         instructions. Try to decode data using different \
+                         miniscript type",
                         byte
                     )))
                 }
 
                 wrong => {
                     return Err(Error::DataIntegrityError(format!(
-                        "byte {:#04X} does not correspond to any of miniscript \
-                     concrete policy instructions",
+                        "byte {:#04X} does not correspond to any of \
+                         miniscript concrete policy instructions",
                         wrong
                     )))
                 }
@@ -470,17 +470,27 @@ where
                     Terminal::Hash160(hash160::Hash::strict_decode(d)?)
                 }
 
-                MS_ALT => Terminal::Alt(decode_miniscript_inner(d, depth)?.into()),
-                MS_SWAP => Terminal::Swap(decode_miniscript_inner(d, depth)?.into()),
-                MS_CHECK => Terminal::Check(decode_miniscript_inner(d, depth)?.into()),
-                MS_DUP_IF => Terminal::DupIf(decode_miniscript_inner(d, depth)?.into()),
-                MS_VERIFY => Terminal::Verify(decode_miniscript_inner(d, depth)?.into()),
+                MS_ALT => {
+                    Terminal::Alt(decode_miniscript_inner(d, depth)?.into())
+                }
+                MS_SWAP => {
+                    Terminal::Swap(decode_miniscript_inner(d, depth)?.into())
+                }
+                MS_CHECK => {
+                    Terminal::Check(decode_miniscript_inner(d, depth)?.into())
+                }
+                MS_DUP_IF => {
+                    Terminal::DupIf(decode_miniscript_inner(d, depth)?.into())
+                }
+                MS_VERIFY => {
+                    Terminal::Verify(decode_miniscript_inner(d, depth)?.into())
+                }
                 MS_NON_ZERO => {
                     Terminal::NonZero(decode_miniscript_inner(d, depth)?.into())
                 }
-                MS_ZERO_NE => {
-                    Terminal::ZeroNotEqual(decode_miniscript_inner(d, depth)?.into())
-                }
+                MS_ZERO_NE => Terminal::ZeroNotEqual(
+                    decode_miniscript_inner(d, depth)?.into(),
+                ),
 
                 MS_AND_V => Terminal::AndV(
                     decode_miniscript_inner(d, depth)?.into(),
@@ -523,11 +533,12 @@ where
                         vec.push(decode_miniscript_inner(d, depth)?.into());
                     }
                     Terminal::Thresh(thresh, vec)
-                },
+                }
 
                 wrong => {
                     return Err(Error::DataIntegrityError(format!(
-                        "byte {:#04X} does not correspond to any of miniscript instructions",
+                        "byte {:#04X} does not correspond to any of \
+                         miniscript instructions",
                         wrong
                     )))
                 }
@@ -754,31 +765,27 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::test_helpers::*;
-    // use crate::StrictEncode;
-    use crate::StrictDecode;
+    use std::str::FromStr;
+
     use miniscript::{
         policy, BareCtx, Descriptor, Legacy, Miniscript, Segwitv0,
     };
-    use std::str::FromStr;
+
+    use crate::test_helpers::*;
+    // use crate::StrictEncode;
+    use crate::StrictDecode;
 
     #[test]
     #[should_panic]
-    fn test_bare_ctx() {
-        BareCtx::strict_deserialize(&[0u8]).unwrap();
-    }
+    fn test_bare_ctx() { BareCtx::strict_deserialize(&[0u8]).unwrap(); }
 
     #[test]
     #[should_panic]
-    fn test_legacy_ctx() {
-        Legacy::strict_deserialize(&[0u8]).unwrap();
-    }
+    fn test_legacy_ctx() { Legacy::strict_deserialize(&[0u8]).unwrap(); }
 
     #[test]
     #[should_panic]
-    fn test_segwitv0_ctx() {
-        Segwitv0::strict_deserialize(&[0u8]).unwrap();
-    }
+    fn test_segwitv0_ctx() { Segwitv0::strict_deserialize(&[0u8]).unwrap(); }
 
     #[test]
     fn test_policy() {

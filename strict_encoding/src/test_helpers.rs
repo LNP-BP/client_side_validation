@@ -12,6 +12,8 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+// TODO: #35 Extract into separate `strict_encoding_test` crate
+
 //! Helping macros and functions for creating test coverage for strict-encoded
 //! data.
 //!
@@ -87,8 +89,8 @@ where
 
     /// Failure during decoding binary representation of enum variant
     #[display(
-        "Failure during decoding binary representation of enum variant `{0:?}`: \
-        `{1:?}`
+        "Failure during decoding binary representation of enum variant \
+         `{0:?}`: `{1:?}`
         \tByte representation: {2:?}"
     )]
     DecoderFailure(T, Error, Vec<u8>),
@@ -96,8 +98,8 @@ where
     /// Test case failure representing mismatch between enum variant produced
     /// by decoding from the originally encoded enum variant
     #[display(
-        "Roundtrip encoding of enum variant `{original:?}` results in different \
-        variant `{decoded:?}`"
+        "Roundtrip encoding of enum variant `{original:?}` results in \
+         different variant `{decoded:?}`"
     )]
     DecodedDiffersFromOriginal {
         /// Original value, which was encoded
@@ -111,7 +113,8 @@ where
     /// variant by the rust compiler
     #[display(
         "Expected value `{expected}` for enum variant \
-        `{enum_name}::{variant_name}` does not match the actual value `{actual}`"
+         `{enum_name}::{variant_name}` does not match the actual value \
+         `{actual}`"
     )]
     ValueMismatch {
         /// Name of the enum being tested
@@ -146,8 +149,8 @@ where
     /// Test case failure representing incorrect decoder error during
     /// processing out-of-enum range value
     #[display(
-        "Decoding of out-of-enum-range value `{0}` results in incorrect decoder \
-        error `{1:?}`"
+        "Decoding of out-of-enum-range value `{0}` results in incorrect \
+         decoder error `{1:?}`"
     )]
     DecoderWrongErrorOnUnknownValue(
         /// Value which was decoded into an enum variant
@@ -159,8 +162,8 @@ where
     /// Test case failure representing a out-of-enum range primitive value
     /// still being interpreted as one of enum variants
     #[display(
-        "Out-of-enum-range value `{0}` is interpreted as `{1:?}` enum variant by \
-        rust compiler"
+        "Out-of-enum-range value `{0}` is interpreted as `{1:?}` enum variant \
+         by rust compiler"
     )]
     UnknownDecodesToVariant(
         /// Value which was decoded into an enum variant
@@ -476,7 +479,7 @@ where
     /// length of the serialized data
     #[display(
         "Encoder reported incorrect length of the serialized data: \
-        `{returned}` instead of `{actual}`"
+         `{returned}` instead of `{actual}`"
     )]
     EncoderReturnedWrongLength {
         /// Actual length of the serialized data
@@ -488,7 +491,8 @@ where
     /// Test case failure representing mismatch between object produced
     /// by decoding from the originally encoded object
     #[display(
-        "Roundtrip encoding of `{original:?}` produced different object `{transcoded:?}`"
+        "Roundtrip encoding of `{original:?}` produced different object \
+         `{transcoded:?}`"
     )]
     TranscodedObjectDiffersFromOriginal {
         /// Original value, which was encoded
@@ -501,7 +505,7 @@ where
     /// and serialization of the object decoded from that test vector
     #[display(
         "Serialization of the object `{object:?}` decoded from a test vector \
-        results in a different byte string:
+         results in a different byte string:
         \tOriginal: {original:?}
         \tSerialization: {transcoded:?}
         "

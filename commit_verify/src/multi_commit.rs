@@ -69,7 +69,7 @@ impl Default for MultiSource {
 /// Errors generated during multi-message commitment process by
 /// [`MultiCommitBlock::try_commit`]
 #[derive(
-    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, Debug, Display,
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, Debug, Display
 )]
 #[display(doc_comments)]
 pub enum Error {
@@ -126,7 +126,7 @@ impl MultiCommitItem {
     Debug,
     Default,
     StrictEncode,
-    StrictDecode,
+    StrictDecode
 )]
 /// Multi-message commitment data according to [LNPBP-4] specification.
 ///
@@ -256,7 +256,7 @@ impl sha256t::Tag for Lnpbp4Tag {
     serde(crate = "serde_crate", transparent)
 )]
 #[derive(
-    Wrapper, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, From,
+    Wrapper, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, From
 )]
 #[wrapper(
     Debug, Display, LowerHex, Index, IndexRange, IndexFrom, IndexTo, IndexFull
@@ -268,9 +268,7 @@ where
     M: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &M) -> MultiCommitment {
-        MultiCommitment::hash(msg)
-    }
+    fn commit(msg: &M) -> MultiCommitment { MultiCommitment::hash(msg) }
 }
 
 #[cfg(feature = "rand")]
@@ -296,10 +294,11 @@ impl ConsensusCommit for MultiCommitBlock {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     #[cfg(feature = "rand")]
     use amplify::Wrapper;
     use bitcoin_hashes::{Hash, HashEngine};
+
+    use super::*;
 
     #[cfg(feature = "rand")]
     fn entropy_tagged_engine() -> sha256::HashEngine {

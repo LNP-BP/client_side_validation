@@ -31,7 +31,7 @@ impl StrictEncode for &[u8] {
     }
 }
 
-// TODO: 19 Re-implement with const generics once MSRV > 1.50
+// TODO: #19 Re-implement with const generics once MSRV > 1.50
 
 impl StrictEncode for [u8; 16] {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -190,10 +190,10 @@ pub mod test {
             "0",
             " ",
             "A string slice (&str) is made of bytes (u8), and a byte slice \
-            (&[u8]) is made of bytes, so this function converts between the two.\
-             Not all byte slices are valid string slices, however: &str requires \
-             that it is valid UTF-8. from_utf8() checks to ensure that the bytes \
-             are valid UTF-8, and then does the conversion.",
+             (&[u8]) is made of bytes, so this function converts between the \
+             two.Not all byte slices are valid string slices, however: &str \
+             requires that it is valid UTF-8. from_utf8() checks to ensure \
+             that the bytes are valid UTF-8, and then does the conversion.",
         ]
     }
 

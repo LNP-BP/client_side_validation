@@ -124,6 +124,4 @@ where
     Other(Err),
 }
 
-fn main() {
-    assert_eq!(ByValue::Bit64.strict_serialize().unwrap(), vec![8])
-}
+fn main() { assert_eq!(ByValue::Bit64.strict_serialize().unwrap(), vec![8]) }

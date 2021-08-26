@@ -266,8 +266,9 @@ impl StrictDecode for Duration {
 
 #[cfg(feature = "chrono")]
 mod _chrono {
-    use super::*;
     use chrono::{DateTime, NaiveDateTime, Utc};
+
+    use super::*;
 
     impl StrictEncode for NaiveDateTime {
         #[inline]
@@ -301,10 +302,11 @@ mod _chrono {
 
 #[cfg(test)]
 pub mod test {
+    use chrono::{NaiveDateTime, Utc};
+
     use super::*;
     use crate::strict_deserialize;
     use crate::test_helpers::test_encoding_roundtrip;
-    use chrono::{NaiveDateTime, Utc};
 
     #[test]
     fn test_u_encoding() {
@@ -324,46 +326,35 @@ pub mod test {
         test_encoding_roundtrip(&54_u64, [54, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         test_encoding_roundtrip(&0x45a6_u64, [0xa6, 0x45, 0, 0, 0, 0, 0, 0])
             .unwrap();
-        test_encoding_roundtrip(
-            &0x56fe45a6_u64,
-            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&0x56fe45a6_u64, [
+            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0xcafedead56fe45a6_u64,
-            [0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca],
-        )
+        test_encoding_roundtrip(&0xcafedead56fe45a6_u64, [
+            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &54_u128,
-            [54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&54_u128, [
+            54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0x45a6_u128,
-            [0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&0x45a6_u128, [
+            0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0x56fe45a6_u128,
-            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&0x56fe45a6_u128, [
+            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0xcafedead56fe45a6_u128,
-            [
-                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0,
-                0, 0, 0,
-            ],
-        )
+        test_encoding_roundtrip(&0xcafedead56fe45a6_u128, [
+            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0, 0,
+            0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0xbadefeed65671331cafedead56fe45a6_u128,
-            [
-                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13,
-                0x67, 0x65, 0xed, 0xfe, 0xde, 0xba,
-            ],
-        )
+        test_encoding_roundtrip(&0xbadefeed65671331cafedead56fe45a6_u128, [
+            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13, 0x67,
+            0x65, 0xed, 0xfe, 0xde, 0xba,
+        ])
         .unwrap();
     }
 
@@ -384,54 +375,41 @@ pub mod test {
         test_encoding_roundtrip(&54_i64, [54, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         test_encoding_roundtrip(&0x45a6_i64, [0xa6, 0x45, 0, 0, 0, 0, 0, 0])
             .unwrap();
-        test_encoding_roundtrip(
-            &0x56fe45a6_i64,
-            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&0x56fe45a6_i64, [
+            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0x7afedead56fe45a6_i64,
-            [0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0x7a],
-        )
+        test_encoding_roundtrip(&0x7afedead56fe45a6_i64, [
+            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0x7a,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &54_i128,
-            [54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&54_i128, [
+            54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0x45a6_i128,
-            [0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&0x45a6_i128, [
+            0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0x56fe45a6_i128,
-            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        )
+        test_encoding_roundtrip(&0x56fe45a6_i128, [
+            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0xcafedead56fe45a6_i128,
-            [
-                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0,
-                0, 0, 0,
-            ],
-        )
+        test_encoding_roundtrip(&0xcafedead56fe45a6_i128, [
+            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0, 0,
+            0, 0,
+        ])
         .unwrap();
-        test_encoding_roundtrip(
-            &0x1adefeed65671331cafedead56fe45a6_i128,
-            [
-                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13,
-                0x67, 0x65, 0xed, 0xfe, 0xde, 0x1a,
-            ],
-        )
+        test_encoding_roundtrip(&0x1adefeed65671331cafedead56fe45a6_i128, [
+            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13, 0x67,
+            0x65, 0xed, 0xfe, 0xde, 0x1a,
+        ])
         .unwrap();
     }
 
     #[test]
     #[should_panic(expected = "ExceedMaxItems(131071)")]
-    fn test_usize_encode_fail() {
-        0x01FFFF_usize.strict_serialize().unwrap();
-    }
+    fn test_usize_encode_fail() { 0x01FFFF_usize.strict_serialize().unwrap(); }
 
     #[test]
     #[should_panic(expected = "DataNotEntirelyConsumed")]
@@ -453,10 +431,9 @@ pub mod test {
     #[test]
     fn test_float_encoding() {
         test_encoding_roundtrip(&5.7692_f32, [73, 157, 184, 64]).unwrap();
-        test_encoding_roundtrip(
-            &54546457.76965676_f64,
-            [206, 65, 40, 206, 128, 2, 138, 65],
-        )
+        test_encoding_roundtrip(&54546457.76965676_f64, [
+            206, 65, 40, 206, 128, 2, 138, 65,
+        ])
         .unwrap();
     }
 

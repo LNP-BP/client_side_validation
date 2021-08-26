@@ -31,6 +31,10 @@
 //! standardizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in a wrong way.
 
+#[cfg(all(test, feature = "async"))]
+#[macro_use]
+extern crate async_trait;
+
 pub extern crate commit_verify;
 pub extern crate single_use_seals;
 pub extern crate strict_encoding;
@@ -41,8 +45,5 @@ pub use api::{
     ClientData, ClientSideValidate, SealIssue, SealResolver, Status,
     ValidationFailure, ValidationLog, ValidationReport, Validity,
 };
-pub use commit_verify::commit_encode;
-pub use commit_verify::merkle;
-pub use commit_verify::multi_commit;
-pub use commit_verify::tagged_hash;
+pub use commit_verify::{commit_encode, merkle, multi_commit, tagged_hash};
 pub use strict_encoding::derive::{StrictDecode, StrictEncode};

@@ -21,8 +21,8 @@ crate-type = ["rlib", "staticlib"]
 amplify = { version = "3.8.1", features = ["proc_attr"] }
 strict_encoding_derive = { version = "1.5.2", path = "./derive", optional = true }
 bitcoin_hashes = "0.10" # We need this separately since bitcoin is an optional dependency
-# TODO #1: Replace with a dedicated bitcoin encoding crate once it will be
-#          ready (0.27 release presumably)
+# TODO: #1 Replace with a dedicated bitcoin encoding crate once it will be
+#       ready (0.27 release presumably)
 bitcoin = { version = "0.27", optional = true }
 miniscript = { version = "6", optional = true }
 ed25519-dalek = { version = "1", optional = true }

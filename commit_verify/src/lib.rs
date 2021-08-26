@@ -15,7 +15,6 @@
 // Coding conventions
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
-#![allow(clippy::branches_sharing_code)]
 
 //! Library providing primitives for cryptographic commit-verify schemes used in
 //! client-side-validation

@@ -105,7 +105,14 @@ pub trait ValidationReport {
 /// Client-side-validation status containing all reports from the validation
 /// process
 #[derive(
-    Clone, PartialEq, Eq, Hash, Debug, Default, StrictEncode, StrictDecode,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Default,
+    StrictEncode,
+    StrictDecode
 )]
 pub struct Status<R>
 where
@@ -247,7 +254,7 @@ where
             Error = R::SealIssue,
         >,
     {
-        todo!()
+        todo!("#34 resolve_seal_issues")
     }
 }
 
@@ -391,6 +398,8 @@ mod test {
 
     use super::*;
     use crate::single_use_seals::SealMedium;
+    #[cfg(feature = "async")]
+    use crate::single_use_seals::SealMediumAsync;
 
     #[test]
     fn test() {
@@ -402,25 +411,27 @@ mod test {
             Debug,
             Default,
             StrictEncode,
-            StrictDecode,
+            StrictDecode
         )]
         struct Seal {}
 
+        #[cfg_attr(feature = "async", async_trait)]
         impl SingleUseSeal for Seal {
             type Witness = ();
+            type Message = Vec<u8>;
             type Definition = Self;
             type Error = Issue;
 
             fn close(
                 &self,
-                _over: impl AsRef<[u8]>,
+                _over: &Self::Message,
             ) -> Result<Self::Witness, Self::Error> {
                 Ok(())
             }
 
             fn verify(
                 &self,
-                _msg: impl AsRef<[u8]>,
+                _msg: &Self::Message,
                 _witness: &Self::Witness,
                 _medium: &impl SealMedium<Self>,
             ) -> Result<bool, Self::Error>
@@ -429,16 +440,25 @@ mod test {
             {
                 Ok(true)
             }
+
+            #[cfg(feature = "async")]
+            async fn verify_async(
+                &self,
+                _msg: &Self::Message,
+                _witness: &Self::Witness,
+                _medium: &impl SealMediumAsync<Self>,
+            ) -> Result<bool, Self::Error>
+            where
+                Self: Sized + Sync + Send,
+            {
+                panic!()
+            }
         }
 
-        #[derive(
-            Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode,
-        )]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
         struct Report {}
 
-        #[derive(
-            Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode,
-        )]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
         struct Issue {
             seal: Seal,
         }
@@ -456,9 +476,7 @@ mod test {
         impl SealIssue for Issue {
             type SingleUseSeal = Seal;
 
-            fn seal(&self) -> &Self::SingleUseSeal {
-                &self.seal
-            }
+            fn seal(&self) -> &Self::SingleUseSeal { &self.seal }
         }
 
         impl ValidationReport for Report {
@@ -476,9 +494,7 @@ mod test {
         impl ClientData for Data {
             type ValidationReport = Report;
 
-            fn single_use_seal(&self) -> Option<&Seal> {
-                Some(&self.seal)
-            }
+            fn single_use_seal(&self) -> Option<&Seal> { Some(&self.seal) }
 
             fn validate_internal_consistency(
                 &self,
@@ -494,9 +510,7 @@ mod test {
         impl ClientData for State {
             type ValidationReport = Report;
 
-            fn single_use_seal(&self) -> Option<&Seal> {
-                None
-            }
+            fn single_use_seal(&self) -> Option<&Seal> { None }
 
             fn validate_internal_consistency(
                 &self,

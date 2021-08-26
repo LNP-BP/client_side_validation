@@ -86,8 +86,9 @@ pub trait Strategy {
 ///
 /// Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 pub mod strategies {
-    use super::*;
     use bitcoin_hashes::Hash;
+
+    use super::*;
 
     /// Encodes by running strict *encoding procedure* on the raw data without
     /// any pre-processing.
@@ -115,7 +116,8 @@ pub mod strategies {
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             self.as_inner().strict_encode(e).expect(
-                "Strict encoding must not fail for types using `strategy::UsingStrict`",
+                "Strict encoding must not fail for types using \
+                 `strategy::UsingStrict`",
             )
         }
     }
@@ -137,13 +139,16 @@ pub mod strategies {
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             let mut engine = H::engine();
-            engine
-                .input(&strict_encoding::strict_serialize(self.as_inner()).expect(
-                    "Strict encoding of hash strategy-based commitment data must not fail",
-                ));
+            engine.input(
+                &strict_encoding::strict_serialize(self.as_inner()).expect(
+                    "Strict encoding of hash strategy-based commitment data \
+                     must not fail",
+                ),
+            );
             let hash = H::from_engine(engine);
             hash.strict_encode(e).expect(
-                "Strict encoding must not fail for types using `strategy::UsingHash`",
+                "Strict encoding must not fail for types using \
+                 `strategy::UsingHash`",
             )
         }
     }
