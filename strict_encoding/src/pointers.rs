@@ -31,7 +31,7 @@ impl StrictEncode for &[u8] {
     }
 }
 
-// TODO: 19 Re-implement with const generics once MSRV > 1.50
+// TODO: #19 Re-implement with const generics once MSRV > 1.50
 
 impl StrictEncode for [u8; 16] {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
