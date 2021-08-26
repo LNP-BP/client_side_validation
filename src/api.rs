@@ -398,6 +398,8 @@ mod test {
 
     use super::*;
     use crate::single_use_seals::SealMedium;
+    #[cfg(feature = "async")]
+    use crate::single_use_seals::SealMediumAsync;
 
     #[test]
     fn test() {
@@ -413,21 +415,23 @@ mod test {
         )]
         struct Seal {}
 
+        #[cfg_attr(feature = "async", async_trait)]
         impl SingleUseSeal for Seal {
             type Witness = ();
+            type Message = Vec<u8>;
             type Definition = Self;
             type Error = Issue;
 
             fn close(
                 &self,
-                _over: impl AsRef<[u8]>,
+                _over: &Self::Message,
             ) -> Result<Self::Witness, Self::Error> {
                 Ok(())
             }
 
             fn verify(
                 &self,
-                _msg: impl AsRef<[u8]>,
+                _msg: &Self::Message,
                 _witness: &Self::Witness,
                 _medium: &impl SealMedium<Self>,
             ) -> Result<bool, Self::Error>
@@ -435,6 +439,19 @@ mod test {
                 Self: Sized,
             {
                 Ok(true)
+            }
+
+            #[cfg(feature = "async")]
+            async fn verify_async(
+                &self,
+                _msg: &Self::Message,
+                _witness: &Self::Witness,
+                _medium: &impl SealMediumAsync<Self>,
+            ) -> Result<bool, Self::Error>
+            where
+                Self: Sized + Sync + Send,
+            {
+                panic!()
             }
         }
 

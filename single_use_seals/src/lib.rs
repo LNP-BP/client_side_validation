@@ -102,6 +102,9 @@
 
 #[macro_use]
 extern crate amplify_derive;
+#[cfg(feature = "async")]
+#[macro_use]
+extern crate async_trait;
 
 /// Single-use-seal trait: implement for a data structure that will hold a
 /// single-use-seal definition and will contain a business logic for closing
@@ -115,10 +118,19 @@ extern crate amplify_derive;
 pub trait SingleUseSeal {
     /// Associated type for the witness produced by the single-use-seal close
     /// procedure
+    #[cfg(not(feature = "async"))]
     type Witness;
+
+    /// Associated type for the witness produced by the single-use-seal close
+    /// procedure
+    #[cfg(feature = "async")]
+    type Witness: Sync + Send;
 
     /// Type that contains seal definition
     type Definition;
+
+    /// Message type that is supported by the current single-use-seal
+    type Message: AsRef<[u8]>;
 
     /// Closing and verification errors
     type Error: std::error::Error;
@@ -128,17 +140,14 @@ pub trait SingleUseSeal {
     /// NB: Closing of the seal MUST not change the internal state of the
     /// seal itself; all the data produced by the process must be placed
     /// into the returned Witness type
-    fn close(
-        &self,
-        over: impl AsRef<[u8]>,
-    ) -> Result<Self::Witness, Self::Error>;
+    fn close(&self, over: &Self::Message)
+        -> Result<Self::Witness, Self::Error>;
 
     /// Verifies that the seal was indeed closed over the message on the
     /// specific seal medium (see [`SealMedium`])
-    #[cfg(not(feature = "async"))]
     fn verify(
         &self,
-        msg: impl AsRef<[u8]>,
+        msg: &Self::Message,
         witness: &Self::Witness,
         medium: &impl SealMedium<Self>,
     ) -> Result<bool, Self::Error>
@@ -148,14 +157,14 @@ pub trait SingleUseSeal {
     /// Verifies that the seal was indeed closed over the message on the
     /// specific seal medium (see [`SealMedium`])
     #[cfg(feature = "async")]
-    async fn verify(
+    async fn verify_async(
         &self,
-        msg: impl AsRef<[u8]>,
+        msg: &Self::Message,
         witness: &Self::Witness,
-        medium: &impl SealMedium<Self>,
+        medium: &impl SealMediumAsync<Self>,
     ) -> Result<bool, Self::Error>
     where
-        Self: Sized;
+        Self: Sized + Sync + Send;
 }
 
 /// Trait for proof-of-publication medium on which the seals are defined and
@@ -175,7 +184,6 @@ pub trait SingleUseSeal {
 ///
 /// To read more on proof-of-publication please check
 /// <https://petertodd.org/2014/setting-the-record-proof-of-publication>
-#[cfg(not(feature = "async"))]
 pub trait SealMedium<Seal>
 where
     Seal: SingleUseSeal,
@@ -233,11 +241,12 @@ where
 /// Asynchronous version of the [`SealMedium`] trait.
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait SealMedium<Seal>
+pub trait SealMediumAsync<Seal>
 where
     Seal: SingleUseSeal + Sync + Send,
     Seal::Witness: Sync + Send,
     Self::PublicationId: Sync,
+    Self: Send + Sync,
 {
     /// Publication id that may be used for referencing publication of
     /// witness data in the medium. By default set `()`, so [`SealMedium`]
