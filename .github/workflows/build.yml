@@ -32,10 +32,11 @@ jobs:
           - rand
           - crypto
           - serde
-          # - async
+          - async
           - bitcoin
           - rand,crypto,bitcoin
           - all
+          - bulletproofs
     steps:
       - uses: actions/checkout@v2
       - name: Install rust stable

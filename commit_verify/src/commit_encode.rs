@@ -233,7 +233,7 @@ pub mod strategies {
 
     #[cfg(feature = "grin_secp256k1zkp")]
     impl Strategy for secp256k1zkp::pedersen::RangeProof {
-        type Strategy = strategies::UsingHash<sha256::Hash>;
+        type Strategy = strategies::UsingHash<bitcoin_hashes::sha256::Hash>;
     }
 
     impl<T> Strategy for &T

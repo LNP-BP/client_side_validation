@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -170,10 +170,11 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.5.6"
+version = "0.5.7"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
+ "grin_secp256k1zkp",
  "rand 0.7.3",
  "serde",
  "serde_with",
