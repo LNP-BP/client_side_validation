@@ -108,6 +108,8 @@ where
     (tagged_root, height)
 }
 
+// TODO: Optimize to avoid allocations
+// In current rust generic iterators do not work with recursion :(
 fn merklize_inner(
     engine_proto: &sha256::HashEngine,
     mut iter: impl ExactSizeIterator<Item = MerkleNode>,
@@ -115,8 +117,7 @@ fn merklize_inner(
     extend: bool,
     empty_node: Option<MerkleNode>,
 ) -> (MerkleNode, u8) {
-    let len = iter.len();
-    let ext_len = len + if extend { 1 } else { 0 };
+    let len = iter.len() + extend as usize;
     let empty_node = empty_node.unwrap_or_else(|| MerkleNode::hash(&[0xFF]));
 
     // Computing tagged hash as per BIP-340
@@ -128,7 +129,7 @@ fn merklize_inner(
     tag_engine.input(":height=".as_bytes());
 
     let mut engine = MerkleNode::engine();
-    if ext_len <= 2 {
+    if len <= 2 {
         tag_engine.input("0:".as_bytes());
         let tag_hash =
             sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
@@ -162,7 +163,7 @@ fn merklize_inner(
 
         (MerkleNode::from_engine(engine), 1)
     } else {
-        let div = len / 2;
+        let div = len / 2 + len % 2;
 
         let (node1, height1) = merklize_inner(
             engine_proto,
@@ -173,18 +174,30 @@ fn merklize_inner(
             false,
             Some(empty_node),
         );
+
+        let iter = if extend {
+            iter.chain(vec![empty_node]).collect::<Vec<_>>().into_iter()
+        } else {
+            iter.collect::<Vec<_>>().into_iter()
+        };
+
         let (node2, height2) = merklize_inner(
             engine_proto,
             iter,
             depth + 1,
-            len % 2 == 0,
+            (div % 2 + len % 2) / 2 == 1,
             Some(empty_node),
         );
 
         assert_eq!(
-            height1, height2,
-            "merklization algorithm failure: height of two subtrees is not \
-             equal"
+            height1,
+            height2,
+            "merklization algorithm failure: height of subtrees is not equal \
+             (width = {}, depth = {}, prev_extend = {}, next_extend = {})",
+            len,
+            depth,
+            extend,
+            div % 2 == 1 && len % 2 == 1
         );
 
         tag_engine.input(height1.to_string().as_bytes());
@@ -341,6 +354,41 @@ mod test {
             }
         }
 
+        let large = vec![Item(s!("none")); 3];
+        let vec: MerkleSource<Item> = large.clone().into();
+        assert_eq!(
+            vec.commit_serialize().to_hex(),
+            "71ea45868fbd924061c4deb84f37ed82b0ac808de12aa7659afda7d9303e7a71"
+        );
+
+        let large = vec![Item(s!("none")); 5];
+        let vec: MerkleSource<Item> = large.clone().into();
+        assert_eq!(
+            vec.commit_serialize().to_hex(),
+            "e255e0124efe0555fde0d932a0bc0042614129e1a02f7b8c0bf608b81af3eb94"
+        );
+
+        let large = vec![Item(s!("none")); 9];
+        let vec: MerkleSource<Item> = large.clone().into();
+        assert_eq!(
+            vec.commit_serialize().to_hex(),
+            "6cd2d5345a654af4720bdcc637183ded8e432dc88f778b7d27c8d5a0e342c65f"
+        );
+
+        let large = vec![Item(s!("none")); 13];
+        let vec: MerkleSource<Item> = large.clone().into();
+        assert_eq!(
+            vec.commit_serialize().to_hex(),
+            "3714c08c7c94a4ef769ad2cb7df9aaca1e1252d6599a02aff281c37e7242797d"
+        );
+
+        let large = vec![Item(s!("none")); 17];
+        let vec: MerkleSource<Item> = large.clone().into();
+        assert_eq!(
+            vec.commit_serialize().to_hex(),
+            "6093dec47e5bdd706da01e4479cb65632eac426eb59c8c28c4e6c199438c8b6f"
+        );
+
         let item = Item(s!("Some text"));
         assert_eq!(&b"\x09\x00Some text"[..], item.strict_serialize().unwrap());
         assert_eq!(
@@ -377,11 +425,11 @@ mod test {
             original.strict_serialize().unwrap()
         );
         assert_eq!(
-            "3b970fa581bcdf4987e6455e2e5a1ea575bcb3f5b37c25600f600cc8d44e5598",
+            "d911717b8dfbbcef68495c93c0a5e69df618f5dcc194d69e80b6fafbfcd6ed5d",
             collection.commit_serialize().to_hex()
         );
         assert_eq!(
-            "3b970fa581bcdf4987e6455e2e5a1ea575bcb3f5b37c25600f600cc8d44e5598",
+            "d911717b8dfbbcef68495c93c0a5e69df618f5dcc194d69e80b6fafbfcd6ed5d",
             collection.consensus_commit().to_hex()
         );
         assert_ne!(
@@ -410,11 +458,11 @@ mod test {
             original.strict_serialize().unwrap()
         );
         assert_eq!(
-            "4ee97b1318fe417cac30790335033ece29ea4b6183ebf51d083d5a2e89ac33da",
+            "fd72061e26055fb907aa512a591b4291e739f15198eb72027c4dd6506f14f469",
             vec.commit_serialize().to_hex()
         );
         assert_eq!(
-            "4ee97b1318fe417cac30790335033ece29ea4b6183ebf51d083d5a2e89ac33da",
+            "fd72061e26055fb907aa512a591b4291e739f15198eb72027c4dd6506f14f469",
             vec.consensus_commit().to_hex()
         );
         assert_ne!(
