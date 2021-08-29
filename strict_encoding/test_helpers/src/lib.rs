@@ -12,8 +12,9 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-// TODO: #35 Remove from here upon v 1.7 release (the code is already a part
-//       of separate crate `strict_encoding_test`
+// Coding conventions
+#![recursion_limit = "256"]
+#![deny(dead_code, missing_docs, warnings)]
 
 //! Helping macros and functions for creating test coverage for strict-encoded
 //! data.
@@ -71,9 +72,12 @@
 //! }
 //! ```
 
+#[macro_use]
+extern crate amplify;
+
 use std::fmt::Debug;
 
-use crate::{Error, StrictDecode, StrictEncode};
+use strict_encoding::{Error, StrictDecode, StrictEncode};
 
 /// Failures happening during strict encoding tests of enum encodings.
 ///

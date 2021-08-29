@@ -1,9 +1,9 @@
 [package]
-name = "strict_encoding_derive"
+name = "encoding_derive_helpers"
 version = "1.7.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
-description = "Strict encoding derivation macros"
+description = "Helper functions for creating different encoding derivation macros"
 repository = "https://github.com/LNP-BP/client_side_validation"
 homepage = "https://github.com/LNP-BP"
 keywords = ["lnp-bp", "strict-encoding", "networking", "internet2", "proc-macro"]
@@ -12,14 +12,9 @@ readme = "../README.md"
 edition = "2018"
 
 [lib]
-proc-macro = true
 
 [dependencies]
+quote = "1"
 syn = "1"
 proc-macro2 = "1"
-encoding_derive_helpers = { version = "1.7.0", path = "../derive_helpers" }
-amplify_syn = "1.1.6"
-
-[dev-dependencies]
-strict_encoding = { path = ".." }
-amplify_derive = "2.7.2"
+amplify = { version = "3.7.1", features = [ "proc_attr" ] }

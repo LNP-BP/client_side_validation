@@ -1,6 +1,6 @@
 [package]
 name = "client_side_validation"
-version = "0.5.5"
+version = "0.5.7"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Client-side validation foundation library"
@@ -17,7 +17,7 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-strict_encoding = { version = "1.6.1", path = "./strict_encoding" }
+strict_encoding = { version = "1.7.0", path = "./strict_encoding" }
 commit_verify = { version = "0.5.7", path = "./commit_verify" }
 single_use_seals = { version = "0.5.5", path = "./single_use_seals" }
 
@@ -36,5 +36,6 @@ crypto = ["strict_encoding/crypto"]
 bulletproofs = ["commit_verify/bulletproofs"]
 
 [workspace]
-members = [".", "strict_encoding", "commit_verify", "single_use_seals", "strict_encoding/derive"]
+members = [".", "strict_encoding", "commit_verify", "single_use_seals",
+           "strict_encoding/derive", "strict_encoding/derive_helpers", "strict_encoding/test_helpers"]
 default-members = ["."]

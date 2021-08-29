@@ -172,11 +172,20 @@ where
         let mut data = BTreeSet::<T>::new();
         for _ in 0..len {
             let val = T::strict_decode(&mut d)?;
+            if let Some(max) = data.iter().max() {
+                if max > &val {
+                    // TODO: Introduce new error type on 2.0 release
+                    return Err(Error::DataIntegrityError(format!(
+                        "encoded values are not deterministically ordered: \
+                         value `{:?}` should go before `{:?}`",
+                        val, max
+                    )));
+                }
+            }
             if data.contains(&val) {
                 return Err(Error::RepeatedValue(format!("{:?}", val)));
-            } else {
-                data.insert(val);
             }
+            data.insert(val);
         }
         Ok(data)
     }
@@ -264,7 +273,7 @@ where
 /// to the `Vec` strict encoding rules.
 impl<K, V> StrictDecode for BTreeMap<K, V>
 where
-    K: StrictDecode + Ord + Clone,
+    K: StrictDecode + Ord + Clone + Debug,
     V: StrictDecode + Clone,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
@@ -273,6 +282,19 @@ where
         for _ in 0..len {
             let key = K::strict_decode(&mut d)?;
             let val = V::strict_decode(&mut d)?;
+            if let Some(max) = map.keys().max() {
+                if max > &key {
+                    // TODO: Introduce new error type on 2.0 release
+                    return Err(Error::DataIntegrityError(format!(
+                        "encoded values are not deterministically ordered: \
+                         value `{:?}` should go before `{:?}`",
+                        key, max
+                    )));
+                }
+            }
+            if map.contains_key(&key) {
+                return Err(Error::RepeatedValue(format!("{:?}", key)));
+            }
             map.insert(key, val);
         }
         Ok(map)

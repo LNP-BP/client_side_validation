@@ -234,3 +234,39 @@ impl From<FromUtf8Error> for Error {
         Error::Utf8Conversion(err.utf8_error())
     }
 }
+
+/// Possible errors during TLV extension encoding and decoding process
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error)]
+#[display(doc_comments)]
+pub enum TlvError {
+    /// deterministic order of TLV records is broken: type {read} follows after
+    /// type {max}
+    Order {
+        /// TLV record id read at the current position
+        read: usize,
+        /// maximum value of TLV record id read previously
+        max: usize,
+    },
+
+    /// incorrect length of TLV record value: expected {expected}, but only
+    /// {actual} bytes read
+    Len {
+        /// TLV value length encoded in the TLV record
+        expected: usize,
+        /// Actual remaining length of the TLV stream
+        actual: usize,
+    },
+
+    /// repeated TLV record with id {0}
+    Repeated(usize),
+}
+
+// TODO: With 2.0 release add Tlv case to the Error enum
+impl From<TlvError> for Error {
+    fn from(err: TlvError) -> Self {
+        match err {
+            TlvError::Repeated(size) => Error::RepeatedValue(size.to_string()),
+            err => Error::DataIntegrityError(err.to_string()),
+        }
+    }
+}
