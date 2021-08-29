@@ -21,7 +21,7 @@ use proc_macro2::Span;
 use syn::{Error, Ident, LitInt, Path, Result};
 
 #[derive(Clone)]
-pub(crate) struct EncodingDerive {
+pub struct EncodingDerive {
     pub use_crate: Path,
     pub skip: bool,
     pub by_order: bool,
@@ -30,7 +30,7 @@ pub(crate) struct EncodingDerive {
 }
 
 impl EncodingDerive {
-    pub(crate) fn try_from(
+    pub fn try_from(
         attr: &mut ParametrizedAttr,
         is_global: bool,
         is_enum: bool,

@@ -22,17 +22,20 @@ use syn::{
 };
 
 use crate::param::EncodingDerive;
-use crate::ATTR_NAME;
 
-pub(crate) fn encode_derive(input: DeriveInput) -> Result<TokenStream2> {
+pub fn encode_derive(
+    attr_name: &'static str,
+    input: DeriveInput,
+) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let global_param = ParametrizedAttr::with(ATTR_NAME, &input.attrs)?;
+    let global_param = ParametrizedAttr::with(attr_name, &input.attrs)?;
 
     match input.data {
         Data::Struct(data) => encode_struct_impl(
+            attr_name,
             data,
             ident_name,
             global_param,
@@ -41,6 +44,7 @@ pub(crate) fn encode_derive(input: DeriveInput) -> Result<TokenStream2> {
             where_clause,
         ),
         Data::Enum(data) => encode_enum_impl(
+            attr_name,
             data,
             ident_name,
             global_param,
@@ -57,6 +61,7 @@ pub(crate) fn encode_derive(input: DeriveInput) -> Result<TokenStream2> {
 }
 
 fn encode_struct_impl(
+    attr_name: &'static str,
     data: DataStruct,
     ident_name: &Ident,
     mut global_param: ParametrizedAttr,
@@ -68,10 +73,10 @@ fn encode_struct_impl(
 
     let inner_impl = match data.fields {
         Fields::Named(ref fields) => {
-            encode_fields_impl(&fields.named, global_param, false)?
+            encode_fields_impl(attr_name, &fields.named, global_param, false)?
         }
         Fields::Unnamed(ref fields) => {
-            encode_fields_impl(&fields.unnamed, global_param, false)?
+            encode_fields_impl(attr_name, &fields.unnamed, global_param, false)?
         }
         Fields::Unit => quote! { Ok(0) },
     };
@@ -93,6 +98,7 @@ fn encode_struct_impl(
 }
 
 fn encode_enum_impl(
+    attr_name: &'static str,
     data: DataEnum,
     ident_name: &Ident,
     mut global_param: ParametrizedAttr,
@@ -107,7 +113,7 @@ fn encode_enum_impl(
 
     for (order, variant) in data.variants.iter().enumerate() {
         let mut local_param =
-            ParametrizedAttr::with(ATTR_NAME, &variant.attrs)?;
+            ParametrizedAttr::with(attr_name, &variant.attrs)?;
 
         // First, test individual attribute
         let _ = EncodingDerive::try_from(&mut local_param, false, true)?;
@@ -137,11 +143,21 @@ fn encode_enum_impl(
 
         let (field_impl, bra_captures_ket) = match variant.fields {
             Fields::Named(ref fields) => (
-                encode_fields_impl(&fields.named, local_param, true)?,
+                encode_fields_impl(
+                    attr_name,
+                    &fields.named,
+                    local_param,
+                    true,
+                )?,
                 quote! { { #( #captures ),* } },
             ),
             Fields::Unnamed(ref fields) => (
-                encode_fields_impl(&fields.unnamed, local_param, true)?,
+                encode_fields_impl(
+                    attr_name,
+                    &fields.unnamed,
+                    local_param,
+                    true,
+                )?,
                 quote! { ( #( #captures ),* ) },
             ),
             Fields::Unit => (TokenStream2::new(), TokenStream2::new()),
@@ -187,6 +203,7 @@ fn encode_enum_impl(
 }
 
 fn encode_fields_impl<'a>(
+    attr_name: &'static str,
     fields: impl IntoIterator<Item = &'a Field>,
     parent_param: ParametrizedAttr,
     is_enum: bool,
@@ -194,7 +211,7 @@ fn encode_fields_impl<'a>(
     let mut stream = TokenStream2::new();
 
     for (index, field) in fields.into_iter().enumerate() {
-        let mut local_param = ParametrizedAttr::with(ATTR_NAME, &field.attrs)?;
+        let mut local_param = ParametrizedAttr::with(attr_name, &field.attrs)?;
 
         // First, test individual attribute
         let _ = EncodingDerive::try_from(&mut local_param, false, is_enum)?;
