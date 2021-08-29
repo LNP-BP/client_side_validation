@@ -24,8 +24,15 @@ use syn::{
 use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
 use crate::TlvEncoding;
 
+/// Performs actual derivation of the decode trait using the provided
+/// information about trait parameters and requirements for TLV support (see
+/// [`TlvEncoding`] description).
+///
+/// You will find example of the function use in the
+/// [crate top-level documentation][crate].
 pub fn decode_derive(
     attr_name: &'static str,
+    crate_name: Ident,
     trait_name: Ident,
     decode_name: Ident,
     deserialize_name: Ident,
@@ -41,6 +48,7 @@ pub fn decode_derive(
     match input.data {
         Data::Struct(data) => decode_struct_impl(
             attr_name,
+            &crate_name,
             &trait_name,
             &decode_name,
             &deserialize_name,
@@ -54,6 +62,7 @@ pub fn decode_derive(
         ),
         Data::Enum(data) => decode_enum_impl(
             attr_name,
+            &crate_name,
             &trait_name,
             &decode_name,
             &deserialize_name,
@@ -74,6 +83,7 @@ pub fn decode_derive(
 #[allow(clippy::too_many_arguments)]
 fn decode_struct_impl(
     attr_name: &'static str,
+    crate_name: &Ident,
     trait_name: &Ident,
     decode_name: &Ident,
     deserialize_name: &Ident,
@@ -85,7 +95,13 @@ fn decode_struct_impl(
     where_clause: Option<&WhereClause>,
     tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
-    let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
+    let encoding = EncodingDerive::with(
+        &mut global_param,
+        crate_name,
+        true,
+        false,
+        false,
+    )?;
 
     if tlv_encoding == TlvEncoding::Denied && encoding.tlv.is_some() {
         return Err(Error::new(
@@ -97,6 +113,7 @@ fn decode_struct_impl(
     let inner_impl = match data.fields {
         Fields::Named(ref fields) => decode_fields_impl(
             attr_name,
+            crate_name,
             trait_name,
             decode_name,
             deserialize_name,
@@ -108,6 +125,7 @@ fn decode_struct_impl(
         )?,
         Fields::Unnamed(ref fields) => decode_fields_impl(
             attr_name,
+            crate_name,
             trait_name,
             decode_name,
             deserialize_name,
@@ -137,6 +155,7 @@ fn decode_struct_impl(
 #[allow(clippy::too_many_arguments)]
 fn decode_enum_impl(
     attr_name: &'static str,
+    crate_name: &Ident,
     trait_name: &Ident,
     decode_name: &Ident,
     deserialize_name: &Ident,
@@ -147,7 +166,8 @@ fn decode_enum_impl(
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
 ) -> Result<TokenStream2> {
-    let encoding = EncodingDerive::with(&mut global_param, true, true, false)?;
+    let encoding =
+        EncodingDerive::with(&mut global_param, crate_name, true, true, false)?;
     let repr = encoding.repr;
 
     let mut inner_impl = TokenStream2::new();
@@ -157,12 +177,24 @@ fn decode_enum_impl(
             ParametrizedAttr::with(attr_name, &variant.attrs)?;
 
         // First, test individual attribute
-        let _ = EncodingDerive::with(&mut local_param, false, true, false)?;
+        let _ = EncodingDerive::with(
+            &mut local_param,
+            crate_name,
+            false,
+            true,
+            false,
+        )?;
         // Second, combine global and local together
         let mut combined = global_param.clone().merged(local_param.clone())?;
         combined.args.remove(REPR);
         combined.args.remove(CRATE);
-        let encoding = EncodingDerive::with(&mut combined, false, true, false)?;
+        let encoding = EncodingDerive::with(
+            &mut combined,
+            crate_name,
+            false,
+            true,
+            false,
+        )?;
 
         if encoding.skip {
             continue;
@@ -171,6 +203,7 @@ fn decode_enum_impl(
         let field_impl = match variant.fields {
             Fields::Named(ref fields) => decode_fields_impl(
                 attr_name,
+                crate_name,
                 trait_name,
                 decode_name,
                 deserialize_name,
@@ -182,6 +215,7 @@ fn decode_enum_impl(
             )?,
             Fields::Unnamed(ref fields) => decode_fields_impl(
                 attr_name,
+                crate_name,
                 trait_name,
                 decode_name,
                 deserialize_name,
@@ -230,6 +264,7 @@ fn decode_enum_impl(
 #[allow(clippy::too_many_arguments)]
 fn decode_fields_impl<'a>(
     attr_name: &'static str,
+    crate_name: &Ident,
     trait_name: &Ident,
     decode_name: &Ident,
     deserialize_name: &Ident,
@@ -244,8 +279,13 @@ fn decode_fields_impl<'a>(
     let use_tlv = parent_param.args.contains_key(USE_TLV);
     parent_param.args.remove(CRATE);
     parent_param.args.remove(USE_TLV);
-    let parent_attr =
-        EncodingDerive::with(&mut parent_param.clone(), false, is_enum, false)?;
+    let parent_attr = EncodingDerive::with(
+        &mut parent_param.clone(),
+        crate_name,
+        false,
+        is_enum,
+        false,
+    )?;
     let import = parent_attr.use_crate;
 
     let mut skipped_fields = vec![];
@@ -257,12 +297,22 @@ fn decode_fields_impl<'a>(
         let mut local_param = ParametrizedAttr::with(attr_name, &field.attrs)?;
 
         // First, test individual attribute
-        let _ =
-            EncodingDerive::with(&mut local_param, false, is_enum, use_tlv)?;
+        let _ = EncodingDerive::with(
+            &mut local_param,
+            crate_name,
+            false,
+            is_enum,
+            use_tlv,
+        )?;
         // Second, combine global and local together
         let mut combined = parent_param.clone().merged(local_param)?;
-        let encoding =
-            EncodingDerive::with(&mut combined, false, is_enum, use_tlv)?;
+        let encoding = EncodingDerive::with(
+            &mut combined,
+            crate_name,
+            false,
+            is_enum,
+            use_tlv,
+        )?;
 
         let name = field
             .ident
@@ -311,8 +361,9 @@ fn decode_fields_impl<'a>(
             }
 
             let mut aggregator = TokenStream2::new();
-            if let Some(tlv_aggregator) = tlv_aggregator {
+            if let Some(ref tlv_aggregator) = tlv_aggregator {
                 aggregator = quote_spanned! { Span::call_site() =>
+                    _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
                     _ => { s.#tlv_aggregator.insert(type_no, bytes); },
                 };
             };

@@ -25,21 +25,21 @@ use syn::{
     LitInt, Path, PathArguments, PathSegment, Result, Type, TypePath,
 };
 
-pub const CRATE: &str = "crate";
-pub const SKIP: &str = "skip";
-pub const REPR: &str = "repr";
-pub const VALUE: &str = "value";
-pub const BY_ORDER: &str = "by_order";
-pub const BY_VALUE: &str = "by_value";
-pub const USE_TLV: &str = "use_tlv";
-pub const TLV: &str = "tlv";
-pub const UNKNOWN_TLVS: &str = "unknown_tlvs";
+pub(crate) const CRATE: &str = "crate";
+pub(crate) const SKIP: &str = "skip";
+pub(crate) const REPR: &str = "repr";
+pub(crate) const VALUE: &str = "value";
+pub(crate) const BY_ORDER: &str = "by_order";
+pub(crate) const BY_VALUE: &str = "by_value";
+pub(crate) const USE_TLV: &str = "use_tlv";
+pub(crate) const TLV: &str = "tlv";
+pub(crate) const UNKNOWN_TLVS: &str = "unknown_tlvs";
 
 const EXPECT: &str =
     "amplify_syn is broken: requirements for crate arg are not satisfied";
 
 #[derive(Clone)]
-pub struct EncodingDerive {
+pub(crate) struct EncodingDerive {
     pub use_crate: Path,
     pub skip: bool,
     pub by_order: bool,
@@ -51,29 +51,42 @@ pub struct EncodingDerive {
 }
 
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum TlvDerive {
+pub(crate) enum TlvDerive {
     None,
     Typed(usize),
     Unknown,
 }
 
+/// Method for TLV encoding derivation
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum TlvEncoding {
+    /// TLV is prohibited (like in pure strict encoding for
+    /// client-side-validation)
     Denied,
+
+    /// TLV is encoded as a strict-encoded binary map of TLV types to values.
+    /// TLV data block is not prefixed with the length; just a count of
+    /// elements in the map is serialized. Fully BOLT-1 incompatible. Used in
+    /// strict encoding for networking purposes.
     Count,
+
+    /// TLV is encoded as a byte stream prefixed with the total length of the
+    /// TLV data. This mode matches BOLT-1 requirements and is used for
+    /// lightning encoding.
     Length,
 }
 
 impl EncodingDerive {
     pub fn with(
         attr: &mut ParametrizedAttr,
+        crate_name: &Ident,
         is_global: bool,
         is_enum: bool,
         use_tlv: bool,
     ) -> Result<EncodingDerive> {
         let mut map = if is_global {
             map! {
-                CRATE => ArgValueReq::with_default(ident!(strict_encoding)),
+                CRATE => ArgValueReq::with_default(crate_name.clone()),
                 USE_TLV => ArgValueReq::with_default(true)
             }
         } else {
@@ -136,7 +149,7 @@ impl EncodingDerive {
             .args
             .get(CRATE)
             .cloned()
-            .unwrap_or_else(|| ArgValue::from(ident!(strict_encoding)))
+            .unwrap_or_else(|| ArgValue::from(crate_name.clone()))
             .try_into()
             .expect(EXPECT);
 

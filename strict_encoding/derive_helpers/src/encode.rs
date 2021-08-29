@@ -24,8 +24,15 @@ use syn::{
 use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
 use crate::TlvEncoding;
 
+/// Performs actual derivation of the encode trait using the provided
+/// information about trait parameters and requirements for TLV support (see
+/// [`TlvEncoding`] description).
+///
+/// You will find example of the function use in the
+/// [crate top-level documentation][crate].
 pub fn encode_derive(
     attr_name: &'static str,
+    crate_name: Ident,
     trait_name: Ident,
     encode_name: Ident,
     serialize_name: Ident,
@@ -41,6 +48,7 @@ pub fn encode_derive(
     match input.data {
         Data::Struct(data) => encode_struct_impl(
             attr_name,
+            &crate_name,
             &trait_name,
             &encode_name,
             &serialize_name,
@@ -54,6 +62,7 @@ pub fn encode_derive(
         ),
         Data::Enum(data) => encode_enum_impl(
             attr_name,
+            &crate_name,
             &trait_name,
             &encode_name,
             &serialize_name,
@@ -74,6 +83,7 @@ pub fn encode_derive(
 #[allow(clippy::too_many_arguments)]
 fn encode_struct_impl(
     attr_name: &'static str,
+    crate_name: &Ident,
     trait_name: &Ident,
     encode_name: &Ident,
     serialize_name: &Ident,
@@ -85,7 +95,13 @@ fn encode_struct_impl(
     where_clause: Option<&WhereClause>,
     tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
-    let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
+    let encoding = EncodingDerive::with(
+        &mut global_param,
+        crate_name,
+        true,
+        false,
+        false,
+    )?;
 
     if tlv_encoding == TlvEncoding::Denied && encoding.tlv.is_some() {
         return Err(Error::new(
@@ -97,6 +113,7 @@ fn encode_struct_impl(
     let inner_impl = match data.fields {
         Fields::Named(ref fields) => encode_fields_impl(
             attr_name,
+            crate_name,
             trait_name,
             encode_name,
             serialize_name,
@@ -107,6 +124,7 @@ fn encode_struct_impl(
         )?,
         Fields::Unnamed(ref fields) => encode_fields_impl(
             attr_name,
+            crate_name,
             trait_name,
             encode_name,
             serialize_name,
@@ -137,6 +155,7 @@ fn encode_struct_impl(
 #[allow(clippy::too_many_arguments)]
 fn encode_enum_impl(
     attr_name: &'static str,
+    crate_name: &Ident,
     trait_name: &Ident,
     encode_name: &Ident,
     serialize_name: &Ident,
@@ -147,7 +166,8 @@ fn encode_enum_impl(
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
 ) -> Result<TokenStream2> {
-    let encoding = EncodingDerive::with(&mut global_param, true, true, false)?;
+    let encoding =
+        EncodingDerive::with(&mut global_param, crate_name, true, true, false)?;
     let repr = encoding.repr;
 
     let mut inner_impl = TokenStream2::new();
@@ -157,12 +177,24 @@ fn encode_enum_impl(
             ParametrizedAttr::with(attr_name, &variant.attrs)?;
 
         // First, test individual attribute
-        let _ = EncodingDerive::with(&mut local_param, false, true, false)?;
+        let _ = EncodingDerive::with(
+            &mut local_param,
+            crate_name,
+            false,
+            true,
+            false,
+        )?;
         // Second, combine global and local together
         let mut combined = global_param.clone().merged(local_param.clone())?;
         combined.args.remove(REPR);
         combined.args.remove(CRATE);
-        let encoding = EncodingDerive::with(&mut combined, false, true, false)?;
+        let encoding = EncodingDerive::with(
+            &mut combined,
+            crate_name,
+            false,
+            true,
+            false,
+        )?;
 
         if encoding.skip {
             continue;
@@ -186,6 +218,7 @@ fn encode_enum_impl(
             Fields::Named(ref fields) => (
                 encode_fields_impl(
                     attr_name,
+                    crate_name,
                     trait_name,
                     encode_name,
                     serialize_name,
@@ -199,6 +232,7 @@ fn encode_enum_impl(
             Fields::Unnamed(ref fields) => (
                 encode_fields_impl(
                     attr_name,
+                    crate_name,
                     trait_name,
                     encode_name,
                     serialize_name,
@@ -254,6 +288,7 @@ fn encode_enum_impl(
 #[allow(clippy::too_many_arguments)]
 fn encode_fields_impl<'a>(
     attr_name: &'static str,
+    crate_name: &Ident,
     _trait_name: &Ident,
     encode_name: &Ident,
     serialize_name: &Ident,
@@ -276,12 +311,22 @@ fn encode_fields_impl<'a>(
         let mut local_param = ParametrizedAttr::with(attr_name, &field.attrs)?;
 
         // First, test individual attribute
-        let _ =
-            EncodingDerive::with(&mut local_param, false, is_enum, use_tlv)?;
+        let _ = EncodingDerive::with(
+            &mut local_param,
+            crate_name,
+            false,
+            is_enum,
+            use_tlv,
+        )?;
         // Second, combine global and local together
         let mut combined = parent_param.clone().merged(local_param)?;
-        let encoding =
-            EncodingDerive::with(&mut combined, false, is_enum, use_tlv)?;
+        let encoding = EncodingDerive::with(
+            &mut combined,
+            crate_name,
+            false,
+            is_enum,
+            use_tlv,
+        )?;
 
         if encoding.skip {
             continue;

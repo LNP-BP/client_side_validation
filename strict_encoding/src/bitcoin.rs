@@ -468,9 +468,9 @@ pub(crate) mod test {
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::Message;
     use bitcoin_hashes::{hash160, hmac, ripemd160, sha256, sha256d, sha256t};
+    use strict_encoding_test::*;
 
     use super::*;
-    use crate::test_helpers::*;
 
     #[test]
     fn test_encoding_hashes() {

@@ -14,7 +14,38 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, /* missing_docs, */ warnings)]
+#![deny(dead_code, missing_docs, warnings)]
+
+//! Helper functions for creating encoding derive crates, like
+//! `strict_encoding_derive` or `lightning_encoding_derive`.
+//!
+//! To create a derive crate, just use the following sample:
+//!
+//! ```ignore
+//! extern crate proc_macro;
+//! #[macro_use]
+//! extern crate amplify;
+//!
+//! use encoding_derive_helpers::{decode_derive, encode_derive, TlvEncoding};
+//! use proc_macro::TokenStream;
+//! use syn::DeriveInput;
+//!
+//! #[proc_macro_derive(StrictEncode, attributes(strict_encoding))]
+//! pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
+//!     let derive_input = parse_macro_input!(input as DeriveInput);
+//!     encode_derive(
+//!         "strict_encoding",
+//!         ident!(strict_encoding),
+//!         ident!(StrictEncode),
+//!         ident!(strict_encode),
+//!         ident!(strict_serialize),
+//!         derive_input,
+//!         TlvEncoding::Denied,
+//!     )
+//!     .unwrap_or_else(|e| e.to_compile_error())
+//!     .into()
+//! }
+//! ```
 
 extern crate proc_macro;
 #[macro_use]
@@ -28,4 +59,4 @@ mod param;
 
 pub use decode::decode_derive;
 pub use encode::encode_derive;
-pub use param::{EncodingDerive, TlvEncoding};
+pub use param::TlvEncoding;

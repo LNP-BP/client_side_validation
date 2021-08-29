@@ -21,23 +21,44 @@
 //!
 //! # Derivation macros
 //!
-//! Library exports derivation macros `#[derive(`[`StrictEncode`]`)]` and
-//! `#[derive(`[`StrictDecode`]`)]`, which can be added on top of any structure
+//! Library exports derivation macros `#[derive(`[`StrictEncode`]`)]`,
+//! `#[derive(`[`StrictDecode`]`)]`, `#[derive(`[`NetworkEncode`]`)]` and
+//! `#[derive(`[`NetworkDecode`]`)]`, which can be added on top of any structure
 //! you'd like to support string encoding (see Example section below).
 //!
 //! Encoding/decoding implemented by both of these macros may be configured at
-//! type and individual field level using `#[strict_encoding(...)]` attribute
+//! type and individual field level using `#[strict_encoding(...)]` and
+//! `#[network_encoding(...)]` attributes.
+//!
+//! The difference between strict and network encoding is in the support of
+//! TLV (type-length-value) extensions: strict encoding, used for pure
+//! client-side-validation, does not allow use of TLVs, while in network
+//! protocol context this requirement is relaxed and specially-designed TLV
+//! encoding is allowed (see sections below on how to use TLV encoding). Network
+//! encoding TLV is not strictly BOLT-1 compatible; if you are looking for
+//! BOLT-1 TLV implementation, please check `lightning_encoding_derive` crate.
 //!
 //! # Attribute
 //!
-//! [`StrictEncode`] and [`StrictDecode`] behavior can be customed with
+//! [`StrictEncode`] and [`StrictDecode`] behavior can be customized with
 //! `#[strict_encoding(...)]` attribute, which accepts different arguments
 //! depending to which part of the data type it is applied.
+//!
+//! The same applies to [`NetworkEncode`] and [`NetworkDecode`], which use
+//! `#[network_encoding(...)]` attribute with the same syntax and internal
+//! parameters.
 //!
 //! ## Attribute arguments at type declaration level
 //!
 //! Derivation macros accept `#[strict_encoding()]` attribute with the following
 //! arguments:
+//!
+//! ### `use_tlv`
+//!
+//! Applies TLV extension to the data type and allows use of `tlv` and
+//! `unknown_tlvs` arguments on struct fields.
+//!
+//! NB: TLVs work only with structures and not enums.
 //!
 //! ### `crate = ::path::to::strict_encoding_crate`
 //!
@@ -93,6 +114,19 @@
 //! index (for `by_order`-encoded enums) or other variant's value from with
 //! explicit `value` argument the compiler will error.
 //!
+//! ### `tlv = <unsigned 16-bit int>`
+//!
+//! Sets the TLV type id for the field. The field type MUST be `Option` and
+//! it must implement `Default`.
+//!
+//! ### `unknown_tlvs`
+//!
+//! Specifies structure field which will be "capture all" for unknown odd TLV
+//! ids. The argument can be used only for a single field within a structure and
+//! the field type must be `BTreeMap<usize, Box<[u8]>]`.
+//!
+//! NB: if an unknown even TLV type id is met, error is raised and the value
+//! does not get into the field.
 //!
 //! # Examples
 //!
@@ -186,6 +220,7 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     encode_derive(
         "strict_encoding",
+        ident!(strict_encoding),
         ident!(StrictEncode),
         ident!(strict_encode),
         ident!(strict_serialize),
@@ -202,6 +237,7 @@ pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     decode_derive(
         "strict_encoding",
+        ident!(strict_encoding),
         ident!(StrictDecode),
         ident!(strict_decode),
         ident!(strict_deserialize),
@@ -219,11 +255,12 @@ pub fn derive_network_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     encode_derive(
         "network_encoding",
+        ident!(strict_encoding),
         ident!(StrictEncode),
         ident!(strict_encode),
         ident!(strict_serialize),
         derive_input,
-        TlvEncoding::Count,
+        TlvEncoding::Length,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
@@ -236,11 +273,12 @@ pub fn derive_network_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     decode_derive(
         "network_encoding",
+        ident!(strict_encoding),
         ident!(StrictDecode),
         ident!(strict_decode),
         ident!(strict_deserialize),
         derive_input,
-        TlvEncoding::Count,
+        TlvEncoding::Length,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
