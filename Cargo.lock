@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.5.6"
+version = "0.5.7"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "encoding_derive_helpers"
-version = "1.5.3"
+version = "1.7.0"
 dependencies = [
  "amplify",
  "proc-macro2",
@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.6.2"
+version = "1.7.0"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -676,7 +676,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_derive"
-version = "1.5.3"
+version = "1.7.0"
 dependencies = [
  "amplify_derive",
  "amplify_syn",
@@ -688,7 +688,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_test"
-version = "1.6.2"
+version = "1.7.0"
 dependencies = [
  "amplify",
  "strict_encoding",

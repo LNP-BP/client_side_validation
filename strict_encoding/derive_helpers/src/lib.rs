@@ -28,4 +28,4 @@ mod param;
 
 pub use decode::decode_derive;
 pub use encode::encode_derive;
-pub use param::EncodingDerive;
+pub use param::{EncodingDerive, TlvEncoding};

@@ -50,11 +50,18 @@ pub struct EncodingDerive {
     pub tlv: Option<TlvDerive>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum TlvDerive {
     None,
-    Typed(u16),
+    Typed(usize),
     Unknown,
+}
+
+#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+pub enum TlvEncoding {
+    Denied,
+    Count,
+    Length,
 }
 
 impl EncodingDerive {
@@ -228,7 +235,7 @@ impl TlvDerive {
         field: &Field,
         name: TokenStream2,
         fields: &mut Vec<TokenStream2>,
-        tlvs: &mut BTreeMap<u16, TokenStream2>,
+        tlvs: &mut BTreeMap<usize, TokenStream2>,
         aggregator: &mut Option<TokenStream2>,
     ) -> Result<()> {
         match self {
@@ -291,7 +298,7 @@ impl TlvDerive {
                                 (
                                     GenericArgument::Type(Type::Path(path1)),
                                     GenericArgument::Type(Type::Path(path2)),
-                                ) if path1.path.is_ident(&ident!(u16))
+                                ) if path1.path.is_ident(&ident!(usize))
                                     && path2
                                         .path
                                         .segments
@@ -318,7 +325,7 @@ impl TlvDerive {
                     Error::new(
                         field.span(),
                         "unknown TLVs aggregator field must be of \
-                         `BTreeMap<u16, Box<[u8]>>` type",
+                         `BTreeMap<usize, Box<[u8]>>` type",
                     )
                 })
             }

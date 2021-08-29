@@ -22,6 +22,7 @@ use syn::{
 };
 
 use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
+use crate::TlvEncoding;
 
 pub fn encode_derive(
     attr_name: &'static str,
@@ -29,7 +30,7 @@ pub fn encode_derive(
     encode_name: Ident,
     serialize_name: Ident,
     input: DeriveInput,
-    allow_tlv: bool,
+    tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
@@ -49,7 +50,7 @@ pub fn encode_derive(
             impl_generics,
             ty_generics,
             where_clause,
-            allow_tlv,
+            tlv_encoding,
         ),
         Data::Enum(data) => encode_enum_impl(
             attr_name,
@@ -70,6 +71,7 @@ pub fn encode_derive(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn encode_struct_impl(
     attr_name: &'static str,
     trait_name: &Ident,
@@ -81,11 +83,11 @@ fn encode_struct_impl(
     impl_generics: ImplGenerics,
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
-    allow_tlv: bool,
+    tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
     let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
 
-    if !allow_tlv && encoding.tlv.is_some() {
+    if tlv_encoding == TlvEncoding::Denied && encoding.tlv.is_some() {
         return Err(Error::new(
             ident_name.span(),
             format!("TLV extensions are not allowed in `{}`", attr_name),
@@ -101,6 +103,7 @@ fn encode_struct_impl(
             &fields.named,
             global_param,
             false,
+            tlv_encoding,
         )?,
         Fields::Unnamed(ref fields) => encode_fields_impl(
             attr_name,
@@ -110,6 +113,7 @@ fn encode_struct_impl(
             &fields.unnamed,
             global_param,
             false,
+            tlv_encoding,
         )?,
         Fields::Unit => quote! { Ok(0) },
     };
@@ -130,6 +134,7 @@ fn encode_struct_impl(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn encode_enum_impl(
     attr_name: &'static str,
     trait_name: &Ident,
@@ -187,6 +192,7 @@ fn encode_enum_impl(
                     &fields.named,
                     local_param,
                     true,
+                    TlvEncoding::Denied,
                 )?,
                 quote! { { #( #captures ),* } },
             ),
@@ -199,6 +205,7 @@ fn encode_enum_impl(
                     &fields.unnamed,
                     local_param,
                     true,
+                    TlvEncoding::Denied,
                 )?,
                 quote! { ( #( #captures ),* ) },
             ),
@@ -244,6 +251,7 @@ fn encode_enum_impl(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn encode_fields_impl<'a>(
     attr_name: &'static str,
     _trait_name: &Ident,
@@ -252,6 +260,7 @@ fn encode_fields_impl<'a>(
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
     is_enum: bool,
+    tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
     let mut stream = TokenStream2::new();
 
@@ -290,7 +299,7 @@ fn encode_fields_impl<'a>(
         };
 
         encoding.tlv.unwrap_or(TlvDerive::None).process(
-            &field,
+            field,
             name,
             &mut strict_fields,
             &mut tlv_fields,
@@ -306,7 +315,7 @@ fn encode_fields_impl<'a>(
 
     if use_tlv {
         stream.append_all(quote_spanned! { Span::call_site() =>
-            let mut tlvs = ::std::collections::BTreeMap::<u16, Vec<u8>>::default();
+            let mut tlvs = ::std::collections::BTreeMap::<usize, Vec<u8>>::default();
         });
         for (type_no, name) in tlv_fields {
             stream.append_all(quote_spanned! { Span::call_site() =>
@@ -320,24 +329,27 @@ fn encode_fields_impl<'a>(
                 }
             });
         }
-        stream.append_all(quote_spanned! { Span::call_site() =>
-            tlvs.#encode_name(&mut e)?;
-        });
 
-        /* Use this for lightning encode
-        // TODO: Replace with new error type on strict_encoding 1.7 release
-        stream.append_all(quote_spanned! { Span::call_site() =>
-            let tlv_len = tlvs.values().map(Vec::len).sum();
-            if tlv_len > ::core::u16::MAX {
-                return Err(Error::ExceedMaxItems(tlv_len));
+        match tlv_encoding {
+            TlvEncoding::Count => {
+                stream.append_all(quote_spanned! { Span::call_site() =>
+                    tlvs.#encode_name(&mut e)?;
+                })
             }
-            len += (tlv_len as u16).#encode_name(&mut e)?;
-            for (type_no, bytes) in tlvs {
-                len += type_no.#encode_name(&mut e)?;
-                len += bytes.#encode_name(&mut e)?;
+            TlvEncoding::Length => {
+                stream.append_all(quote_spanned! { Span::call_site() =>
+                    let tlv_len: usize = tlvs.values().map(Vec::len).sum();
+                    len += tlv_len.#encode_name(&mut e)?;
+                    for (type_no, bytes) in tlvs {
+                        len += type_no.#encode_name(&mut e)?;
+                        len += bytes.#encode_name(&mut e)?;
+                    }
+                })
             }
-        });
-         */
+            TlvEncoding::Denied => unreachable!(
+                "denied TLV encoding is already checked in the caller method"
+            ),
+        }
     }
 
     Ok(stream)

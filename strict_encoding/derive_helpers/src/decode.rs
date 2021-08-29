@@ -22,6 +22,7 @@ use syn::{
 };
 
 use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
+use crate::TlvEncoding;
 
 pub fn decode_derive(
     attr_name: &'static str,
@@ -29,7 +30,7 @@ pub fn decode_derive(
     decode_name: Ident,
     deserialize_name: Ident,
     input: DeriveInput,
-    allow_tlv: bool,
+    tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
@@ -49,7 +50,7 @@ pub fn decode_derive(
             impl_generics,
             ty_generics,
             where_clause,
-            allow_tlv,
+            tlv_encoding,
         ),
         Data::Enum(data) => decode_enum_impl(
             attr_name,
@@ -70,6 +71,7 @@ pub fn decode_derive(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decode_struct_impl(
     attr_name: &'static str,
     trait_name: &Ident,
@@ -81,11 +83,11 @@ fn decode_struct_impl(
     impl_generics: ImplGenerics,
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
-    allow_tlv: bool,
+    tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
     let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
 
-    if !allow_tlv && encoding.tlv.is_some() {
+    if tlv_encoding == TlvEncoding::Denied && encoding.tlv.is_some() {
         return Err(Error::new(
             ident_name.span(),
             format!("TLV extensions are not allowed in `{}`", attr_name),
@@ -102,6 +104,7 @@ fn decode_struct_impl(
             &fields.named,
             global_param,
             false,
+            tlv_encoding,
         )?,
         Fields::Unnamed(ref fields) => decode_fields_impl(
             attr_name,
@@ -112,6 +115,7 @@ fn decode_struct_impl(
             &fields.unnamed,
             global_param,
             false,
+            tlv_encoding,
         )?,
         Fields::Unit => quote! {},
     };
@@ -130,6 +134,7 @@ fn decode_struct_impl(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decode_enum_impl(
     attr_name: &'static str,
     trait_name: &Ident,
@@ -173,6 +178,7 @@ fn decode_enum_impl(
                 &fields.named,
                 local_param,
                 true,
+                TlvEncoding::Denied,
             )?,
             Fields::Unnamed(ref fields) => decode_fields_impl(
                 attr_name,
@@ -183,6 +189,7 @@ fn decode_enum_impl(
                 &fields.unnamed,
                 local_param,
                 true,
+                TlvEncoding::Denied,
             )?,
             Fields::Unit => TokenStream2::new(),
         };
@@ -220,6 +227,7 @@ fn decode_enum_impl(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decode_fields_impl<'a>(
     attr_name: &'static str,
     trait_name: &Ident,
@@ -229,6 +237,7 @@ fn decode_fields_impl<'a>(
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
     is_enum: bool,
+    tlv_encoding: TlvEncoding,
 ) -> Result<TokenStream2> {
     let mut stream = TokenStream2::new();
 
@@ -267,7 +276,7 @@ fn decode_fields_impl<'a>(
         }
 
         encoding.tlv.unwrap_or(TlvDerive::None).process(
-            &field,
+            field,
             name,
             &mut strict_fields,
             &mut tlv_fields,
@@ -308,9 +317,47 @@ fn decode_fields_impl<'a>(
                 };
             };
 
-            stream = quote_spanned! { Span::call_site() =>
-                let mut s = #ident_name { #stream };
-                let tlvs = ::std::collections::BTreeMap::<u16, Box<[u8]>>::#decode_name(&mut d)?;
+            stream = match tlv_encoding {
+                TlvEncoding::Count => quote_spanned! { Span::call_site() =>
+                    let mut s = #ident_name { #stream };
+                    let tlvs = ::std::collections::BTreeMap::<usize, Box<[u8]>>::#decode_name(&mut d)?;
+                },
+
+                TlvEncoding::Length => quote_spanned! { Span::call_site() =>
+                    let mut s = #ident_name { #stream };
+                    let mut tlvs: ::std::collections::BTreeMap<usize, Box<[u8]>> = Default::default();
+                    let data = Box::<[u8]>::#decode_name(&mut d)?;
+                    let iter = data.into_iter();
+                    while iter.len() > 0 {
+                        let type_no = usize::#decode_name(&mut d)?;
+                        let len = usize::#decode_name(&mut d)?;
+                        let bytes: Box<[u8]> = iter.clone().take(len).copied().collect();
+                        let max = tlvs.keys().max().copied().unwrap_or_default();
+                        if type_no > max {
+                            return Err(#import::TlvError::Order {
+                                read: type_no,
+                                max
+                            }.into());
+                        }
+                        if bytes.len() != len {
+                            return Err(#import::TlvError::Len {
+                                expected: len,
+                                actual: bytes.len()
+                            }.into());
+                        }
+                        if tlvs.insert(type_no, bytes).is_some() {
+                            return Err(#import::TlvError::Repeated(type_no).into());
+                        }
+                    }
+                },
+
+                TlvEncoding::Denied => unreachable!(
+                    "denied TLV encoding is already checked in the caller \
+                     method"
+                ),
+            };
+
+            stream.append_all(quote_spanned! { Span::call_site() =>
                 for (type_no, bytes) in tlvs {
                     match type_no {
                         #inner
@@ -319,7 +366,7 @@ fn decode_fields_impl<'a>(
                     }
                 }
                 Ok(s)
-            };
+            });
         } else {
             stream = quote_spanned! { Span::call_site() =>
                 Ok(#ident_name { #stream })
