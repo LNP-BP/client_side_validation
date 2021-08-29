@@ -59,11 +59,12 @@ pub use derive::{StrictDecode, StrictEncode};
 
 #[macro_use]
 extern crate amplify;
+#[cfg(test)]
+#[macro_use]
+extern crate strict_encoding_test;
 
 #[macro_use]
 mod macros;
-#[macro_use]
-pub mod test_helpers;
 
 mod amplify_types;
 #[cfg(feature = "bitcoin")]
@@ -79,6 +80,10 @@ mod pointers;
 mod primitives;
 mod slice32;
 pub mod strategies;
+
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
+#[macro_use]
+pub mod test_helpers;
 
 use std::ops::Range;
 use std::string::FromUtf8Error;
@@ -242,9 +247,9 @@ pub enum TlvError {
     /// deterministic order of TLV records is broken: type {read} follows after
     /// type {max}
     Order {
-        /// TLV record id read at the current position
+        /// TLV type id read at the current position
         read: usize,
-        /// maximum value of TLV record id read previously
+        /// maximum value of TLV type id read previously
         max: usize,
     },
 
@@ -259,6 +264,9 @@ pub enum TlvError {
 
     /// repeated TLV record with id {0}
     Repeated(usize),
+
+    /// an unknown even TLV type {0}
+    UnknownEvenType(usize),
 }
 
 // TODO: With 2.0 release add Tlv case to the Error enum

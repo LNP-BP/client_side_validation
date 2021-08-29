@@ -12,64 +12,12 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-// TODO: #35 Remove from here upon v 1.7 release (the code is already a part
+// TODO: #35 Remove from here upon v 2.0 release (the code is already a part
 //       of separate crate `strict_encoding_test`
 
-//! Helping macros and functions for creating test coverage for strict-encoded
-//! data.
-//!
-//! # Testing enum encoding
-//!
-//! Enums having assigned primitive 8-bit values (i.e. `u8` values) should be
-//! tested with [`test_encoding_enum_u8_exhaustive`], which is a macro
-//! performing the most exhaustive testing.
-//!
-//! If the enum primitive values are of non-`u8`-type, then
-//! [`test_encoding_enum_by_values`] should be used. It does not performs
-//! exhaustive tests, but covers tests comparing strict encoding with the actual
-//! primitive value.
-//!
-//! If the enum has no primitive values, has associated values (tuple- or
-//! structure-based) or any enum variant defines custom
-//! `#[strict_encoding(value = ...)]` attribute, testing should be performed
-//! with [`test_encoding_enum`] macro.
-//!
-//! # Testing structures and unions
-//!
-//! If you have an object which encoding you'd like to test, use
-//! [`test_object_encoding_roundtrip`] method.
-//!
-//! If you have a byte string test vector representing some serialized object,
-//! use [`test_vec_decoding_roundtrip`] method.
-//!
-//! If you have both an object and an independent test vector, representing its
-//! serialization (which should not be obtained by just encoding the object),
-//! use [`test_encoding_roundtrip`] method.
-//!
-//! # General guidelines
-//!
-//! Proper testing should not exercise `asset`s and instead propagate errors
-//! returned by test macros and methods to the return of the test case function
-//! with `?` operator:
-//!
-//! ```
-//! # #[macro_use] extern crate strict_encoding;
-//! use strict_encoding::test_helpers::*;
-//!
-//! #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-//! struct Data(pub Vec<u8>);
-//!
-//! #[test]
-//! fn test_data_encoding() -> Result<(), DataEncodingTestFailure<Data>> {
-//!     let data1 = Data(vec![0x01, 0x02]);
-//!     test_encoding_roundtrip(&data1, &[0x02, 0x00, 0x01, 0x02])?;
-//!
-//!     let data2 = Data(vec![0xff]);
-//!     test_encoding_roundtrip(&data2, &[0x02, 0x00, 0xff])?;
-//!
-//!     Ok(())
-//! }
-//! ```
+#![allow(deprecated)]
+
+//! Deprecated: use strict_encoding_test crate instead
 
 use std::fmt::Debug;
 
@@ -220,31 +168,8 @@ where
 /// - Strict encoding must match little-endian encoding of the value
 /// - Roundtrip encoding-decoding of the enum variant must result in the
 ///   original value
-///
-/// # Example
-///
-/// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_encoding_enum;
-///
-/// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-/// #[repr(u8)]
-/// #[derive(StrictEncode, StrictDecode)]
-/// #[strict_encoding(repr = u8)]
-/// enum Bits {
-///     #[strict_encoding(value = 8)]
-///     Bit8,
-///
-///     #[strict_encoding(value = 16)]
-///     Bit16,
-/// }
-///
-/// test_encoding_enum!(
-///     Bits as u8;
-///     Bits::Bit8 => 8_u8, Bits::Bit16 => 16_u8
-/// ).unwrap();
-/// ```
 #[macro_export]
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
 macro_rules! test_encoding_enum {
     ($enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum!(strict_encoding => $enum as $ty; $( $item => $val ),+)
@@ -307,28 +232,8 @@ macro_rules! test_encoding_enum {
 /// - Each enum variant must be equal to itself
 /// - Each enum variant must not be equal to any other enum variant
 /// - Enum variants must be ordered according to their primitive values
-///
-/// # Example
-///
-/// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_encoding_enum_by_values;
-///
-/// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-/// #[repr(u8)]
-/// #[derive(StrictEncode, StrictDecode)]
-/// #[strict_encoding(repr = u8, by_value)]
-/// enum Bits {
-///     Bit8 = 8,
-///     Bit16 = 16,
-/// }
-///
-/// test_encoding_enum_by_values!(
-///     Bits as u8;
-///     Bits::Bit8 => 8_u8, Bits::Bit16 => 16_u8
-/// ).unwrap();
-/// ```
 #[macro_export]
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
 macro_rules! test_encoding_enum_by_values {
     ($enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_by_values!(strict_encoding => $enum as $ty; $( $item => $val ),+)
@@ -397,28 +302,8 @@ macro_rules! test_encoding_enum_by_values {
 /// - All 8-bit integers which do not match any of enum variants must not be
 ///   decoded with strict decoder into a valid enum and their decoding must
 ///   result in [`Error::EnumValueNotKnown`] error.
-///
-/// # Example
-///
-/// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_encoding_enum_u8_exhaustive;
-///
-/// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-/// #[repr(u8)]
-/// #[derive(StrictEncode, StrictDecode)]
-/// #[strict_encoding(repr = u8, by_value)]
-/// enum Bits {
-///     Bit8 = 8,
-///     Bit16 = 16,
-/// }
-///
-/// test_encoding_enum_u8_exhaustive!(
-///     Bits as u8;
-///     Bits::Bit8 => 8_u8, Bits::Bit16 => 16_u8
-/// ).unwrap();
-/// ```
 #[macro_export]
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
 macro_rules! test_encoding_enum_u8_exhaustive {
     ($enum:path; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_u8_exhaustive!(strict_encoding => $enum as u8; $( $item => $val ),+)
@@ -542,20 +427,8 @@ where
 ///
 /// Function does not panics and instead returns [`DataEncodingTestFailure`] for
 /// each type of test failures.
-///
-/// # Example
-///
-/// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_helpers::test_object_encoding_roundtrip;
-///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-/// struct Data(pub Vec<u8>);
-///
-/// let data = Data(vec![0x01, 0x02]);
-/// assert_eq!(test_object_encoding_roundtrip(&data).unwrap().len(), 4);
-/// ```
 #[inline]
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
 pub fn test_object_encoding_roundtrip<T>(
     object: &T,
 ) -> Result<Vec<u8>, DataEncodingTestFailure<T>>
@@ -608,22 +481,7 @@ where
 ///
 /// Function does not panics and instead returns [`DataEncodingTestFailure`] for
 /// each type of test failures.
-///
-/// # Example
-///
-/// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_helpers::test_vec_decoding_roundtrip;
-///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-/// struct Data(pub Vec<u8>);
-///
-/// let data = Data(vec![0x01, 0x02]);
-/// assert_eq!(
-///     test_vec_decoding_roundtrip(&[0x02, 0x00, 0x01, 0x02]),
-///     Ok(data)
-/// );
-/// ```
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
 pub fn test_vec_decoding_roundtrip<T>(
     test_vec: impl AsRef<[u8]>,
 ) -> Result<T, DataEncodingTestFailure<T>>
@@ -664,19 +522,7 @@ where
 ///
 /// Function does not panics and instead returns [`DataEncodingTestFailure`] for
 /// each type of test failures.
-///
-/// # Example
-///
-/// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_helpers::test_encoding_roundtrip;
-///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-/// struct Data(pub Vec<u8>);
-///
-/// let data = Data(vec![0x01, 0x02]);
-/// test_encoding_roundtrip(&data, &[0x02, 0x00, 0x01, 0x02]).unwrap();
-/// ```
+#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
 pub fn test_encoding_roundtrip<T>(
     object: &T,
     test_vec: impl AsRef<[u8]>,

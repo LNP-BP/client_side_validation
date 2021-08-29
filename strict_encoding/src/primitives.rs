@@ -303,10 +303,10 @@ mod _chrono {
 #[cfg(test)]
 pub mod test {
     use chrono::{NaiveDateTime, Utc};
+    use strict_encoding_test::test_encoding_roundtrip;
 
     use super::*;
     use crate::strict_deserialize;
-    use crate::test_helpers::test_encoding_roundtrip;
 
     #[test]
     fn test_u_encoding() {

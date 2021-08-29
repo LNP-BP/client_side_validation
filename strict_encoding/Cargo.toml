@@ -1,6 +1,6 @@
 [package]
 name = "strict_encoding"
-version = "1.7.0"
+version = "1.7.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Strict encoding: deterministic binary serialization for networking & client-side validation"
@@ -32,6 +32,7 @@ chrono = { version = "0.4", optional = true }
 [dev-dependencies]
 rand = "0.7"
 amplify = { version = "3.8.1", features = ["proc_attr", "hex"] }
+strict_encoding_test = { version = "1.7.1", path = "./test_helpers" }
 
 [features]
 default = ["chrono", "derive", "bitcoin"]

@@ -54,8 +54,8 @@
 //! with `?` operator:
 //!
 //! ```
-//! # #[macro_use] extern crate strict_encoding;
-//! use strict_encoding::test_helpers::*;
+//! # #[macro_use] extern crate strict_encoding_test;
+//! use strict_encoding_test::*;
 //!
 //! #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 //! struct Data(pub Vec<u8>);
@@ -90,15 +90,15 @@ where
 {
     /// Failure during encoding enum variant
     #[display("Failure during encoding enum variant `{0:?}`: {1:?}")]
-    EncoderFailure(T, Error),
+    EncoderFailure(T, String),
 
     /// Failure during decoding binary representation of enum variant
     #[display(
         "Failure during decoding binary representation of enum variant \
-         `{0:?}`: `{1:?}`
+         `{0:?}`: {1}
         \tByte representation: {2:?}"
     )]
-    DecoderFailure(T, Error, Vec<u8>),
+    DecoderFailure(T, String, Vec<u8>),
 
     /// Test case failure representing mismatch between enum variant produced
     /// by decoding from the originally encoded enum variant
@@ -161,7 +161,7 @@ where
         /// Value which was decoded into an enum variant
         u8,
         /// Error which was produced during decoding that value
-        Error,
+        String,
     ),
 
     /// Test case failure representing a out-of-enum range primitive value
@@ -228,8 +228,7 @@ where
 /// # Example
 ///
 /// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_encoding_enum;
+/// # #[macro_use] extern crate strict_encoding_test;
 ///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
@@ -257,12 +256,12 @@ macro_rules! test_encoding_enum {
         Ok(())
         $(
             .and_then(|_| {
-                use $se::test_helpers::EnumEncodingTestFailure;
+                use $crate::EnumEncodingTestFailure;
                 match $se::strict_serialize(&$item) {
                     Ok(bytes) if bytes == &$val.to_le_bytes() => {
                         let deser = $se::strict_deserialize(bytes.clone())
                             .map_err(|e| EnumEncodingTestFailure::DecoderFailure(
-                                $item, e, bytes
+                                $item, e.to_string(), bytes
                             ))?;
                         if deser != $item {
                             Err(EnumEncodingTestFailure::DecodedDiffersFromOriginal {
@@ -280,7 +279,7 @@ macro_rules! test_encoding_enum {
                         actual: wrong,
                     }),
                     Err(err) => Err(
-                        EnumEncodingTestFailure::EncoderFailure($item, err)
+                        EnumEncodingTestFailure::EncoderFailure($item, err.to_string())
                     ),
                 }
             })
@@ -315,8 +314,7 @@ macro_rules! test_encoding_enum {
 /// # Example
 ///
 /// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_encoding_enum_by_values;
+/// # #[macro_use] extern crate strict_encoding_test;
 ///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
@@ -341,7 +339,7 @@ macro_rules! test_encoding_enum_by_values {
         test_encoding_enum!($se => $enum as $ty; $( $item => $val ),+)
         $(
             .and_then(|_| {
-                use $se::test_helpers::EnumEncodingTestFailure;
+                use $crate::EnumEncodingTestFailure;
                 if $item as $ty != ($val) {
                     return Err(EnumEncodingTestFailure::ValueMismatch {
                         enum_name: stringify!($enum),
@@ -354,7 +352,7 @@ macro_rules! test_encoding_enum_by_values {
             })
         )+
             .and_then(|_| {
-                use $se::test_helpers::EnumEncodingTestFailure;
+                use $crate::EnumEncodingTestFailure;
                 let mut all = ::std::collections::BTreeSet::new();
                 $( all.insert($item); )+
                 for (idx, a) in all.iter().enumerate() {
@@ -405,8 +403,7 @@ macro_rules! test_encoding_enum_by_values {
 /// # Example
 ///
 /// ```
-/// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_encoding_enum_u8_exhaustive;
+/// # #[macro_use] extern crate strict_encoding_test;
 ///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
@@ -435,7 +432,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
     };
     ($se:ident => $enum:path as $ty:ty; $( $item:path => $val:expr ),+) => {
         test_encoding_enum_by_values!($se => $enum as $ty; $( $item => $val ),+).and_then(|_| {
-            use $se::test_helpers::EnumEncodingTestFailure;
+            use $crate::EnumEncodingTestFailure;
             let mut set = ::std::collections::HashSet::new();
             $( set.insert($val); )+
             for x in 0..=u8::MAX {
@@ -443,7 +440,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
                     match $se::strict_deserialize(&[x]) {
                         Err($se::Error::EnumValueNotKnown(stringify!($enum), a)) if a == x as usize => {},
                         Err(err) => return Err(
-                            EnumEncodingTestFailure::DecoderWrongErrorOnUnknownValue(x, err)
+                            EnumEncodingTestFailure::DecoderWrongErrorOnUnknownValue(x, err.to_string())
                         ),
                         Ok(variant) => return Err(
                             EnumEncodingTestFailure::UnknownDecodesToVariant(x, variant)
@@ -551,7 +548,7 @@ where
 ///
 /// ```
 /// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_helpers::test_object_encoding_roundtrip;
+/// # use strict_encoding_test::test_object_encoding_roundtrip;
 ///
 /// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 /// struct Data(pub Vec<u8>);
@@ -617,7 +614,7 @@ where
 ///
 /// ```
 /// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_helpers::test_vec_decoding_roundtrip;
+/// # use strict_encoding_test::test_vec_decoding_roundtrip;
 ///
 /// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 /// struct Data(pub Vec<u8>);
@@ -673,7 +670,7 @@ where
 ///
 /// ```
 /// # #[macro_use] extern crate strict_encoding;
-/// # use strict_encoding::test_helpers::test_encoding_roundtrip;
+/// # use strict_encoding_test::test_encoding_roundtrip;
 ///
 /// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 /// struct Data(pub Vec<u8>);

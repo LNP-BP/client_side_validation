@@ -770,9 +770,8 @@ mod test {
     use miniscript::{
         policy, BareCtx, Descriptor, Legacy, Miniscript, Segwitv0,
     };
+    use strict_encoding_test::*;
 
-    use crate::test_helpers::*;
-    // use crate::StrictEncode;
     use crate::StrictDecode;
 
     #[test]

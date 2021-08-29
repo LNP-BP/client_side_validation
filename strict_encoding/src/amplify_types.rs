@@ -79,8 +79,9 @@ impl StrictDecode for u1024 {
 
 #[cfg(test)]
 mod test {
+    use strict_encoding_test::test_encoding_roundtrip;
+
     use super::*;
-    use crate::test_helpers::test_encoding_roundtrip;
 
     #[test]
     fn test_large_uints() {
