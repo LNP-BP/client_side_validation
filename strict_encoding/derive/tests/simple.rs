@@ -16,6 +16,9 @@ struct One {
     #[strict_encoding(tlv = 1)]
     tlv_int: Option<u16>,
 
+    #[strict_encoding(tlv = 2)]
+    tlv_int2: Option<u16>,
+
     #[strict_encoding(unknown_tlvs)]
     rest_of_tlvs: BTreeMap<u16, Box<[u8]>>,
 }
@@ -34,5 +37,3 @@ struct Other {
     //    a: (),
     b: u8,
 }
-
-fn main() {}

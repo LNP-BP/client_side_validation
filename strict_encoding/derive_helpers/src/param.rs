@@ -12,13 +12,18 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use core::convert::{TryFrom, TryInto};
+use std::collections::BTreeMap;
+use std::convert::{TryFrom, TryInto};
 
 use amplify::proc_attr::{
     ArgValue, ArgValueReq, AttrReq, LiteralClass, ParametrizedAttr, ValueClass,
 };
-use proc_macro2::Span;
-use syn::{Error, Ident, LitInt, Path, Result};
+use proc_macro2::{Span, TokenStream as TokenStream2};
+use syn::spanned::Spanned;
+use syn::{
+    AngleBracketedGenericArguments, Error, Field, GenericArgument, Ident,
+    LitInt, Path, PathArguments, PathSegment, Result, Type, TypePath,
+};
 
 pub const CRATE: &str = "crate";
 pub const SKIP: &str = "skip";
@@ -140,7 +145,7 @@ impl EncodingDerive {
 
         let by_order = !attr.args.contains_key("by_value");
 
-        let tlv = TlvDerive::with(attr, use_tlv)?;
+        let tlv = TlvDerive::with(attr, is_global, use_tlv)?;
 
         Ok(EncodingDerive {
             use_crate,
@@ -156,6 +161,7 @@ impl EncodingDerive {
 impl TlvDerive {
     pub fn with(
         attr: &mut ParametrizedAttr,
+        is_global: bool,
         use_tlv: bool,
     ) -> Result<Option<TlvDerive>> {
         if !use_tlv
@@ -187,7 +193,15 @@ impl TlvDerive {
             ));
         }
 
-        let tlv = if let Some(tlv) = attr
+        if attr.args.contains_key(SKIP) {
+            return Err(Error::new(
+                Span::call_site(),
+                "presence of TLV attribute for the skipped field does not \
+                 make sense",
+            ));
+        }
+
+        let mut tlv = if let Some(tlv) = attr
             .args
             .get(TLV)
             .cloned()
@@ -202,6 +216,112 @@ impl TlvDerive {
             None
         };
 
+        if tlv.is_none() && is_global {
+            tlv = Some(TlvDerive::None)
+        }
+
         Ok(tlv)
+    }
+
+    pub fn process(
+        &self,
+        field: &Field,
+        name: TokenStream2,
+        fields: &mut Vec<TokenStream2>,
+        tlvs: &mut BTreeMap<u16, TokenStream2>,
+        aggregator: &mut Option<TokenStream2>,
+    ) -> Result<()> {
+        match self {
+            TlvDerive::None => {
+                fields.push(name);
+                Ok(())
+            }
+
+            TlvDerive::Typed(type_no) => if let Type::Path(TypePath {
+                path,
+                ..
+            }) = &field.ty
+            {
+                if let Some(PathSegment { ident, .. }) = path.segments.last() {
+                    if *ident == ident!(Option) {
+                        let n = name.to_string();
+                        if tlvs.insert(*type_no, name).is_some() {
+                            return Err(Error::new(
+                                field.span(),
+                                format!(
+                                    "reused TLV type constant {} for field \
+                                     `{}`",
+                                    type_no, n
+                                ),
+                            ));
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Err(())
+                    }
+                } else {
+                    Err(())
+                }
+            } else {
+                Err(())
+            }
+            .map_err(|_| {
+                Error::new(field.span(), "TLV fields must be optionals in type")
+            }),
+
+            TlvDerive::Unknown => {
+                if let Type::Path(TypePath { path, .. }) = &field.ty {
+                    if aggregator.is_some() {
+                        return Err(Error::new(
+                            field.span(),
+                            "unknown TLVs aggregator can be present only once",
+                        ));
+                    }
+                    if let Some(PathSegment {
+                        ident,
+                        arguments:
+                            PathArguments::AngleBracketed(
+                                AngleBracketedGenericArguments { args, .. },
+                            ),
+                    }) = path.segments.last()
+                    {
+                        if *ident == ident!(BTreeMap) && args.len() == 2 {
+                            match (&args[0], &args[1]) {
+                                (
+                                    GenericArgument::Type(Type::Path(path1)),
+                                    GenericArgument::Type(Type::Path(path2)),
+                                ) if path1.path.is_ident(&ident!(u16))
+                                    && path2
+                                        .path
+                                        .segments
+                                        .last()
+                                        .unwrap()
+                                        .ident
+                                        == ident!(Box) =>
+                                {
+                                    *aggregator = Some(name);
+                                    Ok(())
+                                }
+                                _ => Err(()),
+                            }
+                        } else {
+                            Err(())
+                        }
+                    } else {
+                        Err(())
+                    }
+                } else {
+                    Err(())
+                }
+                .map_err(|_| {
+                    Error::new(
+                        field.span(),
+                        "unknown TLVs aggregator field must be of \
+                         `BTreeMap<u16, Box<[u8]>>` type",
+                    )
+                })
+            }
+        }
     }
 }

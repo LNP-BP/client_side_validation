@@ -21,11 +21,12 @@ use syn::{
     ImplGenerics, Index, LitStr, Result, TypeGenerics, WhereClause,
 };
 
-use crate::param::{EncodingDerive, CRATE, REPR, USE_TLV};
+use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
 
 pub fn decode_derive(
     attr_name: &'static str,
     input: DeriveInput,
+    allow_tlv: bool,
 ) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
@@ -42,6 +43,7 @@ pub fn decode_derive(
             impl_generics,
             ty_generics,
             where_clause,
+            allow_tlv,
         ),
         Data::Enum(data) => decode_enum_impl(
             attr_name,
@@ -68,16 +70,32 @@ fn decode_struct_impl(
     impl_generics: ImplGenerics,
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
+    allow_tlv: bool,
 ) -> Result<TokenStream2> {
     let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
 
+    if !allow_tlv && encoding.tlv.is_some() {
+        return Err(Error::new(
+            ident_name.span(),
+            format!("TLV extensions are not allowed in `{}`", attr_name),
+        ));
+    }
+
     let inner_impl = match data.fields {
-        Fields::Named(ref fields) => {
-            decode_fields_impl(attr_name, &fields.named, global_param, false)?
-        }
-        Fields::Unnamed(ref fields) => {
-            decode_fields_impl(attr_name, &fields.unnamed, global_param, false)?
-        }
+        Fields::Named(ref fields) => decode_fields_impl(
+            attr_name,
+            ident_name,
+            &fields.named,
+            global_param,
+            false,
+        )?,
+        Fields::Unnamed(ref fields) => decode_fields_impl(
+            attr_name,
+            ident_name,
+            &fields.unnamed,
+            global_param,
+            false,
+        )?,
         Fields::Unit => quote! {},
     };
 
@@ -89,7 +107,7 @@ fn decode_struct_impl(
             #[inline]
             fn strict_decode<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
                 use #import::StrictDecode;
-                Ok(#ident_name { #inner_impl })
+                #inner_impl
             }
         }
     })
@@ -126,11 +144,16 @@ fn decode_enum_impl(
         }
 
         let field_impl = match variant.fields {
-            Fields::Named(ref fields) => {
-                decode_fields_impl(attr_name, &fields.named, local_param, true)?
-            }
+            Fields::Named(ref fields) => decode_fields_impl(
+                attr_name,
+                ident_name,
+                &fields.named,
+                local_param,
+                true,
+            )?,
             Fields::Unnamed(ref fields) => decode_fields_impl(
                 attr_name,
+                ident_name,
                 &fields.unnamed,
                 local_param,
                 true,
@@ -173,6 +196,7 @@ fn decode_enum_impl(
 
 fn decode_fields_impl<'a>(
     attr_name: &'static str,
+    ident_name: &Ident,
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
     is_enum: bool,
@@ -185,6 +209,11 @@ fn decode_fields_impl<'a>(
     let parent_attr =
         EncodingDerive::with(&mut parent_param.clone(), false, is_enum, false)?;
     let import = parent_attr.use_crate;
+
+    let mut skipped_fields = vec![];
+    let mut strict_fields = vec![];
+    let mut tlv_fields = bmap! {};
+    let mut tlv_aggregator = None;
 
     for (index, field) in fields.into_iter().enumerate() {
         let mut local_param = ParametrizedAttr::with(attr_name, &field.attrs)?;
@@ -204,13 +233,68 @@ fn decode_fields_impl<'a>(
             .unwrap_or_else(|| Index::from(index).to_token_stream());
 
         if encoding.skip {
-            stream.append_all(quote_spanned! { field.span() =>
-                #name: Default::default(),
-            });
+            skipped_fields.push(name);
+            continue;
+        }
+
+        encoding.tlv.unwrap_or(TlvDerive::None).process(
+            &field,
+            name,
+            &mut strict_fields,
+            &mut tlv_fields,
+            &mut tlv_aggregator,
+        )?;
+    }
+
+    for name in strict_fields {
+        stream.append_all(quote_spanned! { Span::call_site() =>
+            #name: #import::StrictDecode::strict_decode(&mut d)?,
+        });
+    }
+
+    let mut default_fields = skipped_fields;
+    default_fields.extend(tlv_fields.values().cloned());
+    default_fields.extend(tlv_aggregator.clone());
+    for name in default_fields {
+        stream.append_all(quote_spanned! { Span::call_site() =>
+            #name: Default::default(),
+        });
+    }
+
+    if use_tlv {}
+
+    if !is_enum {
+        if use_tlv && (!tlv_fields.is_empty() || tlv_aggregator.is_some()) {
+            let mut inner = TokenStream2::new();
+            for (type_no, name) in tlv_fields {
+                inner.append_all(quote_spanned! { Span::call_site() =>
+                    #type_no => s.#name = #import::StrictDecode::strict_deserialize(bytes)?,
+                });
+            }
+
+            let mut aggregator = TokenStream2::new();
+            if let Some(tlv_aggregator) = tlv_aggregator {
+                aggregator = quote_spanned! { Span::call_site() =>
+                    _ => { s.#tlv_aggregator.insert(type_no, bytes); },
+                };
+            };
+
+            stream = quote_spanned! { Span::call_site() =>
+                let mut s = #ident_name { #stream };
+                let tlvs = ::std::collections::BTreeMap::<u16, Box<[u8]>>::strict_decode(&mut d)?;
+                for (type_no, bytes) in tlvs {
+                    match type_no {
+                        #inner
+
+                        #aggregator
+                    }
+                }
+                Ok(s)
+            };
         } else {
-            stream.append_all(quote_spanned! { field.span() =>
-                #name: #import::StrictDecode::strict_decode(&mut d)?,
-            });
+            stream = quote_spanned! { Span::call_site() =>
+                Ok(#ident_name { #stream })
+            };
         }
     }
 

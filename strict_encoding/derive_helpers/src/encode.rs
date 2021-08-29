@@ -21,11 +21,12 @@ use syn::{
     ImplGenerics, Index, Result, TypeGenerics, WhereClause,
 };
 
-use crate::param::{EncodingDerive, CRATE, REPR, USE_TLV};
+use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
 
 pub fn encode_derive(
     attr_name: &'static str,
     input: DeriveInput,
+    allow_tlv: bool,
 ) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
@@ -42,6 +43,7 @@ pub fn encode_derive(
             impl_generics,
             ty_generics,
             where_clause,
+            allow_tlv,
         ),
         Data::Enum(data) => encode_enum_impl(
             attr_name,
@@ -68,8 +70,16 @@ fn encode_struct_impl(
     impl_generics: ImplGenerics,
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
+    allow_tlv: bool,
 ) -> Result<TokenStream2> {
     let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
+
+    if !allow_tlv && encoding.tlv.is_some() {
+        return Err(Error::new(
+            ident_name.span(),
+            format!("TLV extensions are not allowed in `{}`", attr_name),
+        ));
+    }
 
     let inner_impl = match data.fields {
         Fields::Named(ref fields) => {
@@ -214,6 +224,10 @@ fn encode_fields_impl<'a>(
     parent_param.args.remove(CRATE);
     parent_param.args.remove(USE_TLV);
 
+    let mut strict_fields = vec![];
+    let mut tlv_fields = bmap! {};
+    let mut tlv_aggregator = None;
+
     for (index, field) in fields.into_iter().enumerate() {
         let mut local_param = ParametrizedAttr::with(attr_name, &field.attrs)?;
 
@@ -239,9 +253,56 @@ fn encode_fields_impl<'a>(
                 .map(Ident::to_token_stream)
                 .unwrap_or(index)
         };
-        stream.append_all(quote_spanned! { field.span() =>
+
+        encoding.tlv.unwrap_or(TlvDerive::None).process(
+            &field,
+            name,
+            &mut strict_fields,
+            &mut tlv_fields,
+            &mut tlv_aggregator,
+        )?;
+    }
+
+    for name in strict_fields {
+        stream.append_all(quote_spanned! { Span::call_site() =>
             len += data.#name.strict_encode(&mut e)?;
         })
+    }
+
+    if use_tlv {
+        stream.append_all(quote_spanned! { Span::call_site() =>
+            let mut tlvs = ::std::collections::BTreeMap::<u16, Vec<u8>>::default();
+        });
+        for (type_no, name) in tlv_fields {
+            stream.append_all(quote_spanned! { Span::call_site() =>
+                tlvs.insert(#type_no, data.#name.strict_serialize()?);
+            });
+        }
+        if let Some(name) = tlv_aggregator {
+            stream.append_all(quote_spanned! { Span::call_site() =>
+                for (type_no, val) in &data.#name {
+                    tlvs.insert(*type_no, val.strict_serialize()?);
+                }
+            });
+        }
+        stream.append_all(quote_spanned! { Span::call_site() =>
+            tlvs.strict_encode(&mut e)?;
+        });
+
+        /* Use this for lightning encode
+        // TODO: Replace with new error type on strict_encoding 1.7 release
+        stream.append_all(quote_spanned! { Span::call_site() =>
+            let tlv_len = tlvs.values().map(Vec::len).sum();
+            if tlv_len > ::core::u16::MAX {
+                return Err(Error::ExceedMaxItems(tlv_len));
+            }
+            len += (tlv_len as u16).strict_encode(&mut e)?;
+            for (type_no, bytes) in tlvs {
+                len += type_no.strict_encode(&mut e)?;
+                len += bytes.strict_encode(&mut e)?;
+            }
+        });
+         */
     }
 
     Ok(stream)

@@ -184,7 +184,7 @@ pub(crate) const ATTR_NAME: &str = "strict_encoding";
 #[proc_macro_derive(StrictEncode, attributes(strict_encoding))]
 pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    encode_derive(ATTR_NAME, derive_input)
+    encode_derive(ATTR_NAME, derive_input, true)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }
@@ -193,7 +193,7 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(StrictDecode, attributes(strict_encoding))]
 pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    decode_derive(ATTR_NAME, derive_input)
+    decode_derive(ATTR_NAME, derive_input, true)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }
