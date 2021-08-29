@@ -25,6 +25,9 @@ use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
 
 pub fn encode_derive(
     attr_name: &'static str,
+    trait_name: Ident,
+    encode_name: Ident,
+    serialize_name: Ident,
     input: DeriveInput,
     allow_tlv: bool,
 ) -> Result<TokenStream2> {
@@ -37,6 +40,9 @@ pub fn encode_derive(
     match input.data {
         Data::Struct(data) => encode_struct_impl(
             attr_name,
+            &trait_name,
+            &encode_name,
+            &serialize_name,
             data,
             ident_name,
             global_param,
@@ -47,6 +53,9 @@ pub fn encode_derive(
         ),
         Data::Enum(data) => encode_enum_impl(
             attr_name,
+            &trait_name,
+            &encode_name,
+            &serialize_name,
             data,
             ident_name,
             global_param,
@@ -54,16 +63,18 @@ pub fn encode_derive(
             ty_generics,
             where_clause,
         ),
-        //strict_encode_inner_enum(&input, &data),
         Data::Union(_) => Err(Error::new_spanned(
             &input,
-            "Deriving StrictEncode is not supported in unions",
+            format!("Deriving `{}` is not supported in unions", trait_name),
         )),
     }
 }
 
 fn encode_struct_impl(
     attr_name: &'static str,
+    trait_name: &Ident,
+    encode_name: &Ident,
+    serialize_name: &Ident,
     data: DataStruct,
     ident_name: &Ident,
     mut global_param: ParametrizedAttr,
@@ -82,12 +93,24 @@ fn encode_struct_impl(
     }
 
     let inner_impl = match data.fields {
-        Fields::Named(ref fields) => {
-            encode_fields_impl(attr_name, &fields.named, global_param, false)?
-        }
-        Fields::Unnamed(ref fields) => {
-            encode_fields_impl(attr_name, &fields.unnamed, global_param, false)?
-        }
+        Fields::Named(ref fields) => encode_fields_impl(
+            attr_name,
+            trait_name,
+            encode_name,
+            serialize_name,
+            &fields.named,
+            global_param,
+            false,
+        )?,
+        Fields::Unnamed(ref fields) => encode_fields_impl(
+            attr_name,
+            trait_name,
+            encode_name,
+            serialize_name,
+            &fields.unnamed,
+            global_param,
+            false,
+        )?,
         Fields::Unit => quote! { Ok(0) },
     };
 
@@ -95,9 +118,9 @@ fn encode_struct_impl(
 
     Ok(quote! {
         #[allow(unused_qualifications)]
-        impl #impl_generics #import::StrictEncode for #ident_name #ty_generics #where_clause {
-            fn strict_encode<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
-                use #import::StrictEncode;
+        impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
+            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
+                use #import::#trait_name;
                 let mut len = 0;
                 let data = self;
                 #inner_impl
@@ -109,6 +132,9 @@ fn encode_struct_impl(
 
 fn encode_enum_impl(
     attr_name: &'static str,
+    trait_name: &Ident,
+    encode_name: &Ident,
+    serialize_name: &Ident,
     data: DataEnum,
     ident_name: &Ident,
     mut global_param: ParametrizedAttr,
@@ -155,6 +181,9 @@ fn encode_enum_impl(
             Fields::Named(ref fields) => (
                 encode_fields_impl(
                     attr_name,
+                    trait_name,
+                    encode_name,
+                    serialize_name,
                     &fields.named,
                     local_param,
                     true,
@@ -164,6 +193,9 @@ fn encode_enum_impl(
             Fields::Unnamed(ref fields) => (
                 encode_fields_impl(
                     attr_name,
+                    trait_name,
+                    encode_name,
+                    serialize_name,
                     &fields.unnamed,
                     local_param,
                     true,
@@ -187,7 +219,7 @@ fn encode_enum_impl(
 
         inner_impl.append_all(quote_spanned! { variant.span() =>
             Self::#ident #bra_captures_ket => {
-                len += (#value as #repr).strict_encode(&mut e)?;
+                len += (#value as #repr).#encode_name(&mut e)?;
                 #captures
                 #field_impl
             }
@@ -198,10 +230,10 @@ fn encode_enum_impl(
 
     Ok(quote! {
         #[allow(unused_qualifications)]
-        impl #impl_generics #import::StrictEncode for #ident_name #ty_generics #where_clause {
+        impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
-            fn strict_encode<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
-                use #import::StrictEncode;
+            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
+                use #import::#trait_name;
                 let mut len = 0;
                 match self {
                     #inner_impl
@@ -214,6 +246,9 @@ fn encode_enum_impl(
 
 fn encode_fields_impl<'a>(
     attr_name: &'static str,
+    _trait_name: &Ident,
+    encode_name: &Ident,
+    serialize_name: &Ident,
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
     is_enum: bool,
@@ -265,7 +300,7 @@ fn encode_fields_impl<'a>(
 
     for name in strict_fields {
         stream.append_all(quote_spanned! { Span::call_site() =>
-            len += data.#name.strict_encode(&mut e)?;
+            len += data.#name.#encode_name(&mut e)?;
         })
     }
 
@@ -275,18 +310,18 @@ fn encode_fields_impl<'a>(
         });
         for (type_no, name) in tlv_fields {
             stream.append_all(quote_spanned! { Span::call_site() =>
-                tlvs.insert(#type_no, data.#name.strict_serialize()?);
+                tlvs.insert(#type_no, data.#name.#serialize_name()?);
             });
         }
         if let Some(name) = tlv_aggregator {
             stream.append_all(quote_spanned! { Span::call_site() =>
                 for (type_no, val) in &data.#name {
-                    tlvs.insert(*type_no, val.strict_serialize()?);
+                    tlvs.insert(*type_no, val.#serialize_name()?);
                 }
             });
         }
         stream.append_all(quote_spanned! { Span::call_site() =>
-            tlvs.strict_encode(&mut e)?;
+            tlvs.#encode_name(&mut e)?;
         });
 
         /* Use this for lightning encode
@@ -296,10 +331,10 @@ fn encode_fields_impl<'a>(
             if tlv_len > ::core::u16::MAX {
                 return Err(Error::ExceedMaxItems(tlv_len));
             }
-            len += (tlv_len as u16).strict_encode(&mut e)?;
+            len += (tlv_len as u16).#encode_name(&mut e)?;
             for (type_no, bytes) in tlvs {
-                len += type_no.strict_encode(&mut e)?;
-                len += bytes.strict_encode(&mut e)?;
+                len += type_no.#encode_name(&mut e)?;
+                len += bytes.#encode_name(&mut e)?;
             }
         });
          */

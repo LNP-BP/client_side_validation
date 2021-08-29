@@ -679,6 +679,7 @@ name = "strict_encoding_derive"
 version = "1.5.3"
 dependencies = [
  "amplify_derive",
+ "amplify_syn",
  "encoding_derive_helpers",
  "proc-macro2",
  "strict_encoding",

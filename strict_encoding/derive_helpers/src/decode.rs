@@ -25,6 +25,9 @@ use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
 
 pub fn decode_derive(
     attr_name: &'static str,
+    trait_name: Ident,
+    decode_name: Ident,
+    deserialize_name: Ident,
     input: DeriveInput,
     allow_tlv: bool,
 ) -> Result<TokenStream2> {
@@ -37,6 +40,9 @@ pub fn decode_derive(
     match input.data {
         Data::Struct(data) => decode_struct_impl(
             attr_name,
+            &trait_name,
+            &decode_name,
+            &deserialize_name,
             data,
             ident_name,
             global_param,
@@ -47,6 +53,9 @@ pub fn decode_derive(
         ),
         Data::Enum(data) => decode_enum_impl(
             attr_name,
+            &trait_name,
+            &decode_name,
+            &deserialize_name,
             data,
             ident_name,
             global_param,
@@ -54,16 +63,18 @@ pub fn decode_derive(
             ty_generics,
             where_clause,
         ),
-        //strict_encode_inner_enum(&input, &data),
         Data::Union(_) => Err(Error::new_spanned(
             &input,
-            "Deriving StrictDecode is not supported in unions",
+            format!("Deriving `{}` is not supported in unions", trait_name),
         )),
     }
 }
 
 fn decode_struct_impl(
     attr_name: &'static str,
+    trait_name: &Ident,
+    decode_name: &Ident,
+    deserialize_name: &Ident,
     data: DataStruct,
     ident_name: &Ident,
     mut global_param: ParametrizedAttr,
@@ -84,6 +95,9 @@ fn decode_struct_impl(
     let inner_impl = match data.fields {
         Fields::Named(ref fields) => decode_fields_impl(
             attr_name,
+            trait_name,
+            decode_name,
+            deserialize_name,
             ident_name,
             &fields.named,
             global_param,
@@ -91,6 +105,9 @@ fn decode_struct_impl(
         )?,
         Fields::Unnamed(ref fields) => decode_fields_impl(
             attr_name,
+            trait_name,
+            decode_name,
+            deserialize_name,
             ident_name,
             &fields.unnamed,
             global_param,
@@ -103,10 +120,10 @@ fn decode_struct_impl(
 
     Ok(quote! {
         #[allow(unused_qualifications)]
-        impl #impl_generics #import::StrictDecode for #ident_name #ty_generics #where_clause {
+        impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
-            fn strict_decode<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
-                use #import::StrictDecode;
+            fn #decode_name<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
+                use #import::#trait_name;
                 #inner_impl
             }
         }
@@ -115,6 +132,9 @@ fn decode_struct_impl(
 
 fn decode_enum_impl(
     attr_name: &'static str,
+    trait_name: &Ident,
+    decode_name: &Ident,
+    deserialize_name: &Ident,
     data: DataEnum,
     ident_name: &Ident,
     mut global_param: ParametrizedAttr,
@@ -146,6 +166,9 @@ fn decode_enum_impl(
         let field_impl = match variant.fields {
             Fields::Named(ref fields) => decode_fields_impl(
                 attr_name,
+                trait_name,
+                decode_name,
+                deserialize_name,
                 ident_name,
                 &fields.named,
                 local_param,
@@ -153,6 +176,9 @@ fn decode_enum_impl(
             )?,
             Fields::Unnamed(ref fields) => decode_fields_impl(
                 attr_name,
+                trait_name,
+                decode_name,
+                deserialize_name,
                 ident_name,
                 &fields.unnamed,
                 local_param,
@@ -182,10 +208,10 @@ fn decode_enum_impl(
 
     Ok(quote! {
         #[allow(unused_qualifications)]
-        impl #impl_generics #import::StrictDecode for #ident_name #ty_generics #where_clause {
-            fn strict_decode<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
-                use #import::StrictDecode;
-                Ok(match #repr::strict_decode(&mut d)? {
+        impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
+            fn #decode_name<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
+                use #import::#trait_name;
+                Ok(match #repr::#decode_name(&mut d)? {
                     #inner_impl
                     unknown => Err(#import::Error::EnumValueNotKnown(#enum_name, unknown as usize))?
                 })
@@ -196,6 +222,9 @@ fn decode_enum_impl(
 
 fn decode_fields_impl<'a>(
     attr_name: &'static str,
+    trait_name: &Ident,
+    decode_name: &Ident,
+    deserialize_name: &Ident,
     ident_name: &Ident,
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
@@ -248,7 +277,7 @@ fn decode_fields_impl<'a>(
 
     for name in strict_fields {
         stream.append_all(quote_spanned! { Span::call_site() =>
-            #name: #import::StrictDecode::strict_decode(&mut d)?,
+            #name: #import::#trait_name::#decode_name(&mut d)?,
         });
     }
 
@@ -268,7 +297,7 @@ fn decode_fields_impl<'a>(
             let mut inner = TokenStream2::new();
             for (type_no, name) in tlv_fields {
                 inner.append_all(quote_spanned! { Span::call_site() =>
-                    #type_no => s.#name = #import::StrictDecode::strict_deserialize(bytes)?,
+                    #type_no => s.#name = #import::#trait_name::#deserialize_name(bytes)?,
                 });
             }
 
@@ -281,7 +310,7 @@ fn decode_fields_impl<'a>(
 
             stream = quote_spanned! { Span::call_site() =>
                 let mut s = #ident_name { #stream };
-                let tlvs = ::std::collections::BTreeMap::<u16, Box<[u8]>>::strict_decode(&mut d)?;
+                let tlvs = ::std::collections::BTreeMap::<u16, Box<[u8]>>::#decode_name(&mut d)?;
                 for (type_no, bytes) in tlvs {
                     match type_no {
                         #inner

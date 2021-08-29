@@ -173,27 +173,43 @@
 extern crate proc_macro;
 #[macro_use]
 extern crate syn;
+#[macro_use]
+extern crate amplify_syn;
 
 use encoding_derive_helpers::{decode_derive, encode_derive};
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-pub(crate) const ATTR_NAME: &str = "strict_encoding";
+const ATTR_NAME: &str = "strict_encoding";
 
 /// Derives [`StrictEncode`] implementation for the type.
 #[proc_macro_derive(StrictEncode, attributes(strict_encoding))]
 pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    encode_derive(ATTR_NAME, derive_input, true)
-        .unwrap_or_else(|e| e.to_compile_error())
-        .into()
+    encode_derive(
+        ATTR_NAME,
+        ident!(StrictEncode),
+        ident!(strict_encode),
+        ident!(strict_serialize),
+        derive_input,
+        true,
+    )
+    .unwrap_or_else(|e| e.to_compile_error())
+    .into()
 }
 
 /// Derives [`StrictDecode`] implementation for the type.
 #[proc_macro_derive(StrictDecode, attributes(strict_encoding))]
 pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    decode_derive(ATTR_NAME, derive_input, true)
-        .unwrap_or_else(|e| e.to_compile_error())
-        .into()
+    decode_derive(
+        ATTR_NAME,
+        ident!(StrictDecode),
+        ident!(strict_decode),
+        ident!(strict_deserialize),
+        derive_input,
+        true,
+    )
+    .unwrap_or_else(|e| e.to_compile_error())
+    .into()
 }
