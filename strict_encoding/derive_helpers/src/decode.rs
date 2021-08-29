@@ -21,7 +21,7 @@ use syn::{
     ImplGenerics, Index, LitStr, Result, TypeGenerics, WhereClause,
 };
 
-use crate::param::EncodingDerive;
+use crate::param::{EncodingDerive, CRATE, REPR, USE_TLV};
 
 pub fn decode_derive(
     attr_name: &'static str,
@@ -69,7 +69,7 @@ fn decode_struct_impl(
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
 ) -> Result<TokenStream2> {
-    let encoding = EncodingDerive::try_from(&mut global_param, true, false)?;
+    let encoding = EncodingDerive::with(&mut global_param, true, false, false)?;
 
     let inner_impl = match data.fields {
         Fields::Named(ref fields) => {
@@ -104,7 +104,7 @@ fn decode_enum_impl(
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
 ) -> Result<TokenStream2> {
-    let encoding = EncodingDerive::try_from(&mut global_param, true, true)?;
+    let encoding = EncodingDerive::with(&mut global_param, true, true, false)?;
     let repr = encoding.repr;
 
     let mut inner_impl = TokenStream2::new();
@@ -114,12 +114,12 @@ fn decode_enum_impl(
             ParametrizedAttr::with(attr_name, &variant.attrs)?;
 
         // First, test individual attribute
-        let _ = EncodingDerive::try_from(&mut local_param, false, true)?;
+        let _ = EncodingDerive::with(&mut local_param, false, true, false)?;
         // Second, combine global and local together
         let mut combined = global_param.clone().merged(local_param.clone())?;
-        combined.args.remove("repr");
-        combined.args.remove("crate");
-        let encoding = EncodingDerive::try_from(&mut combined, false, true)?;
+        combined.args.remove(REPR);
+        combined.args.remove(CRATE);
+        let encoding = EncodingDerive::with(&mut combined, false, true, false)?;
 
         if encoding.skip {
             continue;
@@ -179,19 +179,23 @@ fn decode_fields_impl<'a>(
 ) -> Result<TokenStream2> {
     let mut stream = TokenStream2::new();
 
-    parent_param.args.remove("crate");
+    let use_tlv = parent_param.args.contains_key(USE_TLV);
+    parent_param.args.remove(CRATE);
+    parent_param.args.remove(USE_TLV);
     let parent_attr =
-        EncodingDerive::try_from(&mut parent_param.clone(), false, is_enum)?;
+        EncodingDerive::with(&mut parent_param.clone(), false, is_enum, false)?;
     let import = parent_attr.use_crate;
 
     for (index, field) in fields.into_iter().enumerate() {
         let mut local_param = ParametrizedAttr::with(attr_name, &field.attrs)?;
 
         // First, test individual attribute
-        let _ = EncodingDerive::try_from(&mut local_param, false, is_enum)?;
+        let _ =
+            EncodingDerive::with(&mut local_param, false, is_enum, use_tlv)?;
         // Second, combine global and local together
         let mut combined = parent_param.clone().merged(local_param)?;
-        let encoding = EncodingDerive::try_from(&mut combined, false, is_enum)?;
+        let encoding =
+            EncodingDerive::with(&mut combined, false, is_enum, use_tlv)?;
 
         let name = field
             .ident

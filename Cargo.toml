@@ -37,5 +37,5 @@ bulletproofs = ["commit_verify/bulletproofs"]
 
 [workspace]
 members = [".", "strict_encoding", "commit_verify", "single_use_seals",
-           "strict_encoding/derive", "strict_encoding/derive_helpers", "strict_encoding/test"]
+           "strict_encoding/derive", "strict_encoding/derive_helpers", "strict_encoding/test_helpers"]
 default-members = ["."]
