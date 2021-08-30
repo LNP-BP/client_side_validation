@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "encoding_derive_helpers"
-version = "1.7.1"
+version = "1.7.2"
 dependencies = [
  "amplify",
  "proc-macro2",

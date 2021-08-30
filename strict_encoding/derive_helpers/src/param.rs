@@ -257,26 +257,60 @@ impl TlvDerive {
                 Ok(())
             }
 
-            TlvDerive::Typed(type_no) => if let Type::Path(TypePath {
-                path,
-                ..
-            }) = &field.ty
+            TlvDerive::Typed(type_no) => {
+                let n = name.to_string();
+                if tlvs.insert(*type_no, name).is_some() {
+                    return Err(Error::new(
+                        field.span(),
+                        format!(
+                            "reused TLV type constant {} for field `{}`",
+                            type_no, n
+                        ),
+                    ));
+                } else {
+                    Ok(())
+                }
+            }
+
+            TlvDerive::Unknown => if let Type::Path(TypePath { path, .. }) =
+                &field.ty
             {
-                if let Some(PathSegment { ident, .. }) = path.segments.last() {
-                    if *ident == ident!(Option) {
-                        let n = name.to_string();
-                        if tlvs.insert(*type_no, name).is_some() {
-                            return Err(Error::new(
-                                field.span(),
-                                format!(
-                                    "reused TLV type constant {} for field \
-                                     `{}`",
-                                    type_no, n
-                                ),
-                            ));
-                        } else {
-                            Ok(())
+                if aggregator.is_some() {
+                    return Err(Error::new(
+                        field.span(),
+                        "unknown TLVs aggregator can be present only once",
+                    ));
+                }
+                if let Some(PathSegment {
+                    ident,
+                    arguments:
+                        PathArguments::AngleBracketed(
+                            AngleBracketedGenericArguments { args, .. },
+                        ),
+                }) = path.segments.last()
+                {
+                    if *ident == ident!(BTreeMap) && args.len() == 2 {
+                        match (&args[0], &args[1]) {
+                            (
+                                GenericArgument::Type(Type::Path(path1)),
+                                GenericArgument::Type(Type::Path(path2)),
+                            ) if path1.path.is_ident(&ident!(usize))
+                                && path2
+                                    .path
+                                    .segments
+                                    .last()
+                                    .unwrap()
+                                    .ident
+                                    == ident!(Box) =>
+                            {
+                                *aggregator = Some(name);
+                                Ok(())
+                            }
+                            _ => Err(()),
                         }
+                    } else if *ident == ident!(TlvMap) {
+                        *aggregator = Some(name);
+                        Ok(())
                     } else {
                         Err(())
                     }
@@ -287,61 +321,12 @@ impl TlvDerive {
                 Err(())
             }
             .map_err(|_| {
-                Error::new(field.span(), "TLV fields must be optionals in type")
+                Error::new(
+                    field.span(),
+                    "unknown TLVs aggregator field must have \
+                     `internet2::TlvMap` or `BTreeMap<usize, Box<[u8]>>`type",
+                )
             }),
-
-            TlvDerive::Unknown => {
-                if let Type::Path(TypePath { path, .. }) = &field.ty {
-                    if aggregator.is_some() {
-                        return Err(Error::new(
-                            field.span(),
-                            "unknown TLVs aggregator can be present only once",
-                        ));
-                    }
-                    if let Some(PathSegment {
-                        ident,
-                        arguments:
-                            PathArguments::AngleBracketed(
-                                AngleBracketedGenericArguments { args, .. },
-                            ),
-                    }) = path.segments.last()
-                    {
-                        if *ident == ident!(BTreeMap) && args.len() == 2 {
-                            match (&args[0], &args[1]) {
-                                (
-                                    GenericArgument::Type(Type::Path(path1)),
-                                    GenericArgument::Type(Type::Path(path2)),
-                                ) if path1.path.is_ident(&ident!(usize))
-                                    && path2
-                                        .path
-                                        .segments
-                                        .last()
-                                        .unwrap()
-                                        .ident
-                                        == ident!(Box) =>
-                                {
-                                    *aggregator = Some(name);
-                                    Ok(())
-                                }
-                                _ => Err(()),
-                            }
-                        } else {
-                            Err(())
-                        }
-                    } else {
-                        Err(())
-                    }
-                } else {
-                    Err(())
-                }
-                .map_err(|_| {
-                    Error::new(
-                        field.span(),
-                        "unknown TLVs aggregator field must be of \
-                         `BTreeMap<usize, Box<[u8]>>` type",
-                    )
-                })
-            }
         }
     }
 }
