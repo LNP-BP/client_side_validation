@@ -55,7 +55,7 @@
 #[cfg(feature = "derive")]
 pub extern crate strict_encoding_derive as derive;
 #[cfg(feature = "derive")]
-pub use derive::{StrictDecode, StrictEncode};
+pub use derive::{NetworkDecode, NetworkEncode, StrictDecode, StrictEncode};
 
 #[macro_use]
 extern crate amplify;
