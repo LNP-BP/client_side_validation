@@ -71,6 +71,9 @@
 //! Specifies which unsigned integer type must represent enum variants during
 //! the encoding. Possible values are `u8`, `u16`, `u32` and `u64`.
 //!
+//! For enum veriants without associated values defaults to `u8`, independently
+//! of rust enum `#[repr(...)]` attribute value or presence (see also NB below).
+//!
 //! NB: This argument is not equal to the rust `#[repr(...)]` attribute, which
 //! defines C FFI representation of the enum type. For their combined usage
 //! pls check examples below
@@ -260,7 +263,7 @@ pub fn derive_network_encode(input: TokenStream) -> TokenStream {
         ident!(strict_encode),
         ident!(strict_serialize),
         derive_input,
-        TlvEncoding::Length,
+        TlvEncoding::Count,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
@@ -278,7 +281,7 @@ pub fn derive_network_decode(input: TokenStream) -> TokenStream {
         ident!(strict_decode),
         ident!(strict_deserialize),
         derive_input,
-        TlvEncoding::Length,
+        TlvEncoding::Count,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()

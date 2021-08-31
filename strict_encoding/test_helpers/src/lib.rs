@@ -89,22 +89,22 @@ where
     T: Clone + PartialEq + Debug,
 {
     /// Failure during encoding enum variant
-    #[display("Failure during encoding enum variant `{0:?}`: {1:?}")]
+    #[display("Failure during encoding enum variant `{0:02x?}`: {1:?}")]
     EncoderFailure(T, String),
 
     /// Failure during decoding binary representation of enum variant
     #[display(
         "Failure during decoding binary representation of enum variant \
-         `{0:?}`: {1}
-        \tByte representation: {2:?}"
+         `{0:02x?}`: {1}
+        \tByte representation: {2:02x?}"
     )]
     DecoderFailure(T, String, Vec<u8>),
 
     /// Test case failure representing mismatch between enum variant produced
     /// by decoding from the originally encoded enum variant
     #[display(
-        "Roundtrip encoding of enum variant `{original:?}` results in \
-         different variant `{decoded:?}`"
+        "Roundtrip encoding of enum variant `{original:02x?}` results in \
+         different variant `{decoded:02x?}`"
     )]
     DecodedDiffersFromOriginal {
         /// Original value, which was encoded
@@ -136,8 +136,8 @@ where
     /// encoded enum variant
     #[display(
         "Enum variant `{enum_name}:{variant_name}` has incorrect encoding:
-        \tExpected: {expected:?}
-        \tActual: {actual:?}
+        \tExpected: {expected:02x?}
+        \tActual: {actual:02x?}
         "
     )]
     EncodedValueMismatch {
@@ -167,8 +167,8 @@ where
     /// Test case failure representing a out-of-enum range primitive value
     /// still being interpreted as one of enum variants
     #[display(
-        "Out-of-enum-range value `{0}` is interpreted as `{1:?}` enum variant \
-         by rust compiler"
+        "Out-of-enum-range value `{0}` is interpreted as `{1:02x?}` enum \
+         variant by rust compiler"
     )]
     UnknownDecodesToVariant(
         /// Value which was decoded into an enum variant
@@ -179,12 +179,14 @@ where
 
     /// Test case failure due to wrong `PartialEq` or `Eq` implementation:
     /// enum variant is not equal to itself
-    #[display("Enum variant `{0:?}` is not equal to itself")]
+    #[display("Enum variant `{0:02x?}` is not equal to itself")]
     FailedEq(#[doc = "Enum variant which is not equal to itself"] T),
 
     /// Test case failure due to wrong `PartialEq` or `Eq` implementation:
     /// two distinct enum variants are still equal
-    #[display("Two distinct enum variants `{0:?}` and `{1:?}` are equal")]
+    #[display(
+        "Two distinct enum variants `{0:02x?}` and `{1:02x?}` are equal"
+    )]
     FailedNe(
         /// First of two enum variants which are treated as equal
         T,
@@ -195,7 +197,8 @@ where
     /// Test case failure due to wrong `PartialOrd` or `Ord` implementation
     /// happening when enum variants ordering is broken
     #[display(
-        "Comparing enum variants `{0:?}` and `{1:?}` results in wrong ordering"
+        "Comparing enum variants `{0:02x?}` and `{1:02x?}` results in wrong \
+         ordering"
     )]
     FailedOrd(
         /// First of two enum variants which are disordered. This variant
@@ -470,7 +473,7 @@ where
     /// Failure during decoding binary representation of enum variant
     #[display(
         "Failure during decoding: `{0:?}`
-        \tByte representation: {1:?}"
+        \tByte representation: {1:02x?}"
     )]
     DecoderFailure(
         #[doc = "Decoder error"] Error,
@@ -493,8 +496,8 @@ where
     /// Test case failure representing mismatch between object produced
     /// by decoding from the originally encoded object
     #[display(
-        "Roundtrip encoding of `{original:?}` produced different object \
-         `{transcoded:?}`"
+        "Roundtrip encoding of `{original:x?}` produced different object \
+         `{transcoded:02x?}`"
     )]
     TranscodedObjectDiffersFromOriginal {
         /// Original value, which was encoded
@@ -506,10 +509,10 @@ where
     /// Test case failure representing mismatch between original test vector
     /// and serialization of the object decoded from that test vector
     #[display(
-        "Serialization of the object `{object:?}` decoded from a test vector \
-         results in a different byte string:
-        \tOriginal: {original:?}
-        \tSerialization: {transcoded:?}
+        "Serialization of the object `{object:02x?}` decoded from a test \
+         vector results in a different byte string:
+        \tOriginal: {original:02x?}
+        \tSerialization: {transcoded:02x?}
         "
     )]
     TranscodedVecDiffersFromOriginal {

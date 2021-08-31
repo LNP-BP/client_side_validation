@@ -139,9 +139,8 @@ fn encode_struct_impl(
     let import = encoding.use_crate;
 
     Ok(quote! {
-        #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
-            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
+            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> ::core::result::Result<usize, #import::Error> {
                 use #import::#trait_name;
                 let mut len = 0;
                 let data = self;
@@ -270,10 +269,9 @@ fn encode_enum_impl(
     let import = encoding.use_crate;
 
     Ok(quote! {
-        #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
-            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
+            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> ::core::result::Result<usize, #import::Error> {
                 use #import::#trait_name;
                 let mut len = 0;
                 match self {
@@ -362,10 +360,20 @@ fn encode_fields_impl<'a>(
         stream.append_all(quote_spanned! { Span::call_site() =>
             let mut tlvs = ::std::collections::BTreeMap::<usize, Vec<u8>>::default();
         });
-        for (type_no, name) in tlv_fields {
-            stream.append_all(quote_spanned! { Span::call_site() =>
-                tlvs.insert(#type_no, data.#name.#serialize_name()?);
-            });
+        for (type_no, (name, optional)) in tlv_fields {
+            if optional {
+                stream.append_all(quote_spanned! { Span::call_site() =>
+                    if let Some(val) = data.#name {
+                        tlvs.insert(#type_no, val.#serialize_name()?);
+                    }
+                });
+            } else {
+                stream.append_all(quote_spanned! { Span::call_site() =>
+                    if data.#name.iter().count() > 0 {
+                        tlvs.insert(#type_no, data.#name.#serialize_name()?);
+                    }
+                });
+            }
         }
         if let Some(name) = tlv_aggregator {
             stream.append_all(quote_spanned! { Span::call_site() =>
@@ -378,7 +386,7 @@ fn encode_fields_impl<'a>(
         match tlv_encoding {
             TlvEncoding::Count => {
                 stream.append_all(quote_spanned! { Span::call_site() =>
-                    tlvs.#encode_name(&mut e)?;
+                    len += tlvs.#encode_name(&mut e)?;
                 })
             }
             TlvEncoding::Length => {

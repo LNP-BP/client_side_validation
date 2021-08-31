@@ -141,10 +141,9 @@ fn decode_struct_impl(
     let import = encoding.use_crate;
 
     Ok(quote! {
-        #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
-            fn #decode_name<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
+            fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
                 #inner_impl
             }
@@ -248,9 +247,8 @@ fn decode_enum_impl(
     let enum_name = LitStr::new(&ident_name.to_string(), Span::call_site());
 
     Ok(quote! {
-        #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
-            fn #decode_name<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
+            fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
                 Ok(match #repr::#decode_name(&mut d)? {
                     #inner_impl
@@ -341,7 +339,7 @@ fn decode_fields_impl<'a>(
     }
 
     let mut default_fields = skipped_fields;
-    default_fields.extend(tlv_fields.values().cloned());
+    default_fields.extend(tlv_fields.values().map(|(n, _)| n).cloned());
     default_fields.extend(tlv_aggregator.clone());
     for name in default_fields {
         stream.append_all(quote_spanned! { Span::call_site() =>
@@ -354,18 +352,28 @@ fn decode_fields_impl<'a>(
     if !is_enum {
         if use_tlv && (!tlv_fields.is_empty() || tlv_aggregator.is_some()) {
             let mut inner = TokenStream2::new();
-            for (type_no, name) in tlv_fields {
-                inner.append_all(quote_spanned! { Span::call_site() =>
-                    #type_no => s.#name = #import::#trait_name::#deserialize_name(bytes)?,
-                });
+            for (type_no, (name, optional)) in tlv_fields {
+                if optional {
+                    inner.append_all(quote_spanned! { Span::call_site() =>
+                        #type_no => s.#name = Some(#import::#trait_name::#deserialize_name(bytes)?),
+                    });
+                } else {
+                    inner.append_all(quote_spanned! { Span::call_site() =>
+                        #type_no => s.#name = #import::#trait_name::#deserialize_name(bytes)?,
+                    });
+                }
             }
 
-            let mut aggregator = TokenStream2::new();
-            if let Some(ref tlv_aggregator) = tlv_aggregator {
-                aggregator = quote_spanned! { Span::call_site() =>
+            let aggregator = if let Some(ref tlv_aggregator) = tlv_aggregator {
+                quote_spanned! { Span::call_site() =>
                     _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
                     _ => { s.#tlv_aggregator.insert(type_no, bytes); },
-                };
+                }
+            } else {
+                quote_spanned! { Span::call_site() =>
+                    _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
+                    _ => {}
+                }
             };
 
             stream = match tlv_encoding {

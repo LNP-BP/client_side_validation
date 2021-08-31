@@ -1,6 +1,6 @@
 [package]
 name = "strict_encoding_derive"
-version = "1.7.1"
+version = "1.7.3"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Strict encoding derivation macros"
@@ -22,4 +22,6 @@ amplify_syn = "1.1.6"
 
 [dev-dependencies]
 strict_encoding = { path = ".." }
-amplify_derive = "2.7.2"
+strict_encoding_test = { path = "../test_helpers" }
+amplify = "3.9.1"
+compiletest_rs = "0.7.0"
