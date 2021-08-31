@@ -141,7 +141,6 @@ fn decode_struct_impl(
     let import = encoding.use_crate;
 
     Ok(quote! {
-        #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
             fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
@@ -248,7 +247,6 @@ fn decode_enum_impl(
     let enum_name = LitStr::new(&ident_name.to_string(), Span::call_site());
 
     Ok(quote! {
-        #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
