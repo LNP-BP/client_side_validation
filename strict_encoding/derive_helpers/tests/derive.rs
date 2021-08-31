@@ -15,6 +15,8 @@
 extern crate proc_macro;
 #[macro_use]
 extern crate amplify;
+#[macro_use]
+extern crate syn;
 
 use encoding_derive_helpers::{decode_derive, encode_derive, TlvEncoding};
 use proc_macro::TokenStream;
@@ -22,17 +24,34 @@ use syn::DeriveInput;
 
 #[test]
 fn test_custom_derivation() {
-    #[proc_macro_derive(StrictEncode, attributes(strict_encoding))]
-    pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
+    #![allow(unused)]
+    #[proc_macro_derive(CustomEncode, attributes(custom_encoding))]
+    fn derive_strict_encode(input: TokenStream) -> TokenStream {
         let derive_input = parse_macro_input!(input as DeriveInput);
         encode_derive(
-            "strict_encoding",
-            ident!(strict_encoding),
-            ident!(StrictEncode),
-            ident!(strict_encode),
-            ident!(strict_serialize),
+            "custom_encoding",
+            ident!(custom_encoding),
+            ident!(CustomEncode),
+            ident!(custom_encode),
+            ident!(custom_serialize),
             derive_input,
-            TlvEncoding::Denied,
+            TlvEncoding::Length,
+        )
+        .unwrap_or_else(|e| e.to_compile_error())
+        .into()
+    }
+
+    #[proc_macro_derive(CustomDecode, attributes(custom_encoding))]
+    fn derive_strict_decode(input: TokenStream) -> TokenStream {
+        let derive_input = parse_macro_input!(input as DeriveInput);
+        decode_derive(
+            "custom_encoding",
+            ident!(custom_encoding),
+            ident!(CustomDecode),
+            ident!(custom_encode),
+            ident!(custom_serialize),
+            derive_input,
+            TlvEncoding::Length,
         )
         .unwrap_or_else(|e| e.to_compile_error())
         .into()

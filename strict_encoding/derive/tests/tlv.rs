@@ -51,11 +51,13 @@ macro_rules! tlv_u32 {
     () => {
         [
             // Count of TLV elements:
-            0x01, 0x00, // Type field:
-            0xFE, 0xCA,
-            // Length in strict encoding for non-collection types is skipped
-            // (unlike in lightning) Value field:
-            0xFE, 0xCa, 0xAD, 0xDE,
+            0x01, 0x00, //
+            // Type field:
+            0xEF, 0xBE, //
+            // Length:
+            0x04, 0x00, //
+            // Value field:
+            0xFE, 0xCA, 0xAD, 0xDE,
         ]
     };
 }
@@ -68,7 +70,7 @@ fn tlv_optional() -> Result {
     struct Tlv {
         fixed: u8,
 
-        #[network_encoding(tlv = 0xCAFE)]
+        #[network_encoding(tlv = 0xBEEF)]
         tlv: Option<u32>,
     }
 
@@ -94,9 +96,10 @@ fn tlv_newtype() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug, Default)]
     #[derive(NetworkEncode, NetworkDecode)]
     #[network_encoding(use_tlv)]
-    struct Tlv(#[network_encoding(tlv = 0xCAFE)] Option<u32>);
+    struct Tlv(#[network_encoding(tlv = 0xBEEF)] Option<u32>);
 
     test_encoding_roundtrip(&Tlv(None), &[0x00, 0x00])?;
+    //    println!("{:02x?}", Tlv::strict_deserialize(tlv_u32!())?);
     test_encoding_roundtrip(&Tlv(Some(TLV_U32)), tlv_u32!())
         .map_err(Error::from)
 }
@@ -106,23 +109,27 @@ fn tlv_default() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug, Default)]
     #[derive(NetworkEncode, NetworkDecode)]
     #[network_encoding(use_tlv)]
-    struct Tlv {
+    struct TlvDefault {
         fixed: u8,
 
-        #[network_encoding(tlv = 0xCAFE)]
-        tlv: u32,
+        #[network_encoding(tlv = 0xBEEF)]
+        tlv: Vec<u8>,
     }
 
-    test_encoding_roundtrip(&Tlv::default(), &[0x00; 9])?;
+    test_encoding_roundtrip(&TlvDefault::default(), &[0x00; 3])?;
+
     test_encoding_roundtrip(
-        &Tlv {
+        &TlvDefault {
             fixed: 0xDD,
-            tlv: TLV_U32,
+            tlv: TLV_U32.to_le_bytes().to_vec(),
         },
-        vec![0xDD]
-            .into_iter()
-            .chain(tlv_u32!())
-            .collect::<Vec<u8>>(),
+        vec![
+            0xdd, // =fixed
+            0x01, 0x00, // # of TLVs
+            0xef, 0xbe, // TLV type
+            0x06, 0x00, // TLV length
+            0x04, 0x00, 0xfe, 0xca, 0xad, 0xde, // Value: length + vec
+        ],
     )
     .map_err(Error::from)
 }
@@ -134,27 +141,29 @@ fn tlv_ordering() -> Result {
     #[network_encoding(use_tlv)]
     struct Tlv {
         #[network_encoding(tlv = 0xCAFE)]
-        second: u8,
+        second: Option<u8>,
 
         #[network_encoding(tlv = 0xBAD)]
-        first: u8,
+        first: Option<u8>,
     }
 
     test_encoding_roundtrip(&Tlv::default(), &[0x00; 2])?;
     test_encoding_roundtrip(
         &Tlv {
-            second: 0xA2,
-            first: 0xA1,
+            second: Some(0xA2),
+            first: Some(0xA1),
         },
         &[
             // Count of TLV fields
             0x02, 0x00, //
             // First goes first
             0xAD, 0x0B, // type
+            0x01, 0x00, // length
             0xA1, // value
             // Second goes second
             0xFE, 0xCA, // type
-            0xA1, // value
+            0x01, 0x00, // length
+            0xA2, // value
         ],
     )?;
 
@@ -164,9 +173,11 @@ fn tlv_ordering() -> Result {
         0x02, 0x00, //
         // Second goes first
         0xFE, 0xCA, // type
+        0x01, 0x00, // length
         0xA1, // value
         // First goes second
         0xAD, 0x0B, // type
+        0x01, 0x00, // length
         0xA1, // value
     ])
     .expect_err("");
@@ -187,7 +198,7 @@ fn tlv_collection() -> Result {
         vec: Vec<u8>,
     }
 
-    test_encoding_roundtrip(&Tlv::default(), &[0x00; 9])?;
+    test_encoding_roundtrip(&Tlv::default(), &[0x00, 0x00])?;
     test_encoding_roundtrip(
         &Tlv {
             map: bmap! { 0xA1u8 => s!("First"), 0xA2u8 => s!("Second") },
@@ -198,9 +209,11 @@ fn tlv_collection() -> Result {
             0x02, 0x00, //
             // First goes first
             0xAD, 0x0B, // type
-            0x01, 0x00, 0xB1, 0xB2, 0xB3, // value
+            0x05, 0x00, // length
+            0x03, 0x00, 0xB1, 0xB2, 0xB3, // value
             // Second goes second
             0xFE, 0xCA, // type
+            0x13, 0x00, // length
             0x02, 0x00, // value: # of map elements
             0xA1, 0x05, 0x00, b'F', b'i', b'r', b's', b't', // first entry
             0xA2, 0x06, 0x00, b'S', b'e', b'c', b'o', b'n', b'd',

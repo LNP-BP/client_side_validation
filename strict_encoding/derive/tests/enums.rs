@@ -47,11 +47,11 @@ fn enum_associated_types() -> Result {
     test_encoding_roundtrip(&Hi::Second(heap.clone()), [
         0x01, 0x02, 0x00, 0xA1, 0xA2,
     ])?;
-    test_encoding_roundtrip(&Hi::Third, [0x03, 0x00])?;
+    test_encoding_roundtrip(&Hi::Third, [0x02])?;
     test_encoding_roundtrip(&Hi::Fourth { heap }, [
-        0x04, 0x02, 0x00, 0xA1, 0xA2,
+        0x03, 0x02, 0x00, 0xA1, 0xA2,
     ])?;
-    test_encoding_roundtrip(&Hi::Seventh, [0x07, 0x00])?;
+    test_encoding_roundtrip(&Hi::Seventh, [0x07])?;
 
     Ok(())
 }
@@ -126,6 +126,22 @@ fn enum_repr() -> Result {
     test_encoding_roundtrip(&ByValue::Bit16, [0x02])?;
     test_encoding_roundtrip(&ByValue::Bit32, [0x04])?;
     test_encoding_roundtrip(&ByValue::Bit64, [0x08])?;
+
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(StrictEncode, StrictDecode)]
+    #[strict_encoding(by_value)]
+    #[repr(u16)]
+    enum ByValue16 {
+        Bit8 = 1,
+        Bit16 = 2,
+        Bit32 = 4,
+        Bit64 = 8,
+    }
+
+    test_encoding_roundtrip(&ByValue16::Bit8, [0x01])?;
+    test_encoding_roundtrip(&ByValue16::Bit16, [0x02])?;
+    test_encoding_roundtrip(&ByValue16::Bit32, [0x04])?;
+    test_encoding_roundtrip(&ByValue16::Bit64, [0x08])?;
 
     Ok(())
 }

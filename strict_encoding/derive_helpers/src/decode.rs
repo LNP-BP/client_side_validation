@@ -339,7 +339,7 @@ fn decode_fields_impl<'a>(
     }
 
     let mut default_fields = skipped_fields;
-    default_fields.extend(tlv_fields.values().cloned());
+    default_fields.extend(tlv_fields.values().map(|(n, _)| n).cloned());
     default_fields.extend(tlv_aggregator.clone());
     for name in default_fields {
         stream.append_all(quote_spanned! { Span::call_site() =>
@@ -352,10 +352,16 @@ fn decode_fields_impl<'a>(
     if !is_enum {
         if use_tlv && (!tlv_fields.is_empty() || tlv_aggregator.is_some()) {
             let mut inner = TokenStream2::new();
-            for (type_no, name) in tlv_fields {
-                inner.append_all(quote_spanned! { Span::call_site() =>
-                    #type_no => s.#name = #import::#trait_name::#deserialize_name(bytes)?,
-                });
+            for (type_no, (name, optional)) in tlv_fields {
+                if optional {
+                    inner.append_all(quote_spanned! { Span::call_site() =>
+                        #type_no => s.#name = Some(#import::#trait_name::#deserialize_name(bytes)?),
+                    });
+                } else {
+                    inner.append_all(quote_spanned! { Span::call_site() =>
+                        #type_no => s.#name = #import::#trait_name::#deserialize_name(bytes)?,
+                    });
+                }
             }
 
             let aggregator = if let Some(ref tlv_aggregator) = tlv_aggregator {

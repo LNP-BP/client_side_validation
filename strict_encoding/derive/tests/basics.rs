@@ -97,7 +97,7 @@ fn bytes() -> Result {
     }
     let mut bytes = [0u8; 16];
     bytes.copy_from_slice(&data[2..]);
-    test_encoding_roundtrip(&Array { bytes }, &data)?;
+    test_encoding_roundtrip(&Array { bytes }, &data[2..])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictEncode, StrictDecode)]
