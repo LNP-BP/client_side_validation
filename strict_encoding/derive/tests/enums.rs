@@ -47,11 +47,11 @@ fn enum_associated_types() -> Result {
     test_encoding_roundtrip(&Hi::Second(heap.clone()), [
         0x01, 0x02, 0x00, 0xA1, 0xA2,
     ])?;
-    test_encoding_roundtrip(&Hi::Third, [0x03])?;
+    test_encoding_roundtrip(&Hi::Third, [0x03, 0x00])?;
     test_encoding_roundtrip(&Hi::Fourth { heap }, [
         0x04, 0x02, 0x00, 0xA1, 0xA2,
     ])?;
-    test_encoding_roundtrip(&Hi::Seventh, [0x07])?;
+    test_encoding_roundtrip(&Hi::Seventh, [0x07, 0x00])?;
 
     Ok(())
 }

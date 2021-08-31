@@ -213,14 +213,6 @@ impl TlvDerive {
             ));
         }
 
-        if attr.args.contains_key(SKIP) {
-            return Err(Error::new(
-                Span::call_site(),
-                "presence of TLV attribute for the skipped field does not \
-                 make sense",
-            ));
-        }
-
         let mut tlv = if let Some(tlv) = attr
             .args
             .get(TLV)
@@ -235,6 +227,14 @@ impl TlvDerive {
         } else {
             None
         };
+
+        if !tlv.is_none() && attr.args.contains_key(SKIP) {
+            return Err(Error::new(
+                Span::call_site(),
+                "presence of TLV attribute for the skipped field does not \
+                 make sense",
+            ));
+        }
 
         if tlv.is_none() && is_global {
             tlv = Some(TlvDerive::None)

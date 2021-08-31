@@ -14,7 +14,7 @@
 
 extern crate compiletest_rs as compiletest;
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 
 use strict_encoding::{StrictDecode, StrictEncode};
@@ -32,9 +32,15 @@ pub fn compile_test(mode: &'static str) {
     compiletest::run_tests(&config);
 }
 
-#[derive(Debug, Display)]
+#[derive(Display)]
 #[display(inner)]
 pub struct Error(pub Box<dyn std::error::Error>);
+
+impl Debug for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {

@@ -54,12 +54,12 @@ fn unit_struct() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictEncode, StrictDecode)]
     struct Strict(u16);
-    test_encoding_roundtrip(&Strict(0xcafe), [0xCA, 0xFE])?;
+    test_encoding_roundtrip(&Strict(0xcafe), [0xFe, 0xCA])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(NetworkEncode, NetworkDecode)]
     struct Network(u16);
-    test_encoding_roundtrip(&Network(0xcafe), [0xCA, 0xFE])?;
+    test_encoding_roundtrip(&Network(0xcafe), [0xFE, 0xCA])?;
 
     Ok(())
 }
@@ -67,7 +67,7 @@ fn unit_struct() -> Result {
 #[test]
 fn bytes() -> Result {
     let data = [
-        0x04, 0x00, 0xCA, 0xFE, 0xDE, 0xAD, 0xBE, 0xD8, 0x12, 0x34, 0x56, 0x78,
+        0x10, 0x00, 0xCA, 0xFE, 0xDE, 0xAD, 0xBE, 0xD8, 0x12, 0x34, 0x56, 0x78,
         0x9A, 0xBC, 0xDE, 0xFF, 0x00, 0x01,
     ];
 
@@ -81,14 +81,14 @@ fn bytes() -> Result {
             data: data[2..].to_vec(),
         },
         &data,
-    );
+    )?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(StrictEncode)]
     struct Slice<'a> {
         slice: &'a [u8],
     }
-    test_encoding_roundtrip(&Slice { slice: &data[2..] }, &data);
+    assert_eq!(&Slice { slice: &data[2..] }.strict_serialize()?, &data);
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictEncode, StrictDecode)]
@@ -97,7 +97,7 @@ fn bytes() -> Result {
     }
     let mut bytes = [0u8; 16];
     bytes.copy_from_slice(&data[2..]);
-    test_encoding_roundtrip(&Array { bytes }, &data);
+    test_encoding_roundtrip(&Array { bytes }, &data)?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictEncode, StrictDecode)]
@@ -122,7 +122,7 @@ fn skipping() -> Result {
     test_encoding_roundtrip(
         &Skipping {
             data: 0xBB,
-            ephemeral: true,
+            ephemeral: false,
         },
         &[0xBB],
     )

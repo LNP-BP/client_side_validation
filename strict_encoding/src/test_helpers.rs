@@ -354,7 +354,7 @@ where
     /// Failure during decoding binary representation of enum variant
     #[display(
         "Failure during decoding: `{0:?}`
-        \tByte representation: {1:?}"
+        \tByte representation: {1:#x?}"
     )]
     DecoderFailure(
         #[doc = "Decoder error"] Error,
@@ -392,8 +392,8 @@ where
     #[display(
         "Serialization of the object `{object:?}` decoded from a test vector \
          results in a different byte string:
-        \tOriginal: {original:?}
-        \tSerialization: {transcoded:?}
+        \tOriginal: {original:#x?}
+        \tSerialization: {transcoded:#x?}
         "
     )]
     TranscodedVecDiffersFromOriginal {
