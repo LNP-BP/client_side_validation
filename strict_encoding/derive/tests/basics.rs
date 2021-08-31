@@ -111,7 +111,7 @@ fn skipping() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug, Default)]
     #[derive(StrictEncode, StrictDecode)]
     struct Skipping {
-        pub data: u8,
+        pub data: String,
 
         // This will initialize the field upon decoding with Option::default()
         // value
@@ -121,10 +121,10 @@ fn skipping() -> Result {
 
     test_encoding_roundtrip(
         &Skipping {
-            data: 0xBB,
+            data: s!("String"),
             ephemeral: false,
         },
-        &[0xBB],
+        &[0x06, 0x00, b'S', b't', b'r', b'i', b'n', b'g'],
     )
     .map_err(Error::from)
 }

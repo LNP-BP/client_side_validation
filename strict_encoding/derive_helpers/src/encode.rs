@@ -363,7 +363,7 @@ fn encode_fields_impl<'a>(
         for (type_no, (name, optional)) in tlv_fields {
             if optional {
                 stream.append_all(quote_spanned! { Span::call_site() =>
-                    if let Some(val) = data.#name {
+                    if let Some(val) = &data.#name {
                         tlvs.insert(#type_no, val.#serialize_name()?);
                     }
                 });
