@@ -141,7 +141,7 @@ fn encode_struct_impl(
     Ok(quote! {
         #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
-            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
+            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> ::core::result::Result<usize, #import::Error> {
                 use #import::#trait_name;
                 let mut len = 0;
                 let data = self;
@@ -273,7 +273,7 @@ fn encode_enum_impl(
         #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
-            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> Result<usize, #import::Error> {
+            fn #encode_name<E: ::std::io::Write>(&self, mut e: E) -> ::core::result::Result<usize, #import::Error> {
                 use #import::#trait_name;
                 let mut len = 0;
                 match self {

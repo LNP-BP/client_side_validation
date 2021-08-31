@@ -144,7 +144,7 @@ fn decode_struct_impl(
         #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
             #[inline]
-            fn #decode_name<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
+            fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
                 #inner_impl
             }
@@ -250,7 +250,7 @@ fn decode_enum_impl(
     Ok(quote! {
         #[allow(unused_qualifications)]
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
-            fn #decode_name<D: ::std::io::Read>(mut d: D) -> Result<Self, #import::Error> {
+            fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
                 Ok(match #repr::#decode_name(&mut d)? {
                     #inner_impl
