@@ -358,12 +358,16 @@ fn decode_fields_impl<'a>(
                 });
             }
 
-            let mut aggregator = TokenStream2::new();
-            if let Some(ref tlv_aggregator) = tlv_aggregator {
-                aggregator = quote_spanned! { Span::call_site() =>
+            let aggregator = if let Some(ref tlv_aggregator) = tlv_aggregator {
+                quote_spanned! { Span::call_site() =>
                     _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
                     _ => { s.#tlv_aggregator.insert(type_no, bytes); },
-                };
+                }
+            } else {
+                quote_spanned! { Span::call_site() =>
+                    _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
+                    _ => {}
+                }
             };
 
             stream = match tlv_encoding {
