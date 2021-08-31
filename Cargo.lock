@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "encoding_derive_helpers"
-version = "1.7.1"
+version = "1.7.2"
 dependencies = [
  "amplify",
  "proc-macro2",
@@ -884,7 +884,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_test"
-version = "1.7.1"
+version = "1.7.2"
 dependencies = [
  "amplify",
  "strict_encoding",

@@ -86,7 +86,11 @@ fn tlv_optional() -> Result {
             fixed: 0xDD,
             tlv: Some(TLV_U32),
         },
-        vec![0xDD].into_iter().chain(tlv_u32!()).collect::<Vec<_>>(),
+        vec![0xDD]
+            .iter()
+            .chain(&tlv_u32!()[..])
+            .cloned()
+            .collect::<Vec<_>>(),
     )
     .map_err(Error::from)
 }
