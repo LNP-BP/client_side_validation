@@ -196,9 +196,7 @@ pub trait Uniform {
     /// Produces unniformally-encoded byte representation of the address
     /// (see [`RawUniformAddr`]).
     #[inline]
-    fn to_raw_uniform(&self) -> RawUniformAddr {
-        self.to_uniform_addr().into()
-    }
+    fn to_raw_uniform(&self) -> RawUniformAddr { self.to_uniform_addr().into() }
 
     /// Constructs  address of a given type from a structure uniform address
     /// data.
@@ -261,29 +259,19 @@ pub trait Uniform {
 
 impl Uniform for UniformAddr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        self.addr_format
-    }
+    fn addr_format(&self) -> AddrFormat { self.addr_format }
 
     #[inline]
-    fn addr(&self) -> RawAddr {
-        self.addr
-    }
+    fn addr(&self) -> RawAddr { self.addr }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        self.port
-    }
+    fn port(&self) -> Option<u16> { self.port }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        self.transport
-    }
+    fn transport(&self) -> Option<Transport> { self.transport }
 
     #[inline]
-    fn to_uniform_addr(&self) -> UniformAddr {
-        *self
-    }
+    fn to_uniform_addr(&self) -> UniformAddr { *self }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -384,14 +372,10 @@ impl Uniform for IpAddr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -423,9 +407,7 @@ impl Uniform for IpAddr {
 
 impl Uniform for Ipv4Addr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV4
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV4 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -435,14 +417,10 @@ impl Uniform for Ipv4Addr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -471,9 +449,7 @@ impl Uniform for Ipv4Addr {
 
 impl Uniform for Ipv6Addr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV6
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV6 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -483,14 +459,10 @@ impl Uniform for Ipv6Addr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -535,14 +507,10 @@ impl Uniform for SocketAddr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port())
-    }
+    fn port(&self) -> Option<u16> { Some(self.port()) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -578,9 +546,7 @@ impl Uniform for SocketAddr {
 
 impl Uniform for SocketAddrV4 {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV4
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV4 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -590,14 +556,10 @@ impl Uniform for SocketAddrV4 {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port())
-    }
+    fn port(&self) -> Option<u16> { Some(self.port()) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -627,9 +589,7 @@ impl Uniform for SocketAddrV4 {
 
 impl Uniform for SocketAddrV6 {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        AddrFormat::IpV6
-    }
+    fn addr_format(&self) -> AddrFormat { AddrFormat::IpV6 }
 
     #[inline]
     fn addr(&self) -> RawAddr {
@@ -639,14 +599,10 @@ impl Uniform for SocketAddrV6 {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port())
-    }
+    fn port(&self) -> Option<u16> { Some(self.port()) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
