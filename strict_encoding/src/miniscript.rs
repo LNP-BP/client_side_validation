@@ -150,8 +150,9 @@ where
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
-            TapTree::Tree(tree1, tree2) => {
-                strict_encode_list!(e; 2u8, tree1, tree2)
+            TapTree::Tree(_tree1, _tree2) => {
+                todo!("Fix bug here with generics crashing compiler")
+                // strict_encode_list!(e; 2u8, tree1, tree2)
             }
             TapTree::Leaf(pk) => {
                 strict_encode_list!(e; 1u8, pk)
@@ -168,10 +169,11 @@ where
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         match u8::strict_decode(&mut d)? {
             1u8 => Ok(TapTree::Leaf(StrictDecode::strict_decode(&mut d)?)),
-            2u8 => Ok(TapTree::Tree(
+            2u8 => todo!("Fix bug here with generics crashing compiler"),
+            /* Ok(TapTree::Tree(
                 StrictDecode::strict_decode(&mut d)?,
                 StrictDecode::strict_decode(&mut d)?,
-            )),
+            )),*/
             wrong => Err(Error::EnumValueNotKnown("TapTree", wrong as usize)),
         }
     }
