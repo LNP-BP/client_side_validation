@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.5.11"
+version = "0.6.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Commit-verify API for client-side validation"
@@ -16,19 +16,22 @@ name = "commit_verify"
 path = "src/lib.rs"
 
 [dependencies]
-amplify = { version = "3.8.0", features = ["hex"] }
+amplify = { version = "3.9.1", features = ["hex"] }
 bitcoin_hashes = "0.10"
 strict_encoding = { version = "1.6.1", path = "../strict_encoding" }
-rand = { version = "0.7", optional = true } # We need older version since secp256k1 depends on it
+rand = { version = "0.8.4", optional = true }
 serde_crate = { version = "1", package = "serde", optional = true }
 serde_with = { version = "1.8", optional = true }
 grin_secp256k1zkp = { version = "0.7", optional = true }
 
 [dev-dependencies]
-rand = "0.7"
+rand = "0.8.4"
 
 [features]
 default = []
-all = ["rand", "serde"]
+all = ["rand", "serde", "bulletproofs"]
 serde = ["serde_crate", "serde_with", "bitcoin_hashes/serde", "amplify/serde"]
 bulletproofs = ["grin_secp256k1zkp"]
+
+[package.metadata.docs.rs]
+features = [ "all" ]

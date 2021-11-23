@@ -1,6 +1,6 @@
 [package]
 name = "single_use_seals"
-version = "0.5.5"
+version = "0.6.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Single-use-seals foundation API. For bitcoin-specific implementation check bp-seals"
@@ -16,10 +16,13 @@ name = "single_use_seals"
 path = "src/lib.rs"
 
 [dependencies]
-amplify_derive = "2.8"
+amplify_derive = "2.9"
 async-trait = { version = "0.1.51", optional = true }
 
 [features]
 default = []
 all = ["async"]
 async = ["async-trait"]
+
+[package.metadata.docs.rs]
+features = [ "all" ]

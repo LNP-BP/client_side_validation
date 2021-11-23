@@ -14,8 +14,7 @@
 
 use std::io;
 
-use bitcoin::bech32::u5;
-use bitcoin::util::address::{self, Address};
+use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{
@@ -255,7 +254,7 @@ impl StrictEncode for address::Payload {
                 33u8.strict_encode(&mut e)? + sh.strict_encode(&mut e)?
             }
             address::Payload::WitnessProgram { version, program } => {
-                version.to_u8().strict_encode(&mut e)?
+                version.into_num().strict_encode(&mut e)?
                     + program.strict_encode(&mut e)?
             }
         })
@@ -271,9 +270,8 @@ impl StrictDecode for address::Payload {
             33u8 => {
                 address::Payload::ScriptHash(ScriptHash::strict_decode(&mut d)?)
             }
-            // TODO: #18 Update to `WitnessVersion` upon bitcoin 0.26.1 release
             version if version <= 16 => address::Payload::WitnessProgram {
-                version: u5::try_from_u8(version)
+                version: WitnessVersion::from_num(version)
                     .expect("bech32::u8 decider is broken"),
                 program: StrictDecode::strict_decode(&mut d)?,
             },

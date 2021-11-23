@@ -1,6 +1,6 @@
 [package]
 name = "strict_encoding"
-version = "1.7.4"
+version = "1.8.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Strict encoding: deterministic binary serialization for networking & client-side validation"
@@ -18,20 +18,20 @@ path = "src/lib.rs"
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-amplify = { version = "3.8.1", features = ["proc_attr"] }
+amplify = { version = "3.9.1", features = ["proc_attr"] }
 strict_encoding_derive = { version = "1.5.4", path = "./derive", optional = true }
 bitcoin_hashes = "0.10" # We need this separately since bitcoin is an optional dependency
 # TODO: #1 Replace with a dedicated bitcoin encoding crate once it will be
-#       ready (0.27 release presumably)
-bitcoin = { version = "0.27", optional = true }
-miniscript = { version = "6", optional = true }
+#       ready (0.28 release presumably)
+bitcoin = { version = "0.28", git = "https://github.com/LNP-BP/rust-bitcoin", branch = "taproot/all", optional = true }
+miniscript = { version = "7", git = "https://github.com/LNP-BP/rust-miniscript", branch = "taproot", optional = true }
 ed25519-dalek = { version = "1", optional = true }
 grin_secp256k1zkp = { version = "0.7", optional = true }
 chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
 rand = "0.7"
-amplify = { version = "3.8.1", features = ["proc_attr", "hex"] }
+amplify = { version = "3.9.1", features = ["proc_attr", "hex"] }
 strict_encoding_test = { version = "1.7.1", path = "./test_helpers" }
 
 [features]
@@ -39,3 +39,6 @@ default = ["chrono", "derive", "bitcoin"]
 all = ["miniscript", "crypto", "chrono", "derive", "bitcoin"]
 crypto = ["ed25519-dalek", "grin_secp256k1zkp", "bitcoin"]
 derive = ["strict_encoding_derive"]
+
+[package.metadata.docs.rs]
+features = [ "all" ]

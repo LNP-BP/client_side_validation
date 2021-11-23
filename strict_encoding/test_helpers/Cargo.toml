@@ -15,4 +15,4 @@ edition = "2018"
 
 [dependencies]
 amplify = "3.9.1"
-strict_encoding = { version = "1.7.4", path = ".." }
+strict_encoding = { version = "1.8.0", path = ".." }
