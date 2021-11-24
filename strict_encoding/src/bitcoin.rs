@@ -13,10 +13,15 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use std::io;
+use std::io::{Read, Write};
 
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
+use bitcoin::util::taproot::{
+    ControlBlock, LeafVersion, TapBranchHash, TapLeafHash, TapSighashHash,
+    TapTweakHash, TaprootMerkleBranch,
+};
 use bitcoin::{
     secp256k1, Amount, BlockHash, OutPoint, PubkeyHash, Script, ScriptHash,
     SigHash, Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Wtxid,
@@ -51,6 +56,25 @@ impl Strategy for WScriptHash {
 }
 impl Strategy for SigHash {
     type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapBranchHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapLeafHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapTweakHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapSighashHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+
+impl Strategy for LeafVersion {
+    type Strategy = strategies::Wrapped;
+}
+impl Strategy for TaprootMerkleBranch {
+    type Strategy = strategies::Wrapped;
 }
 
 impl StrictEncode for secp256k1::SecretKey {
@@ -321,6 +345,20 @@ impl StrictDecode for Script {
     #[inline]
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
         Ok(Self::from(Vec::<u8>::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for ControlBlock {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.size().strict_encode(&mut e)? + self.encode(e)?)
+    }
+}
+
+impl StrictDecode for ControlBlock {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        let data = Vec::<u8>::strict_decode(d)?;
+        Self::from_slice(&data)
+            .map_err(|err| Error::DataIntegrityError(err.to_string()))
     }
 }
 
