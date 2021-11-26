@@ -15,6 +15,7 @@
 use std::io;
 use std::io::{Read, Write};
 
+use bitcoin::blockdata::transaction::EcdsaSigHashType;
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
@@ -23,9 +24,9 @@ use bitcoin::util::taproot::{
     TapTweakHash, TaprootMerkleBranch,
 };
 use bitcoin::{
-    secp256k1, Amount, BlockHash, OutPoint, PubkeyHash, Script, ScriptHash,
-    SigHash, Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Wtxid,
-    XpubIdentifier,
+    secp256k1, Amount, BlockHash, EcdsaSig, OutPoint, PubkeyHash, SchnorrSig,
+    SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
+    Txid, WPubkeyHash, WScriptHash, Wtxid, XpubIdentifier,
 };
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
@@ -189,6 +190,74 @@ impl StrictDecode for secp256k1::schnorrsig::Signature {
                 "Invalid secp256k1 Schnorr signature data".to_string(),
             )
         })
+    }
+}
+
+impl StrictEncode for EcdsaSigHashType {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_u32().strict_encode(e)
+    }
+}
+
+impl StrictDecode for EcdsaSigHashType {
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(EcdsaSigHashType::from_u32_consensus(u32::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for SchnorrSigHashType {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        (*self as u8).strict_encode(e)
+    }
+}
+
+impl StrictDecode for SchnorrSigHashType {
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(SchnorrSigHashType::from_u8(u8::strict_decode(d)?).map_err(
+            |_| {
+                Error::DataIntegrityError(
+                    s!("invalid BIP431 SigHashType value"),
+                )
+            },
+        )?)
+    }
+}
+
+impl StrictEncode for EcdsaSig {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_vec().strict_encode(e)
+    }
+}
+
+impl StrictDecode for EcdsaSig {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(EcdsaSig::from_slice(&Vec::strict_decode(d)?).map_err(|_| {
+            Error::DataIntegrityError(s!(
+                "invalid ECDSA tx input signature data"
+            ))
+        })?)
+    }
+}
+
+impl StrictEncode for SchnorrSig {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_vec().strict_encode(e)
+    }
+}
+
+impl StrictDecode for SchnorrSig {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(
+            SchnorrSig::from_slice(&Vec::strict_decode(d)?).map_err(|_| {
+                Error::DataIntegrityError(s!("invalid BIP431 signature data"))
+            })?,
+        )
     }
 }
 
