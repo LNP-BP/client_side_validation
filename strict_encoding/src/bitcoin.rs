@@ -24,9 +24,10 @@ use bitcoin::util::taproot::{
     TapTweakHash, TaprootMerkleBranch,
 };
 use bitcoin::{
-    secp256k1, Amount, BlockHash, EcdsaSig, OutPoint, PubkeyHash, SchnorrSig,
-    SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
-    Txid, WPubkeyHash, WScriptHash, Wtxid, XpubIdentifier,
+    schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig, OutPoint,
+    PubkeyHash, SchnorrSig, SchnorrSigHashType, Script, ScriptHash, SigHash,
+    Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Wtxid,
+    XpubIdentifier,
 };
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
@@ -123,27 +124,19 @@ impl StrictDecode for secp256k1::PublicKey {
     }
 }
 
-impl StrictEncode for secp256k1::schnorrsig::PublicKey {
+impl StrictEncode for bip340::PublicKey {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&[0x02_u8])? + e.write(&self.serialize())?)
+        Ok(e.write(&self.serialize())?)
     }
 }
 
-impl StrictDecode for secp256k1::schnorrsig::PublicKey {
+impl StrictDecode for bip340::PublicKey {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf =
-            [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE + 1];
+        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        if buf[0] != 0x02 {
-            return Err(Error::DataIntegrityError(s!("invalid public key \
-                                                     data: BIP340 keys \
-                                                     must be serialized \
-                                                     with `0x02` prefix \
-                                                     byte")));
-        }
-        Self::from_slice(&buf[1..]).map_err(|_| {
+        Self::from_slice(&buf[..]).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
         })
     }
@@ -720,10 +713,10 @@ pub(crate) mod test {
             0x19, 0xeb, 0xfa, 0x57, 0xda, 0x7c, 0xff, 0x3a, 0xff, 0x6e, 0x81,
             0x9e, 0x4e, 0xe9, 0x71, 0xd8, 0x6b, 0x5e, 0x61, 0x87, 0x5d,
         ];
-        static PK_BYTES_ONEKEY: [u8; 33] = [
-            0x02, 0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0,
-            0x62, 0x95, 0xce, 0x87, 0x0b, 0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d,
-            0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
+        static PK_BYTES_ONEKEY: [u8; 32] = [
+            0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62,
+            0x95, 0xce, 0x87, 0x0b, 0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce,
+            0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
         ];
 
         let secp_pk_02 =
@@ -731,7 +724,7 @@ pub(crate) mod test {
         let secp_pk_03 =
             secp256k1::PublicKey::from_slice(&PK_BYTES_03).unwrap();
         let secp_pk_one =
-            secp256k1::PublicKey::from_slice(&PK_BYTES_ONEKEY).unwrap();
+            bip340::PublicKey::from_slice(&PK_BYTES_ONEKEY).unwrap();
         test_encoding_roundtrip(&secp_pk_02, PK_BYTES_02).unwrap();
         test_encoding_roundtrip(&secp_pk_03, PK_BYTES_03).unwrap();
         test_encoding_roundtrip(&secp_pk_one, PK_BYTES_ONEKEY).unwrap();
@@ -759,39 +752,22 @@ pub(crate) mod test {
         test_encoding_roundtrip(&pubkey_02, PK_BYTES_02).unwrap();
         test_encoding_roundtrip(&pubkey_03, PK_BYTES_03).unwrap();
         test_encoding_roundtrip(&pubkey_04, PK_BYTES_04).unwrap();
-        test_encoding_roundtrip(&one_key, PK_BYTES_ONEKEY).unwrap();
         assert_eq!(secp_pk_02, pubkey_02.key);
         assert_eq!(secp_pk_02, pubkey_02.key);
         assert_eq!(secp_pk_02, pubkey_02.key);
         assert_eq!(secp_pk_03, pubkey_03.key);
-        assert_eq!(secp_pk_one, one_key.key);
+        assert_ne!(&secp_pk_one.serialize()[..], &one_key.key.serialize()[..]);
         assert_eq!(pubkey_03.key, pubkey_04.key);
 
         let xcoordonly_02 =
-            secp256k1::schnorrsig::PublicKey::from_slice(&PK_BYTES_02[1..])
-                .unwrap();
+            bip340::PublicKey::from_slice(&PK_BYTES_02[1..]).unwrap();
         let xcoordonly_one =
-            secp256k1::schnorrsig::PublicKey::from_slice(&PK_BYTES_ONEKEY[1..])
-                .unwrap();
-        test_encoding_roundtrip(&xcoordonly_02, PK_BYTES_02).unwrap();
+            bip340::PublicKey::from_slice(&PK_BYTES_ONEKEY[..]).unwrap();
+        test_encoding_roundtrip(&xcoordonly_02, &PK_BYTES_02[1..]).unwrap();
         test_encoding_roundtrip(&xcoordonly_one, PK_BYTES_ONEKEY).unwrap();
-        assert_eq!(
-            secp256k1::schnorrsig::PublicKey::strict_decode(&PK_BYTES_03[..]),
-            Err(Error::DataIntegrityError(s!("invalid public key data: \
-                                              BIP340 keys must be \
-                                              serialized with `0x02` \
-                                              prefix byte")))
-        );
-        assert_eq!(
-            secp256k1::schnorrsig::PublicKey::strict_decode(&PK_BYTES_04[..]),
-            Err(Error::DataIntegrityError(s!("invalid public key data: \
-                                              BIP340 keys must be \
-                                              serialized with `0x02` \
-                                              prefix byte")))
-        );
         assert_eq!(xcoordonly_02.serialize(), secp_pk_02.serialize()[1..]);
         assert_eq!(xcoordonly_02.serialize(), secp_pk_03.serialize()[1..]);
-        assert_eq!(xcoordonly_one.serialize(), secp_pk_one.serialize()[1..]);
+        assert_eq!(xcoordonly_one.serialize(), one_key.key.serialize()[1..]);
     }
 
     #[test]
