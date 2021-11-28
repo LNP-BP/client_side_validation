@@ -98,9 +98,35 @@ impl StrictDecode for secp256k1::SecretKey {
     }
 }
 
-// TODO: #17 Uncomment strict encoding for `KeyPair` type once there will be a
-//       new release after the merge of this PR:
+// TODO: #17 Uncomment strict encoding for `KeyPair` and `TweakedKeyPair` types
+//       once there will be a new release after the merge of this PR:
 //       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>.
+
+/*
+
+impl StrictEncode for bip340::TweakedKeyPair {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(e.write(&self.into_inner().serialize_secure())?)
+    }
+}
+*/
+
+impl StrictDecode for bip340::TweakedKeyPair {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; secp256k1::constants::SECRET_KEY_SIZE];
+        d.read_exact(&mut buf)?;
+        let secp = Secp256k1::signing_only();
+        Ok(Self::dangerous_assume_tweaked(
+            bip340::KeyPair::from_seckey_slice(&secp, &buf).map_err(|_| {
+                Error::DataIntegrityError(
+                    "invalid BIP340 keypair data".to_string(),
+                )
+            })?,
+        ))
+    }
+}
 
 /*
 impl StrictEncode for bip340::KeyPair {
@@ -165,6 +191,26 @@ impl StrictDecode for bip340::PublicKey {
         Self::from_slice(&buf[..]).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
         })
+    }
+}
+
+impl StrictEncode for bip340::TweakedPublicKey {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(e.write(&self.serialize())?)
+    }
+}
+
+impl StrictDecode for bip340::TweakedPublicKey {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
+        d.read_exact(&mut buf)?;
+        Ok(Self::dangerous_assume_tweaked(
+            bip340::PublicKey::from_slice(&buf[..]).map_err(|_| {
+                Error::DataIntegrityError(s!("invalid public key data"))
+            })?,
+        ))
     }
 }
 
