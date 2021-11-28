@@ -16,6 +16,7 @@ use std::io;
 use std::io::{Read, Write};
 
 use bitcoin::blockdata::transaction::EcdsaSigHashType;
+use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
@@ -97,6 +98,31 @@ impl StrictDecode for secp256k1::SecretKey {
     }
 }
 
+// TODO: #17 Uncomment strict encoding for `KeyPair` type once there will be a
+//       new release after the merge of this PR:
+//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>.
+
+/*
+impl StrictEncode for bip340::KeyPair {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(e.write(&self.serialize_secure())?)
+    }
+}
+ */
+
+impl StrictDecode for bip340::KeyPair {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; secp256k1::constants::SECRET_KEY_SIZE];
+        d.read_exact(&mut buf)?;
+        let secp = Secp256k1::signing_only();
+        Self::from_seckey_slice(&secp, &buf).map_err(|_| {
+            Error::DataIntegrityError("invalid BIP340 keypair data".to_string())
+        })
+    }
+}
+
 impl StrictEncode for secp256k1::PublicKey {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -141,10 +167,6 @@ impl StrictDecode for bip340::PublicKey {
         })
     }
 }
-
-// TODO: #17 Implement strict encoding for `KeyPair` type once there will be a
-//       way to serialize its inner data in Secpk256k1 lib (see
-//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>)
 
 impl StrictEncode for secp256k1::Signature {
     #[inline]
