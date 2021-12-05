@@ -23,7 +23,7 @@ mod common;
 use std::collections::BTreeMap;
 
 use common::{compile_test, Error, Result};
-use strict_encoding::StrictDecode;
+use strict_encoding::{strict_deserialize, StrictDecode};
 use strict_encoding_test::test_encoding_roundtrip;
 
 #[test]
@@ -151,24 +151,27 @@ fn tlv_ordering() -> Result {
         first: Option<u8>,
     }
 
+    let data = [
+        // Count of TLV fields
+        0x02, 0x00, //
+        // First goes first
+        0xAD, 0x0B, // type
+        0x01, 0x00, // length
+        0xA1, // value
+        // Second goes second
+        0xFE, 0xCA, // type
+        0x01, 0x00, // length
+        0xA2, // value
+    ];
+    let _: Tlv = strict_deserialize(&data).unwrap();
+
     test_encoding_roundtrip(&Tlv::default(), &[0x00; 2])?;
     test_encoding_roundtrip(
         &Tlv {
             second: Some(0xA2),
             first: Some(0xA1),
         },
-        &[
-            // Count of TLV fields
-            0x02, 0x00, //
-            // First goes first
-            0xAD, 0x0B, // type
-            0x01, 0x00, // length
-            0xA1, // value
-            // Second goes second
-            0xFE, 0xCA, // type
-            0x01, 0x00, // length
-            0xA2, // value
-        ],
+        &data,
     )?;
 
     // Now lets switch ordering
@@ -187,6 +190,39 @@ fn tlv_ordering() -> Result {
     .expect_err("");
 
     Ok(())
+}
+
+#[test]
+fn pseudo_tlv() -> Result {
+    #[derive(Clone, PartialEq, Eq, Debug, Default)]
+    #[derive(NetworkEncode, NetworkDecode)]
+    #[network_encoding(use_tlv)]
+    struct Tlv {
+        vec: Vec<u8>,
+        unknown_tlvs: BTreeMap<usize, Box<[u8]>>,
+    }
+
+    let data1 = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+    let data2 = [
+        // vec:
+        0x03, 0x00, 0xB1, 0xB2, 0xB3, // empty map:
+        0x00, 0x00, // unknown_tlvs - auto added on top
+        0x00, 0x00,
+    ];
+
+    // Checking that the data are entirely consumed
+    let _: Tlv = strict_deserialize(&data1).unwrap();
+    let _: Tlv = strict_deserialize(&data2).unwrap();
+
+    test_encoding_roundtrip(&Tlv::default(), &data1)?;
+    test_encoding_roundtrip(
+        &Tlv {
+            vec: vec![0xB1, 0xB2, 0xB3],
+            unknown_tlvs: bmap! {},
+        },
+        &data2,
+    )
+    .map_err(Error::from)
 }
 
 #[test]
