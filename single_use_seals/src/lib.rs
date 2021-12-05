@@ -20,6 +20,7 @@
 // Coding conventions
 #![recursion_limit = "256"]
 #![deny(dead_code, missing_docs, warnings)]
+#![allow(clippy::needless_borrow)] // Due to amplify_derive::Display bug
 
 //! # Single-use-seals
 //!
