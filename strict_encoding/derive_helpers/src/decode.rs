@@ -347,10 +347,8 @@ fn decode_fields_impl<'a>(
         });
     }
 
-    if use_tlv {}
-
     if !is_enum {
-        if use_tlv && (!tlv_fields.is_empty() || tlv_aggregator.is_some()) {
+        if use_tlv {
             let mut inner = TokenStream2::new();
             for (type_no, (name, optional)) in tlv_fields {
                 if optional {

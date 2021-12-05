@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "encoding_derive_helpers"
-version = "1.7.4"
+version = "1.7.5"
 dependencies = [
  "amplify",
  "proc-macro2",
@@ -854,7 +854,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.7.4"
+version = "1.7.5"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -870,7 +870,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_derive"
-version = "1.7.4"
+version = "1.7.5"
 dependencies = [
  "amplify",
  "amplify_syn",

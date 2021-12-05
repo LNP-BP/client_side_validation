@@ -14,6 +14,8 @@
 
 //! Bitcoin tagged hash helper types.
 
+#![allow(clippy::needless_borrow)] // Due to amplify_derive::Display bug
+
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{hex, sha256, sha256t, Error, Hash, HashEngine};
