@@ -20,8 +20,8 @@ use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{
     secp256k1, Amount, BlockHash, OutPoint, PubkeyHash, Script, ScriptHash,
-    SigHash, Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Wtxid,
-    XpubIdentifier,
+    SigHash, SigHashType, Transaction, TxIn, TxOut, Txid, WPubkeyHash,
+    WScriptHash, Wtxid, XpubIdentifier,
 };
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
@@ -226,6 +226,20 @@ impl StrictDecode for bitcoin::PublicKey {
                 invalid_flag
             ))),
         }
+    }
+}
+
+impl StrictEncode for SigHashType {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_u32().strict_encode(e)
+    }
+}
+
+impl StrictDecode for SigHashType {
+    #[inline]
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(SigHashType::from_u32_consensus(u32::strict_decode(d)?))
     }
 }
 
