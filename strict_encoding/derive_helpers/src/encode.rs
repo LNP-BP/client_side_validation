@@ -22,11 +22,9 @@ use syn::{
 };
 
 use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
-use crate::TlvEncoding;
 
 /// Performs actual derivation of the encode trait using the provided
-/// information about trait parameters and requirements for TLV support (see
-/// [`TlvEncoding`] description).
+/// information about trait parameters and requirements for TLV support.
 ///
 /// You will find example of the function use in the
 /// [crate top-level documentation][crate].
@@ -37,7 +35,7 @@ pub fn encode_derive(
     encode_name: Ident,
     serialize_name: Ident,
     input: DeriveInput,
-    tlv_encoding: TlvEncoding,
+    tlv_encoding: bool,
 ) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
@@ -93,7 +91,7 @@ fn encode_struct_impl(
     impl_generics: ImplGenerics,
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
-    tlv_encoding: TlvEncoding,
+    tlv_encoding: bool,
 ) -> Result<TokenStream2> {
     let encoding = EncodingDerive::with(
         &mut global_param,
@@ -103,7 +101,7 @@ fn encode_struct_impl(
         false,
     )?;
 
-    if tlv_encoding == TlvEncoding::Denied && encoding.tlv.is_some() {
+    if !tlv_encoding && encoding.tlv.is_some() {
         return Err(Error::new(
             ident_name.span(),
             format!("TLV extensions are not allowed in `{}`", attr_name),
@@ -224,7 +222,7 @@ fn encode_enum_impl(
                     &fields.named,
                     local_param,
                     true,
-                    TlvEncoding::Denied,
+                    false,
                 )?,
                 quote! { { #( #captures ),* } },
             ),
@@ -238,7 +236,7 @@ fn encode_enum_impl(
                     &fields.unnamed,
                     local_param,
                     true,
-                    TlvEncoding::Denied,
+                    false,
                 )?,
                 quote! { ( #( #captures ),* ) },
             ),
@@ -293,13 +291,20 @@ fn encode_fields_impl<'a>(
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
     is_enum: bool,
-    tlv_encoding: TlvEncoding,
+    tlv_encoding: bool,
 ) -> Result<TokenStream2> {
     let mut stream = TokenStream2::new();
 
     let use_tlv = parent_param.args.contains_key(USE_TLV);
     parent_param.args.remove(CRATE);
     parent_param.args.remove(USE_TLV);
+
+    if !tlv_encoding && use_tlv {
+        return Err(Error::new(
+            Span::call_site(),
+            format!("TLV extensions are not allowed in `{}`", attr_name),
+        ));
+    }
 
     let mut strict_fields = vec![];
     let mut tlv_fields = bmap! {};
@@ -358,19 +363,19 @@ fn encode_fields_impl<'a>(
 
     if use_tlv {
         stream.append_all(quote_spanned! { Span::call_site() =>
-            let mut tlvs = ::std::collections::BTreeMap::<usize, Vec<u8>>::default();
+            let mut tlvs = internet2::tlv::Stream::default();
         });
         for (type_no, (name, optional)) in tlv_fields {
             if optional {
                 stream.append_all(quote_spanned! { Span::call_site() =>
                     if let Some(val) = &data.#name {
-                        tlvs.insert(#type_no, val.#serialize_name()?);
+                        tlvs.insert(#type_no.into(), val.#serialize_name()?);
                     }
                 });
             } else {
                 stream.append_all(quote_spanned! { Span::call_site() =>
                     if data.#name.iter().count() > 0 {
-                        tlvs.insert(#type_no, data.#name.#serialize_name()?);
+                        tlvs.insert(#type_no.into(), data.#name.#serialize_name()?);
                     }
                 });
             }
@@ -378,31 +383,14 @@ fn encode_fields_impl<'a>(
         if let Some(name) = tlv_aggregator {
             stream.append_all(quote_spanned! { Span::call_site() =>
                 for (type_no, val) in &data.#name {
-                    tlvs.insert(*type_no, val.#serialize_name()?);
+                    tlvs.insert(*type_no, val);
                 }
             });
         }
 
-        match tlv_encoding {
-            TlvEncoding::Count => {
-                stream.append_all(quote_spanned! { Span::call_site() =>
-                    len += tlvs.#encode_name(&mut e)?;
-                })
-            }
-            TlvEncoding::Length => {
-                stream.append_all(quote_spanned! { Span::call_site() =>
-                    let tlv_len: usize = tlvs.values().map(Vec::len).sum();
-                    len += tlv_len.#encode_name(&mut e)?;
-                    for (type_no, bytes) in tlvs {
-                        len += type_no.#encode_name(&mut e)?;
-                        len += bytes.#encode_name(&mut e)?;
-                    }
-                })
-            }
-            TlvEncoding::Denied => unreachable!(
-                "denied TLV encoding is already checked in the caller method"
-            ),
-        }
+        stream.append_all(quote_spanned! { Span::call_site() =>
+            len += tlvs.#encode_name(&mut e)?;
+        })
     }
 
     Ok(stream)

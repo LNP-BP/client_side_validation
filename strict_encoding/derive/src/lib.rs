@@ -213,7 +213,7 @@ extern crate syn;
 #[macro_use]
 extern crate amplify_syn;
 
-use encoding_derive_helpers::{decode_derive, encode_derive, TlvEncoding};
+use encoding_derive_helpers::{decode_derive, encode_derive};
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
@@ -228,7 +228,7 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
         ident!(strict_encode),
         ident!(strict_serialize),
         derive_input,
-        TlvEncoding::Denied,
+        false,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
@@ -245,7 +245,7 @@ pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
         ident!(strict_decode),
         ident!(strict_deserialize),
         derive_input,
-        TlvEncoding::Denied,
+        false,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
@@ -263,7 +263,7 @@ pub fn derive_network_encode(input: TokenStream) -> TokenStream {
         ident!(strict_encode),
         ident!(strict_serialize),
         derive_input,
-        TlvEncoding::Count,
+        true,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
@@ -281,7 +281,7 @@ pub fn derive_network_decode(input: TokenStream) -> TokenStream {
         ident!(strict_decode),
         ident!(strict_deserialize),
         derive_input,
-        TlvEncoding::Count,
+        true,
     )
     .unwrap_or_else(|e| e.to_compile_error())
     .into()

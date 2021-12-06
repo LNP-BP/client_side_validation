@@ -57,25 +57,6 @@ pub(crate) enum TlvDerive {
     Unknown,
 }
 
-/// Method for TLV encoding derivation
-#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum TlvEncoding {
-    /// TLV is prohibited (like in pure strict encoding for
-    /// client-side-validation)
-    Denied,
-
-    /// TLV is encoded as a strict-encoded binary map of TLV types to values.
-    /// TLV data block is not prefixed with the length; just a count of
-    /// elements in the map is serialized. Fully BOLT-1 incompatible. Used in
-    /// strict encoding for networking purposes.
-    Count,
-
-    /// TLV is encoded as a byte stream prefixed with the total length of the
-    /// TLV data. This mode matches BOLT-1 requirements and is used for
-    /// lightning encoding.
-    Length,
-}
-
 impl EncodingDerive {
     pub fn with(
         attr: &mut ParametrizedAttr,
@@ -321,6 +302,14 @@ impl TlvDerive {
                         } else {
                             Err(())
                         }
+                    } else if path
+                        .segments
+                        .last()
+                        .filter(|path| path.ident == ident!(Stream))
+                        .is_some()
+                    {
+                        *aggregator = Some(name);
+                        Ok(())
                     } else {
                         Err(())
                     }
@@ -331,7 +320,8 @@ impl TlvDerive {
                     Error::new(
                         field.span(),
                         "unknown TLVs aggregator field must be of \
-                         `BTreeMap<usize, Box<[u8]>>` type",
+                         `BTreeMap<usize, Box<[u8]>>` or \
+                         `internet2::tlv::Stream` types",
                     )
                 })
             }
