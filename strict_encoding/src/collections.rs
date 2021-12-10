@@ -16,8 +16,137 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io;
+use std::io::{Read, Write};
+use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
 use crate::{Error, StrictDecode, StrictEncode};
+
+/// In terms of strict encoding, ranges are encoded as a tuples of two values:
+/// start and end.
+impl<T> StrictEncode for Range<T>
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.start.strict_encode(&mut e)?
+            + self.end.strict_encode(&mut e)?)
+    }
+}
+
+/// In terms of strict decoding, ranges are represented as a tuples of two
+/// values: start and end.
+impl<T> StrictDecode for Range<T>
+where
+    T: StrictDecode,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(Range {
+            start: T::strict_decode(&mut d)?,
+            end: T::strict_decode(&mut d)?,
+        })
+    }
+}
+
+/// In terms of strict encoding, inclusive ranges are encoded as a tuples of two
+/// values: start and end.
+impl<T> StrictEncode for RangeInclusive<T>
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.start().strict_encode(&mut e)?
+            + self.end().strict_encode(&mut e)?)
+    }
+}
+
+/// In terms of strict decoding, inclusive ranges are represented as a tuples of
+/// two values: start and end.
+impl<T> StrictDecode for RangeInclusive<T>
+where
+    T: StrictDecode,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(RangeInclusive::new(
+            T::strict_decode(&mut d)?,
+            T::strict_decode(&mut d)?,
+        ))
+    }
+}
+
+/// In terms of strict encoding, partial ranges are encoded as a single value.
+impl<T> StrictEncode for RangeFrom<T>
+where
+    T: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.start.strict_encode(&mut e)
+    }
+}
+
+/// In terms of strict decoding, partial ranges are represented as a single
+/// value.
+impl<T> StrictDecode for RangeFrom<T>
+where
+    T: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(RangeFrom {
+            start: T::strict_decode(&mut d)?,
+        })
+    }
+}
+
+/// In terms of strict encoding, partial ranges are encoded as a single value.
+impl<T> StrictEncode for RangeTo<T>
+where
+    T: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.end.strict_encode(&mut e)
+    }
+}
+
+/// In terms of strict decoding, partial ranges are represented as a single
+/// value.
+impl<T> StrictDecode for RangeTo<T>
+where
+    T: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(RangeTo {
+            end: T::strict_decode(&mut d)?,
+        })
+    }
+}
+
+/// In terms of strict encoding, partial ranges are encoded as a single value.
+impl<T> StrictEncode for RangeToInclusive<T>
+where
+    T: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.end.strict_encode(&mut e)
+    }
+}
+
+/// In terms of strict decoding, partial ranges are represented as a single
+/// value.
+impl<T> StrictDecode for RangeToInclusive<T>
+where
+    T: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(RangeToInclusive {
+            end: T::strict_decode(&mut d)?,
+        })
+    }
+}
 
 /// In terms of strict encoding, `Option` (optional values) are  
 /// represented by a *significator byte*, which MUST be either `0` (for no
