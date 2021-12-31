@@ -854,7 +854,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.7.8"
+version = "1.7.9"
 dependencies = [
  "amplify",
  "bitcoin",
