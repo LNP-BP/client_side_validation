@@ -17,6 +17,8 @@
 use core::time::Duration;
 use std::io;
 
+use amplify::num::u24;
+
 use super::{Error, StrictDecode, StrictEncode};
 
 impl StrictEncode for bool {
@@ -100,6 +102,23 @@ impl StrictDecode for i16 {
         let mut ret = [0u8; 2];
         d.read_exact(&mut ret)?;
         Ok(i16::from_le_bytes(ret))
+    }
+}
+
+impl StrictEncode for u24 {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_le_bytes())?;
+        Ok(3)
+    }
+}
+
+impl StrictDecode for u24 {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut ret = [0u8; 3];
+        d.read_exact(&mut ret)?;
+        Ok(u24::from_le_bytes(ret))
     }
 }
 
