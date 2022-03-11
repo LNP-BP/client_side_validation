@@ -13,15 +13,21 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use std::io;
+use std::io::{Read, Write};
 
-use bitcoin::bech32::u5;
-use bitcoin::util::address::{self, Address};
+use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
+use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
+use bitcoin::util::taproot::{
+    ControlBlock, LeafVersion, TapBranchHash, TapLeafHash, TapSighashHash,
+    TapTweakHash, TaprootMerkleBranch,
+};
 use bitcoin::{
-    secp256k1, Amount, BlockHash, OutPoint, PubkeyHash, Script, ScriptHash,
-    SigHash, SigHashType, Transaction, TxIn, TxOut, Txid, WPubkeyHash,
-    WScriptHash, Wtxid, XpubIdentifier,
+    schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
+    EcdsaSigHashType, KeyPair, OutPoint, PubkeyHash, SchnorrSig,
+    SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
+    Txid, WPubkeyHash, WScriptHash, Wtxid, XOnlyPublicKey, XpubIdentifier,
 };
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
@@ -53,6 +59,25 @@ impl Strategy for WScriptHash {
 impl Strategy for SigHash {
     type Strategy = strategies::HashFixedBytes;
 }
+impl Strategy for TapBranchHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapLeafHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapTweakHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+impl Strategy for TapSighashHash {
+    type Strategy = strategies::HashFixedBytes;
+}
+
+impl Strategy for LeafVersion {
+    type Strategy = strategies::Wrapped;
+}
+impl Strategy for TaprootMerkleBranch {
+    type Strategy = strategies::Wrapped;
+}
 
 impl StrictEncode for secp256k1::SecretKey {
     #[inline]
@@ -68,6 +93,57 @@ impl StrictDecode for secp256k1::SecretKey {
         d.read_exact(&mut buf)?;
         Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError("invalid private key data".to_string())
+        })
+    }
+}
+
+// TODO: #17 Uncomment strict encoding for `KeyPair` and `TweakedKeyPair` types
+//       once there will be a new release after the merge of this PR:
+//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>.
+
+/*
+
+impl StrictEncode for bip340::TweakedKeyPair {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(e.write(&self.into_inner().serialize_secure())?)
+    }
+}
+*/
+
+impl StrictDecode for bip340::TweakedKeyPair {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; secp256k1::constants::SECRET_KEY_SIZE];
+        d.read_exact(&mut buf)?;
+        let secp = Secp256k1::signing_only();
+        Ok(Self::dangerous_assume_tweaked(
+            KeyPair::from_seckey_slice(&secp, &buf).map_err(|_| {
+                Error::DataIntegrityError(
+                    "invalid BIP340 keypair data".to_string(),
+                )
+            })?,
+        ))
+    }
+}
+
+/*
+impl StrictEncode for bip340::KeyPair {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(e.write(&self.serialize_secure())?)
+    }
+}
+ */
+
+impl StrictDecode for KeyPair {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; secp256k1::constants::SECRET_KEY_SIZE];
+        d.read_exact(&mut buf)?;
+        let secp = Secp256k1::signing_only();
+        Self::from_seckey_slice(&secp, &buf).map_err(|_| {
+            Error::DataIntegrityError("invalid BIP340 keypair data".to_string())
         })
     }
 }
@@ -99,44 +175,52 @@ impl StrictDecode for secp256k1::PublicKey {
     }
 }
 
-impl StrictEncode for secp256k1::schnorrsig::PublicKey {
+impl StrictEncode for XOnlyPublicKey {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&[0x02_u8])? + e.write(&self.serialize())?)
+        Ok(e.write(&self.serialize())?)
     }
 }
 
-impl StrictDecode for secp256k1::schnorrsig::PublicKey {
+impl StrictDecode for XOnlyPublicKey {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf =
-            [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE + 1];
+        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        if buf[0] != 0x02 {
-            return Err(Error::DataIntegrityError(s!("invalid public key \
-                                                     data: BIP340 keys \
-                                                     must be serialized \
-                                                     with `0x02` prefix \
-                                                     byte")));
-        }
-        Self::from_slice(&buf[1..]).map_err(|_| {
+        Self::from_slice(&buf[..]).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
         })
     }
 }
 
-// TODO: #17 Implement strict encoding for `KeyPair` type once there will be a
-//       way to serialize its inner data in Secpk256k1 lib (see
-//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>)
+impl StrictEncode for bip340::TweakedPublicKey {
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(e.write(&self.serialize())?)
+    }
+}
 
-impl StrictEncode for secp256k1::Signature {
+impl StrictDecode for bip340::TweakedPublicKey {
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
+        d.read_exact(&mut buf)?;
+        Ok(Self::dangerous_assume_tweaked(
+            XOnlyPublicKey::from_slice(&buf[..]).map_err(|_| {
+                Error::DataIntegrityError(s!("invalid public key data"))
+            })?,
+        ))
+    }
+}
+
+impl StrictEncode for ecdsa::Signature {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(e.write(&self.serialize_compact())?)
     }
 }
 
-impl StrictDecode for secp256k1::Signature {
+impl StrictDecode for ecdsa::Signature {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::COMPACT_SIGNATURE_SIZE];
@@ -149,14 +233,14 @@ impl StrictDecode for secp256k1::Signature {
     }
 }
 
-impl StrictEncode for secp256k1::schnorrsig::Signature {
+impl StrictEncode for schnorr::Signature {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(e.write(&self[..])?)
     }
 }
 
-impl StrictDecode for secp256k1::schnorrsig::Signature {
+impl StrictDecode for schnorr::Signature {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_SIGNATURE_SIZE];
@@ -165,6 +249,68 @@ impl StrictDecode for secp256k1::schnorrsig::Signature {
             Error::DataIntegrityError(
                 "Invalid secp256k1 Schnorr signature data".to_string(),
             )
+        })
+    }
+}
+
+impl StrictEncode for EcdsaSigHashType {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_u32().strict_encode(e)
+    }
+}
+
+impl StrictDecode for EcdsaSigHashType {
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(EcdsaSigHashType::from_u32_consensus(u32::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for SchnorrSigHashType {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        (*self as u8).strict_encode(e)
+    }
+}
+
+impl StrictDecode for SchnorrSigHashType {
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        SchnorrSigHashType::from_u8(u8::strict_decode(d)?).map_err(|_| {
+            Error::DataIntegrityError(s!("invalid BIP431 SigHashType value"))
+        })
+    }
+}
+
+impl StrictEncode for EcdsaSig {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_vec().strict_encode(e)
+    }
+}
+
+impl StrictDecode for EcdsaSig {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        EcdsaSig::from_slice(&Vec::strict_decode(d)?).map_err(|_| {
+            Error::DataIntegrityError(s!(
+                "invalid ECDSA tx input signature data"
+            ))
+        })
+    }
+}
+
+impl StrictEncode for SchnorrSig {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_vec().strict_encode(e)
+    }
+}
+
+impl StrictDecode for SchnorrSig {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        SchnorrSig::from_slice(&Vec::strict_decode(d)?).map_err(|_| {
+            Error::DataIntegrityError(s!("invalid BIP431 signature data"))
         })
     }
 }
@@ -180,9 +326,9 @@ impl StrictEncode for bitcoin::PublicKey {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(if self.compressed {
-            e.write(&self.key.serialize())?
+            e.write(&self.inner.serialize())?
         } else {
-            e.write(&self.key.serialize_uncompressed())?
+            e.write(&self.inner.serialize_uncompressed())?
         })
     }
 }
@@ -229,20 +375,6 @@ impl StrictDecode for bitcoin::PublicKey {
     }
 }
 
-impl StrictEncode for SigHashType {
-    #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_u32().strict_encode(e)
-    }
-}
-
-impl StrictDecode for SigHashType {
-    #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(SigHashType::from_u32_consensus(u32::strict_decode(d)?))
-    }
-}
-
 impl Strategy for OutPoint {
     type Strategy = strategies::BitcoinConsensus;
 }
@@ -269,7 +401,7 @@ impl StrictEncode for address::Payload {
                 33u8.strict_encode(&mut e)? + sh.strict_encode(&mut e)?
             }
             address::Payload::WitnessProgram { version, program } => {
-                version.to_u8().strict_encode(&mut e)?
+                version.into_num().strict_encode(&mut e)?
                     + program.strict_encode(&mut e)?
             }
         })
@@ -285,9 +417,8 @@ impl StrictDecode for address::Payload {
             33u8 => {
                 address::Payload::ScriptHash(ScriptHash::strict_decode(&mut d)?)
             }
-            // TODO: #18 Update to `WitnessVersion` upon bitcoin 0.26.1 release
             version if version <= 16 => address::Payload::WitnessProgram {
-                version: u5::try_from_u8(version)
+                version: WitnessVersion::from_num(version)
                     .expect("bech32::u8 decider is broken"),
                 program: StrictDecode::strict_decode(&mut d)?,
             },
@@ -337,6 +468,20 @@ impl StrictDecode for Script {
     #[inline]
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
         Ok(Self::from(Vec::<u8>::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for ControlBlock {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.size().strict_encode(&mut e)? + self.encode(e)?)
+    }
+}
+
+impl StrictDecode for ControlBlock {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        let data = Vec::<u8>::strict_decode(d)?;
+        Self::from_slice(&data)
+            .map_err(|err| Error::DataIntegrityError(err.to_string()))
     }
 }
 
@@ -603,8 +748,7 @@ pub(crate) mod test {
         ];
         let sk = secp256k1::SecretKey::from_slice(&SK_BYTES).unwrap();
         let _sk_bip340 =
-            secp256k1::schnorrsig::KeyPair::from_seckey_slice(&secp, &SK_BYTES)
-                .unwrap();
+            secp256k1::KeyPair::from_seckey_slice(&secp, &SK_BYTES).unwrap();
         // TODO: #17 implement KeyPair serialization testing
         test_encoding_roundtrip(&sk, &SK_BYTES[..])
     }
@@ -629,18 +773,17 @@ pub(crate) mod test {
             0x19, 0xeb, 0xfa, 0x57, 0xda, 0x7c, 0xff, 0x3a, 0xff, 0x6e, 0x81,
             0x9e, 0x4e, 0xe9, 0x71, 0xd8, 0x6b, 0x5e, 0x61, 0x87, 0x5d,
         ];
-        static PK_BYTES_ONEKEY: [u8; 33] = [
-            0x02, 0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0,
-            0x62, 0x95, 0xce, 0x87, 0x0b, 0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d,
-            0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
+        static PK_BYTES_ONEKEY: [u8; 32] = [
+            0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62,
+            0x95, 0xce, 0x87, 0x0b, 0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce,
+            0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
         ];
 
         let secp_pk_02 =
             secp256k1::PublicKey::from_slice(&PK_BYTES_02).unwrap();
         let secp_pk_03 =
             secp256k1::PublicKey::from_slice(&PK_BYTES_03).unwrap();
-        let secp_pk_one =
-            secp256k1::PublicKey::from_slice(&PK_BYTES_ONEKEY).unwrap();
+        let secp_pk_one = XOnlyPublicKey::from_slice(&PK_BYTES_ONEKEY).unwrap();
         test_encoding_roundtrip(&secp_pk_02, PK_BYTES_02).unwrap();
         test_encoding_roundtrip(&secp_pk_03, PK_BYTES_03).unwrap();
         test_encoding_roundtrip(&secp_pk_one, PK_BYTES_ONEKEY).unwrap();
@@ -655,52 +798,35 @@ pub(crate) mod test {
 
         let sk_one = secp256k1::PublicKey::from_secret_key(
             &secp256k1::Secp256k1::new(),
-            &secp256k1::key::ONE_KEY,
+            &secp256k1::ONE_KEY,
         );
 
         let pubkey_02 = bitcoin::PublicKey::from_slice(&PK_BYTES_02).unwrap();
         let pubkey_03 = bitcoin::PublicKey::from_slice(&PK_BYTES_03).unwrap();
         let pubkey_04 = bitcoin::PublicKey::from_slice(&PK_BYTES_04).unwrap();
-        let one_key = bitcoin::PublicKey {
-            compressed: true,
-            key: sk_one,
-        };
+        let one_key = bitcoin::PublicKey::new(sk_one);
         test_encoding_roundtrip(&pubkey_02, PK_BYTES_02).unwrap();
         test_encoding_roundtrip(&pubkey_03, PK_BYTES_03).unwrap();
         test_encoding_roundtrip(&pubkey_04, PK_BYTES_04).unwrap();
-        test_encoding_roundtrip(&one_key, PK_BYTES_ONEKEY).unwrap();
-        assert_eq!(secp_pk_02, pubkey_02.key);
-        assert_eq!(secp_pk_02, pubkey_02.key);
-        assert_eq!(secp_pk_02, pubkey_02.key);
-        assert_eq!(secp_pk_03, pubkey_03.key);
-        assert_eq!(secp_pk_one, one_key.key);
-        assert_eq!(pubkey_03.key, pubkey_04.key);
+        assert_eq!(secp_pk_02, pubkey_02.inner);
+        assert_eq!(secp_pk_02, pubkey_02.inner);
+        assert_eq!(secp_pk_02, pubkey_02.inner);
+        assert_eq!(secp_pk_03, pubkey_03.inner);
+        assert_ne!(
+            &secp_pk_one.serialize()[..],
+            &one_key.inner.serialize()[..]
+        );
+        assert_eq!(pubkey_03.inner, pubkey_04.inner);
 
         let xcoordonly_02 =
-            secp256k1::schnorrsig::PublicKey::from_slice(&PK_BYTES_02[1..])
-                .unwrap();
+            XOnlyPublicKey::from_slice(&PK_BYTES_02[1..]).unwrap();
         let xcoordonly_one =
-            secp256k1::schnorrsig::PublicKey::from_slice(&PK_BYTES_ONEKEY[1..])
-                .unwrap();
-        test_encoding_roundtrip(&xcoordonly_02, PK_BYTES_02).unwrap();
+            XOnlyPublicKey::from_slice(&PK_BYTES_ONEKEY[..]).unwrap();
+        test_encoding_roundtrip(&xcoordonly_02, &PK_BYTES_02[1..]).unwrap();
         test_encoding_roundtrip(&xcoordonly_one, PK_BYTES_ONEKEY).unwrap();
-        assert_eq!(
-            secp256k1::schnorrsig::PublicKey::strict_decode(&PK_BYTES_03[..]),
-            Err(Error::DataIntegrityError(s!("invalid public key data: \
-                                              BIP340 keys must be \
-                                              serialized with `0x02` \
-                                              prefix byte")))
-        );
-        assert_eq!(
-            secp256k1::schnorrsig::PublicKey::strict_decode(&PK_BYTES_04[..]),
-            Err(Error::DataIntegrityError(s!("invalid public key data: \
-                                              BIP340 keys must be \
-                                              serialized with `0x02` \
-                                              prefix byte")))
-        );
         assert_eq!(xcoordonly_02.serialize(), secp_pk_02.serialize()[1..]);
         assert_eq!(xcoordonly_02.serialize(), secp_pk_03.serialize()[1..]);
-        assert_eq!(xcoordonly_one.serialize(), secp_pk_one.serialize()[1..]);
+        assert_eq!(xcoordonly_one.serialize(), one_key.inner.serialize()[1..]);
     }
 
     #[test]
@@ -758,35 +884,33 @@ pub(crate) mod test {
 
         let sk_ecdsa = secp256k1::SecretKey::from_slice(&KEY).unwrap();
         let sk_schnorr =
-            secp256k1::schnorrsig::KeyPair::from_seckey_slice(&secp, &KEY)
-                .unwrap();
+            secp256k1::KeyPair::from_seckey_slice(&secp, &KEY).unwrap();
 
         let pk_ecdsa = secp256k1::PublicKey::from_secret_key(&secp, &sk_ecdsa);
-        let pk_schnorr =
-            secp256k1::schnorrsig::PublicKey::from_keypair(&secp, &sk_schnorr);
+        let pk_schnorr = XOnlyPublicKey::from_keypair(&sk_schnorr);
         let msg = Message::from_slice(&[1u8; 32]).unwrap();
 
-        let ecdsa = secp.sign(&msg, &sk_ecdsa);
+        let ecdsa = secp.sign_ecdsa(&msg, &sk_ecdsa);
         test_encoding_roundtrip(&ecdsa, &ECDSA_BYTES).unwrap();
-        assert!(secp.verify(&msg, &ecdsa, &pk_ecdsa).is_ok());
+        assert!(secp.verify_ecdsa(&msg, &ecdsa, &pk_ecdsa).is_ok());
 
-        let schnorr = secp.schnorrsig_sign_no_aux_rand(&msg, &sk_schnorr);
+        let schnorr = secp.sign_schnorr_no_aux_rand(&msg, &sk_schnorr);
         test_encoding_roundtrip(&schnorr, &SCHNORR_BYTES).unwrap();
-        assert!(secp.schnorrsig_verify(&schnorr, &msg, &pk_schnorr).is_ok());
+        assert!(secp.verify_schnorr(&schnorr, &msg, &pk_schnorr).is_ok());
 
         // Schnorr signature can be deserialized as ECDSA and vice verse,
         // (since there is no encoding-level way of verifying its type)
         // but MUST be invalid upon signature validation
-        let schnorr_as_ecdsa: secp256k1::Signature =
+        let schnorr_as_ecdsa: ecdsa::Signature =
             test_vec_decoding_roundtrip(&SCHNORR_BYTES).unwrap();
-        let ecdsa_as_schnorr: secp256k1::schnorrsig::Signature =
+        let ecdsa_as_schnorr: schnorr::Signature =
             test_vec_decoding_roundtrip(&ECDSA_BYTES).unwrap();
         assert_eq!(
-            secp.verify(&msg, &schnorr_as_ecdsa, &pk_ecdsa),
+            secp.verify_ecdsa(&msg, &schnorr_as_ecdsa, &pk_ecdsa),
             Err(secp256k1::Error::IncorrectSignature)
         );
         assert_eq!(
-            secp.schnorrsig_verify(&ecdsa_as_schnorr, &msg, &pk_schnorr),
+            secp.verify_schnorr(&ecdsa_as_schnorr, &msg, &pk_schnorr),
             Err(secp256k1::Error::InvalidSignature)
         );
     }
@@ -794,14 +918,13 @@ pub(crate) mod test {
     #[test]
     #[should_panic(expected = "UnexpectedEof")]
     fn test_garbagedata_ecdsa() {
-        secp256k1::Signature::strict_decode(&ECDSA_BYTES[5..]).unwrap();
+        ecdsa::Signature::strict_decode(&ECDSA_BYTES[5..]).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "UnexpectedEof")]
     fn test_garbagedata_schnorrsig() {
-        secp256k1::schnorrsig::Signature::strict_decode(&SCHNORR_BYTES[5..])
-            .unwrap();
+        schnorr::Signature::strict_decode(&SCHNORR_BYTES[5..]).unwrap();
     }
 
     #[test]

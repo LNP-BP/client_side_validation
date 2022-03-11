@@ -12,9 +12,9 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::io;
-use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -95,7 +95,7 @@ impl StrictDecode for [u8; 64] {
 
 impl StrictEncode for Box<[u8]> {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.deref().strict_encode(e)
+        <[u8]>::borrow(self).strict_encode(e)
     }
 }
 
@@ -113,7 +113,7 @@ where
     T: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.deref().strict_encode(e)
+        T::borrow(self).strict_encode(e)
     }
 }
 
@@ -131,7 +131,7 @@ where
     T: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.deref().strict_encode(e)
+        self.borrow().strict_encode(e)
     }
 }
 
@@ -149,7 +149,7 @@ where
     T: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.deref().strict_encode(e)
+        T::borrow(self).strict_encode(e)
     }
 }
 

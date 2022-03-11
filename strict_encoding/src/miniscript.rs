@@ -17,14 +17,15 @@ use std::io::{Read, Write};
 
 use bitcoin::consensus::ReadExt;
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
+use bitcoin::XOnlyPublicKey;
 use miniscript::descriptor::{
     Bare, DescriptorSinglePub, DescriptorXKey, InnerXKey, Pkh, Sh, ShInner,
-    Wildcard, Wpkh, Wsh, WshInner,
+    SinglePubKey, TapTree, Tr, Wildcard, Wpkh, Wsh, WshInner,
 };
 use miniscript::policy::concrete::Policy;
 use miniscript::{
     BareCtx, Descriptor, DescriptorPublicKey, Legacy, Miniscript,
-    MiniscriptKey, Segwitv0, Terminal,
+    MiniscriptKey, Segwitv0, Tap, Terminal,
 };
 
 use crate::{Error, StrictDecode, StrictEncode};
@@ -47,6 +48,7 @@ const MS_KEY: u8 = 0x02;
 const MS_KEY_HASH: u8 = 0x03;
 const MS_THRESH: u8 = 0x20;
 const MS_MULTI: u8 = 0x21;
+const MS_MULTI_A: u8 = 0x2c;
 
 const MS_AFTER: u8 = 0x09;
 const MS_OLDER: u8 = 0x08;
@@ -128,6 +130,53 @@ impl StrictEncode for Segwitv0 {
 impl StrictDecode for Segwitv0 {
     fn strict_decode<D: Read>(_: D) -> Result<Self, Error> {
         unreachable!("attempt to construct miniscript context object")
+    }
+}
+
+impl StrictEncode for Tap {
+    #[inline]
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+}
+
+impl StrictDecode for Tap {
+    fn strict_decode<D: Read>(_: D) -> Result<Self, Error> {
+        unreachable!("attempt to construct miniscript context object")
+    }
+}
+
+impl<Pk> StrictEncode for TapTree<Pk>
+where
+    Pk: MiniscriptKey + StrictEncode,
+    Pk::Hash: StrictEncode,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            TapTree::Tree(_tree1, _tree2) => {
+                todo!("Fix bug here with generics crashing compiler")
+                // strict_encode_list!(e; 2u8, tree1, tree2)
+            }
+            TapTree::Leaf(pk) => {
+                strict_encode_list!(e; 1u8, pk)
+            }
+        })
+    }
+}
+
+impl<Pk> StrictDecode for TapTree<Pk>
+where
+    Pk: MiniscriptKey + StrictDecode,
+    Pk::Hash: StrictDecode,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        match u8::strict_decode(&mut d)? {
+            1u8 => Ok(TapTree::Leaf(StrictDecode::strict_decode(&mut d)?)),
+            2u8 => todo!("Fix bug here with generics crashing compiler"),
+            /* Ok(TapTree::Tree(
+                StrictDecode::strict_decode(&mut d)?,
+                StrictDecode::strict_decode(&mut d)?,
+            )),*/
+            wrong => Err(Error::EnumValueNotKnown("TapTree", wrong as usize)),
+        }
     }
 }
 
@@ -419,6 +468,16 @@ where
                     }
                     len
                 }
+                Terminal::MultiA(thresh, vec) => {
+                    let mut len = 1usize;
+                    e.write_all(&[MS_MULTI_A])?;
+                    len += strict_encode_usize!(e; *thresh);
+                    len += strict_encode_usize!(e; vec.len());
+                    for pk in vec {
+                        len += pk.strict_encode(&mut e)?;
+                    }
+                    len
+                }
             })
         }
 
@@ -534,6 +593,10 @@ where
                     }
                     Terminal::Thresh(thresh, vec)
                 }
+                MS_MULTI_A => Terminal::MultiA(
+                    d.read_u16()? as usize,
+                    Vec::strict_decode(d)?,
+                ),
 
                 wrong => {
                     return Err(Error::DataIntegrityError(format!(
@@ -565,7 +628,37 @@ const DESCRIPTOR_SH_WSH_SORTED_MULTI: u8 = 0x0a;
 const DESCRIPTOR_WPKH: u8 = 0x10;
 const DESCRIPTOR_WSH: u8 = 0x11;
 const DESCRIPTOR_WSH_SORTED_MULTI: u8 = 0x12;
-// Taproot: 0x2_
+const DESCRIPTOR_TR: u8 = 0x20;
+
+impl StrictEncode for SinglePubKey {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            SinglePubKey::FullKey(pk) => {
+                strict_encode_list!(e; 0x01u8, pk)
+            }
+            SinglePubKey::XOnly(xpk) => {
+                strict_encode_list!(e; 0x02u8, xpk)
+            }
+        })
+    }
+}
+
+impl StrictDecode for SinglePubKey {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(match u8::strict_decode(&mut d)? {
+            0x01 => SinglePubKey::FullKey(bitcoin::PublicKey::strict_decode(
+                &mut d,
+            )?),
+            0x02 => SinglePubKey::XOnly(XOnlyPublicKey::strict_decode(&mut d)?),
+            wrong => {
+                return Err(Error::DataIntegrityError(format!(
+                    "unknown miniscript single pubkey tag `{:#04X}",
+                    wrong
+                )))
+            }
+        })
+    }
+}
 
 impl StrictEncode for DescriptorPublicKey {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -699,6 +792,9 @@ where
                 }
                 WshInner::Ms(ms) => strict_encode_list!(e; DESCRIPTOR_WSH, ms),
             },
+            Descriptor::Tr(tr) => {
+                strict_encode_list!(e; DESCRIPTOR_TR, tr.internal_key(), tr.taptree())
+            }
         })
     }
 }
@@ -753,6 +849,10 @@ where
                     Vec::strict_decode(&mut d)?,
                 )?)
             }
+            DESCRIPTOR_TR => Descriptor::Tr(Tr::new(
+                StrictDecode::strict_decode(&mut d)?,
+                StrictDecode::strict_decode(&mut d)?,
+            )?),
             wrong => {
                 return Err(Error::DataIntegrityError(format!(
                     "unknown miniscript descriptor type: #{:#04X}",
