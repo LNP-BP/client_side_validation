@@ -279,9 +279,9 @@ impl StrictDecode for SchnorrSigHashType {
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
         Ok(SchnorrSigHashType::from_u8(u8::strict_decode(d)?).map_err(
             |_| {
-                Error::DataIntegrityError(s!(
-                    "invalid BIP431 SigHashType value"
-                ))
+                Error::DataIntegrityError(
+                    s!("invalid BIP431 SigHashType value"),
+                )
             },
         )?)
     }
@@ -936,22 +936,18 @@ pub(crate) mod test {
     #[test]
     fn test_encoding_network(
     ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
-        test_encoding_roundtrip(
-            &bitcoin::Network::Bitcoin,
-            &[0xF9, 0xBE, 0xB4, 0xD9],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Testnet,
-            &[0x0B, 0x11, 0x09, 0x07],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Signet,
-            &[0x0A, 0x03, 0xCF, 0x40],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Regtest,
-            &[0xFA, 0xBF, 0xB5, 0xDA],
-        )
+        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, &[
+            0xF9, 0xBE, 0xB4, 0xD9,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Testnet, &[
+            0x0B, 0x11, 0x09, 0x07,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Signet, &[
+            0x0A, 0x03, 0xCF, 0x40,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Regtest, &[
+            0xFA, 0xBF, 0xB5, 0xDA,
+        ])
     }
 
     #[test]

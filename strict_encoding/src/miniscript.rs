@@ -102,9 +102,7 @@ macro_rules! strict_encode_usize {
 
 impl StrictEncode for BareCtx {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for BareCtx {
@@ -115,9 +113,7 @@ impl StrictDecode for BareCtx {
 
 impl StrictEncode for Legacy {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for Legacy {
@@ -128,9 +124,7 @@ impl StrictDecode for Legacy {
 
 impl StrictEncode for Segwitv0 {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for Segwitv0 {
@@ -141,9 +135,7 @@ impl StrictDecode for Segwitv0 {
 
 impl StrictEncode for Tap {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
-        Ok(0)
-    }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
 impl StrictDecode for Tap {
@@ -884,21 +876,15 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_bare_ctx() {
-        BareCtx::strict_deserialize(&[0u8]).unwrap();
-    }
+    fn test_bare_ctx() { BareCtx::strict_deserialize(&[0u8]).unwrap(); }
 
     #[test]
     #[should_panic]
-    fn test_legacy_ctx() {
-        Legacy::strict_deserialize(&[0u8]).unwrap();
-    }
+    fn test_legacy_ctx() { Legacy::strict_deserialize(&[0u8]).unwrap(); }
 
     #[test]
     #[should_panic]
-    fn test_segwitv0_ctx() {
-        Segwitv0::strict_deserialize(&[0u8]).unwrap();
-    }
+    fn test_segwitv0_ctx() { Segwitv0::strict_deserialize(&[0u8]).unwrap(); }
 
     #[test]
     fn test_policy() {
