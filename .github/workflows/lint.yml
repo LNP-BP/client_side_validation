@@ -44,14 +44,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install rustc nightly
+      - name: Install rustc stable
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
           components: rust-docs
       - uses: actions-rs/cargo@v1
-        name: Clippy
+        name: Doc
         with:
           command: doc
           args: --workspace --all-features
