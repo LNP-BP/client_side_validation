@@ -248,25 +248,25 @@ pub enum TlvError {
     /// type {max}
     Order {
         /// TLV type id read at the current position
-        read: usize,
+        read: u64,
         /// maximum value of TLV type id read previously
-        max: usize,
+        max: u64,
     },
 
     /// incorrect length of TLV record value: expected {expected}, but only
     /// {actual} bytes read
     Len {
         /// TLV value length encoded in the TLV record
-        expected: usize,
+        expected: u64,
         /// Actual remaining length of the TLV stream
-        actual: usize,
+        actual: u64,
     },
 
     /// repeated TLV record with id {0}
-    Repeated(usize),
+    Repeated(u64),
 
     /// an unknown even TLV type {0}
-    UnknownEvenType(usize),
+    UnknownEvenType(u64),
 }
 
 // TODO: With 2.0 release add Tlv case to the Error enum

@@ -18,7 +18,7 @@ extern crate amplify;
 #[macro_use]
 extern crate syn;
 
-use encoding_derive_helpers::{decode_derive, encode_derive, TlvEncoding};
+use encoding_derive_helpers::{decode_derive, encode_derive};
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
@@ -35,7 +35,7 @@ fn test_custom_derivation() {
             ident!(custom_encode),
             ident!(custom_serialize),
             derive_input,
-            TlvEncoding::Length,
+            true,
         )
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
@@ -51,7 +51,7 @@ fn test_custom_derivation() {
             ident!(custom_encode),
             ident!(custom_serialize),
             derive_input,
-            TlvEncoding::Length,
+            true,
         )
         .unwrap_or_else(|e| e.to_compile_error())
         .into()

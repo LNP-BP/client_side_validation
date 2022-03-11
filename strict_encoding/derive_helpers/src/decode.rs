@@ -22,11 +22,9 @@ use syn::{
 };
 
 use crate::param::{EncodingDerive, TlvDerive, CRATE, REPR, USE_TLV};
-use crate::TlvEncoding;
 
 /// Performs actual derivation of the decode trait using the provided
-/// information about trait parameters and requirements for TLV support (see
-/// [`TlvEncoding`] description).
+/// information about trait parameters and requirements for TLV support.
 ///
 /// You will find example of the function use in the
 /// [crate top-level documentation][crate].
@@ -37,7 +35,7 @@ pub fn decode_derive(
     decode_name: Ident,
     deserialize_name: Ident,
     input: DeriveInput,
-    tlv_encoding: TlvEncoding,
+    tlv_encoding: bool,
 ) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
@@ -93,7 +91,7 @@ fn decode_struct_impl(
     impl_generics: ImplGenerics,
     ty_generics: TypeGenerics,
     where_clause: Option<&WhereClause>,
-    tlv_encoding: TlvEncoding,
+    tlv_encoding: bool,
 ) -> Result<TokenStream2> {
     let encoding = EncodingDerive::with(
         &mut global_param,
@@ -103,7 +101,7 @@ fn decode_struct_impl(
         false,
     )?;
 
-    if tlv_encoding == TlvEncoding::Denied && encoding.tlv.is_some() {
+    if !tlv_encoding && encoding.tlv.is_some() {
         return Err(Error::new(
             ident_name.span(),
             format!("TLV extensions are not allowed in `{}`", attr_name),
@@ -210,7 +208,7 @@ fn decode_enum_impl(
                 &fields.named,
                 local_param,
                 true,
-                TlvEncoding::Denied,
+                false,
             )?,
             Fields::Unnamed(ref fields) => decode_fields_impl(
                 attr_name,
@@ -222,7 +220,7 @@ fn decode_enum_impl(
                 &fields.unnamed,
                 local_param,
                 true,
-                TlvEncoding::Denied,
+                false,
             )?,
             Fields::Unit => TokenStream2::new(),
         };
@@ -270,13 +268,21 @@ fn decode_fields_impl<'a>(
     fields: impl IntoIterator<Item = &'a Field>,
     mut parent_param: ParametrizedAttr,
     is_enum: bool,
-    tlv_encoding: TlvEncoding,
+    tlv_encoding: bool,
 ) -> Result<TokenStream2> {
     let mut stream = TokenStream2::new();
 
     let use_tlv = parent_param.args.contains_key(USE_TLV);
     parent_param.args.remove(CRATE);
     parent_param.args.remove(USE_TLV);
+
+    if !tlv_encoding && use_tlv {
+        return Err(Error::new(
+            Span::call_site(),
+            format!("TLV extensions are not allowed in `{}`", attr_name),
+        ));
+    }
+
     let parent_attr = EncodingDerive::with(
         &mut parent_param.clone(),
         crate_name,
@@ -347,10 +353,8 @@ fn decode_fields_impl<'a>(
         });
     }
 
-    if use_tlv {}
-
     if !is_enum {
-        if use_tlv && (!tlv_fields.is_empty() || tlv_aggregator.is_some()) {
+        if use_tlv {
             let mut inner = TokenStream2::new();
             for (type_no, (name, optional)) in tlv_fields {
                 if optional {
@@ -366,59 +370,24 @@ fn decode_fields_impl<'a>(
 
             let aggregator = if let Some(ref tlv_aggregator) = tlv_aggregator {
                 quote_spanned! { Span::call_site() =>
-                    _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
+                    _ if *type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(*type_no).into()),
                     _ => { s.#tlv_aggregator.insert(type_no, bytes); },
                 }
             } else {
                 quote_spanned! { Span::call_site() =>
-                    _ if type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(type_no).into()),
+                    _ if *type_no % 2 == 0 => return Err(#import::TlvError::UnknownEvenType(*type_no).into()),
                     _ => {}
                 }
             };
 
-            stream = match tlv_encoding {
-                TlvEncoding::Count => quote_spanned! { Span::call_site() =>
-                    let mut s = #ident_name { #stream };
-                    let tlvs = ::std::collections::BTreeMap::<usize, Box<[u8]>>::#decode_name(&mut d)?;
-                },
-
-                TlvEncoding::Length => quote_spanned! { Span::call_site() =>
-                    let mut s = #ident_name { #stream };
-                    let mut tlvs: ::std::collections::BTreeMap<usize, Box<[u8]>> = Default::default();
-                    let data = Box::<[u8]>::#decode_name(&mut d)?;
-                    let iter = data.into_iter();
-                    while iter.len() > 0 {
-                        let type_no = usize::#decode_name(&mut d)?;
-                        let len = usize::#decode_name(&mut d)?;
-                        let bytes: Box<[u8]> = iter.clone().take(len).copied().collect();
-                        let max = tlvs.keys().max().copied().unwrap_or_default();
-                        if type_no > max {
-                            return Err(#import::TlvError::Order {
-                                read: type_no,
-                                max
-                            }.into());
-                        }
-                        if bytes.len() != len {
-                            return Err(#import::TlvError::Len {
-                                expected: len,
-                                actual: bytes.len()
-                            }.into());
-                        }
-                        if tlvs.insert(type_no, bytes).is_some() {
-                            return Err(#import::TlvError::Repeated(type_no).into());
-                        }
-                    }
-                },
-
-                TlvEncoding::Denied => unreachable!(
-                    "denied TLV encoding is already checked in the caller \
-                     method"
-                ),
+            stream = quote_spanned! { Span::call_site() =>
+                let mut s = #ident_name { #stream };
+                let tlvs = internet2::tlv::Stream::#decode_name(&mut d)?;
             };
 
             stream.append_all(quote_spanned! { Span::call_site() =>
                 for (type_no, bytes) in tlvs {
-                    match type_no {
+                    match *type_no as usize {
                         #inner
 
                         #aggregator

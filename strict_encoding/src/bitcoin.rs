@@ -15,7 +15,6 @@
 use std::io;
 use std::io::{Read, Write};
 
-use bitcoin::blockdata::transaction::EcdsaSigHashType;
 use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
@@ -25,10 +24,10 @@ use bitcoin::util::taproot::{
     TapTweakHash, TaprootMerkleBranch,
 };
 use bitcoin::{
-    schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig, KeyPair,
-    OutPoint, PubkeyHash, SchnorrSig, SchnorrSigHashType, Script, ScriptHash,
-    SigHash, Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Wtxid,
-    XOnlyPublicKey, XpubIdentifier,
+    schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
+    EcdsaSigHashType, KeyPair, OutPoint, PubkeyHash, SchnorrSig,
+    SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
+    Txid, WPubkeyHash, WScriptHash, Wtxid, XOnlyPublicKey, XpubIdentifier,
 };
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
