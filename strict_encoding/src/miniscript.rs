@@ -17,9 +17,10 @@ use std::io::{Read, Write};
 
 use bitcoin::consensus::ReadExt;
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
+use bitcoin::XOnlyPublicKey;
 use miniscript::descriptor::{
     Bare, DescriptorSinglePub, DescriptorXKey, InnerXKey, Pkh, Sh, ShInner,
-    TapTree, Tr, Wildcard, Wpkh, Wsh, WshInner,
+    SinglePubKey, TapTree, Tr, Wildcard, Wpkh, Wsh, WshInner,
 };
 use miniscript::policy::concrete::Policy;
 use miniscript::{
@@ -101,7 +102,9 @@ macro_rules! strict_encode_usize {
 
 impl StrictEncode for BareCtx {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
 }
 
 impl StrictDecode for BareCtx {
@@ -112,7 +115,9 @@ impl StrictDecode for BareCtx {
 
 impl StrictEncode for Legacy {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
 }
 
 impl StrictDecode for Legacy {
@@ -123,7 +128,9 @@ impl StrictDecode for Legacy {
 
 impl StrictEncode for Segwitv0 {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
 }
 
 impl StrictDecode for Segwitv0 {
@@ -134,7 +141,9 @@ impl StrictDecode for Segwitv0 {
 
 impl StrictEncode for Tap {
     #[inline]
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> {
+        Ok(0)
+    }
 }
 
 impl StrictDecode for Tap {
@@ -629,6 +638,36 @@ const DESCRIPTOR_WSH: u8 = 0x11;
 const DESCRIPTOR_WSH_SORTED_MULTI: u8 = 0x12;
 const DESCRIPTOR_TR: u8 = 0x20;
 
+impl StrictEncode for SinglePubKey {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            SinglePubKey::FullKey(pk) => {
+                strict_encode_list!(e; 0x01u8, pk)
+            }
+            SinglePubKey::XOnly(xpk) => {
+                strict_encode_list!(e; 0x02u8, xpk)
+            }
+        })
+    }
+}
+
+impl StrictDecode for SinglePubKey {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(match u8::strict_decode(&mut d)? {
+            0x01 => SinglePubKey::FullKey(bitcoin::PublicKey::strict_decode(
+                &mut d,
+            )?),
+            0x02 => SinglePubKey::XOnly(XOnlyPublicKey::strict_decode(&mut d)?),
+            wrong => {
+                return Err(Error::DataIntegrityError(format!(
+                    "unknown miniscript single pubkey tag `{:#04X}",
+                    wrong
+                )))
+            }
+        })
+    }
+}
+
 impl StrictEncode for DescriptorPublicKey {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
@@ -845,15 +884,21 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_bare_ctx() { BareCtx::strict_deserialize(&[0u8]).unwrap(); }
+    fn test_bare_ctx() {
+        BareCtx::strict_deserialize(&[0u8]).unwrap();
+    }
 
     #[test]
     #[should_panic]
-    fn test_legacy_ctx() { Legacy::strict_deserialize(&[0u8]).unwrap(); }
+    fn test_legacy_ctx() {
+        Legacy::strict_deserialize(&[0u8]).unwrap();
+    }
 
     #[test]
     #[should_panic]
-    fn test_segwitv0_ctx() { Segwitv0::strict_deserialize(&[0u8]).unwrap(); }
+    fn test_segwitv0_ctx() {
+        Segwitv0::strict_deserialize(&[0u8]).unwrap();
+    }
 
     #[test]
     fn test_policy() {

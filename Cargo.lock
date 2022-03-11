@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "amplify"
-version = "3.9.1"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8e62f231427205466fa4a9be272c5524e0781d724917f370d0ffeca95d1a9b2"
+checksum = "47cfa6a69eeb140125a63e4f5ae1156a530f8744ea1d35aa1b8b5613e4d8b41d"
 dependencies = [
  "amplify_derive",
  "amplify_num",
@@ -29,9 +29,9 @@ dependencies = [
 
 [[package]]
 name = "amplify_derive"
-version = "2.9.0"
+version = "2.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "403008693dd8333254c9cf0f977890f23c4ceaa9975721cc52b79551a72ff7f2"
+checksum = "bcd9d6315c0fb32fb125a50992f64bca686a7012e8b897316cb8e30b0294315c"
 dependencies = [
  "amplify_syn",
  "proc-macro2",
@@ -41,9 +41,9 @@ dependencies = [
 
 [[package]]
 name = "amplify_num"
-version = "0.2.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc2f04ef9ef18297ed29418a8c5a93569ae07934234a423fd77b68a9dbd1e491"
+checksum = "8d987f94e7127a80238f8f467b756d248bb72345dff59673ffe3fa213b15e503"
 dependencies = [
  "serde",
 ]
@@ -100,8 +100,9 @@ checksum = "cf9ff0bbfd639f15c74af777d81383cf53efb7c93613f6cab67c6c11e05bbf8b"
 
 [[package]]
 name = "bitcoin"
-version = "0.28.0"
-source = "git+https://github.com/LNP-BP/rust-bitcoin?branch=taproot/all#bad2aec7a21fb74d06d51be44a28d0726034fa64"
+version = "0.28.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d21919f8ef56dced9c7a35d28dea7c344566e32a19533f9070d150ec33512152"
 dependencies = [
  "bech32",
  "bitcoin_hashes",
@@ -165,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.6.0"
+version = "0.6.0-alpha.1"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -184,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.6.0"
+version = "0.6.0-alpha.1"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -502,8 +503,8 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "miniscript"
-version = "7.0.0"
-source = "git+https://github.com/LNP-BP/rust-miniscript?branch=taproot#fe679bb4df67e7c11ed12e47af2c0b82c07bd291"
+version = "6.0.1"
+source = "git+https://github.com/rust-bitcoin/rust-miniscript#a881b476ecb01aa507c7e4cf253b2ed718bf914e"
 dependencies = [
  "bitcoin",
 ]
@@ -771,18 +772,18 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "secp256k1"
-version = "0.20.3"
+version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d03ceae636d0fed5bae6a7f4f664354c5f4fcedf6eef053fef17e49f837d0a"
+checksum = "9c42e6f1735c5f00f51e43e28d6634141f2bcad10931b2609ddd74a86d751260"
 dependencies = [
  "secp256k1-sys",
 ]
 
 [[package]]
 name = "secp256k1-sys"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "827cb7cce42533829c792fc51b82fbf18b125b45a702ef2c8be77fce65463a7b"
+checksum = "957da2573cde917463ece3570eab4a0b3f19de6f1646cde62e6fd3868f566036"
 dependencies = [
  "cc",
 ]
@@ -884,7 +885,7 @@ checksum = "02658e48d89f2bec991f9a78e69cfa4c316f8d6a6c4ec12fae1aeb263d486788"
 
 [[package]]
 name = "single_use_seals"
-version = "0.6.0"
+version = "0.6.0-alpha.1"
 dependencies = [
  "amplify_derive",
  "async-trait",
@@ -892,7 +893,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.8.0"
+version = "1.8.0-rc.1"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -922,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_test"
-version = "1.7.4"
+version = "1.8.0-rc.1"
 dependencies = [
  "amplify",
  "strict_encoding",
