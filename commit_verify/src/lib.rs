@@ -38,7 +38,6 @@ extern crate serde_with;
 
 pub mod commit_encode;
 pub mod commit_verify;
-mod digests;
 pub mod embed_commit;
 pub mod merkle;
 pub mod multi_commit;
