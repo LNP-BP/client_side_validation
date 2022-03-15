@@ -36,21 +36,22 @@ extern crate serde_crate as serde;
 #[macro_use]
 extern crate serde_with;
 
-pub mod api;
 pub mod commit_encode;
+pub mod commit_verify;
 mod digests;
+pub mod embed_commit;
 pub mod merkle;
 pub mod multi_commit;
 pub mod tagged_hash;
 
-#[doc(hidden)]
-pub use api::{CommitVerify, EmbedCommitVerify, TryCommitVerify};
-#[doc(hidden)]
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
+pub use embed_commit::{
+    EmbedCommitProof, EmbedCommitProtocol, EmbedCommitVerify,
+};
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
-#[doc(hidden)]
 pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
-#[doc(hidden)]
 pub use tagged_hash::TaggedHash;
+
+pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
