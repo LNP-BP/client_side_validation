@@ -27,7 +27,7 @@ async-trait = "0.1.51"
 [features]
 default = []
 all = ["serde", "rand", "bitcoin", "crypto", "async", "bulletproofs"]
-all_msrv47 = ["serde", "rand", "bitcoin"] # Used in testing against MSRV 1.47
+all_msrv51 = ["serde", "rand", "bitcoin"] # Used in testing against MSRV 1.47
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 serde = ["commit_verify/serde"]
