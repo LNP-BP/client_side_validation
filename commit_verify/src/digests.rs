@@ -23,9 +23,7 @@ where
     Msg: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &Msg) -> sha1::Hash {
-        sha1::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> sha1::Hash { sha1::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg> for ripemd160::Hash
@@ -43,9 +41,7 @@ where
     Msg: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &Msg) -> hash160::Hash {
-        hash160::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> hash160::Hash { hash160::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg> for sha256::Hash
@@ -53,9 +49,7 @@ where
     Msg: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &Msg) -> sha256::Hash {
-        sha256::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> sha256::Hash { sha256::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg> for sha256d::Hash
@@ -63,9 +57,7 @@ where
     Msg: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &Msg) -> sha256d::Hash {
-        sha256d::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> sha256d::Hash { sha256d::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg, T> CommitVerify<Msg> for sha256t::Hash<T>
@@ -94,9 +86,7 @@ where
     Msg: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &Msg) -> sha512::Hash {
-        sha512::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> sha512::Hash { sha512::Hash::hash(msg.as_ref()) }
 }
 
 #[cfg(test)]
