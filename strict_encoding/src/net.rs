@@ -34,12 +34,11 @@
 //! This list may be extended with future LNPBP-42 revisions
 
 use std::convert::TryFrom;
-use std::io;
 use std::net::{
     IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
 };
 
-use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
+use crate::{strategies, Strategy, StrictDecode, StrictEncode};
 
 /// Standard length of the host-specific part of the encoding, in bytes
 pub const ADDR_LEN: usize = 33; // Maximum Tor public key size
@@ -628,36 +627,6 @@ impl Uniform for SocketAddrV6 {
         } else {
             Err(DecodeError::InsufficientData)
         }
-    }
-}
-
-impl StrictEncode for RawAddr {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(self)?;
-        Ok(self.len())
-    }
-}
-
-impl StrictDecode for RawAddr {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; ADDR_LEN];
-        d.read_exact(&mut ret)?;
-        Ok(ret)
-    }
-}
-
-impl StrictEncode for RawUniformAddr {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(self)?;
-        Ok(self.len())
-    }
-}
-
-impl StrictDecode for RawUniformAddr {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; UNIFORM_LEN];
-        d.read_exact(&mut ret)?;
-        Ok(ret)
     }
 }
 
