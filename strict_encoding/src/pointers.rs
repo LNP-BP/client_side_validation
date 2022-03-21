@@ -1,7 +1,7 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
 // specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
 //
-// Written in 2019-2021 by
+// Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //
 // To the extent possible under law, the author(s) have dedicated all
@@ -31,63 +31,16 @@ impl StrictEncode for &[u8] {
     }
 }
 
-// TODO: #19 Re-implement with const generics once MSRV > 1.50
-
-impl StrictEncode for [u8; 16] {
+impl<const LEN: usize> StrictEncode for [u8; LEN] {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(self)?;
         Ok(self.len())
     }
 }
 
-impl StrictDecode for [u8; 16] {
+impl<const LEN: usize> StrictDecode for [u8; LEN] {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 16];
-        d.read_exact(&mut ret)?;
-        Ok(ret)
-    }
-}
-
-impl StrictEncode for [u8; 20] {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(self)?;
-        Ok(self.len())
-    }
-}
-
-impl StrictDecode for [u8; 20] {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 20];
-        d.read_exact(&mut ret)?;
-        Ok(ret)
-    }
-}
-
-impl StrictEncode for [u8; 32] {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(self)?;
-        Ok(self.len())
-    }
-}
-
-impl StrictDecode for [u8; 32] {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 32];
-        d.read_exact(&mut ret)?;
-        Ok(ret)
-    }
-}
-
-impl StrictEncode for [u8; 64] {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(self)?;
-        Ok(self.len())
-    }
-}
-
-impl StrictDecode for [u8; 64] {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 64];
+        let mut ret = [0u8; LEN];
         d.read_exact(&mut ret)?;
         Ok(ret)
     }
