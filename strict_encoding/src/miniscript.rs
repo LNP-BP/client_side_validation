@@ -14,6 +14,7 @@
 
 use std::io;
 use std::io::{Read, Write};
+use std::sync::Arc;
 
 use bitcoin::consensus::ReadExt;
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
@@ -151,9 +152,11 @@ where
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
-            TapTree::Tree(_tree1, _tree2) => {
-                todo!("Fix bug here with generics crashing compiler")
-                // strict_encode_list!(e; 2u8, tree1, tree2)
+            TapTree::Tree(tree1, tree2) => {
+                let mut len = 2u8.strict_encode(&mut e)?;
+                len += tree1.strict_serialize()?.strict_encode(&mut e)?;
+                len += tree2.strict_serialize()?.strict_encode(&mut e)?;
+                len
             }
             TapTree::Leaf(pk) => {
                 strict_encode_list!(e; 1u8, pk)
@@ -170,11 +173,14 @@ where
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         match u8::strict_decode(&mut d)? {
             1u8 => Ok(TapTree::Leaf(StrictDecode::strict_decode(&mut d)?)),
-            2u8 => todo!("Fix bug here with generics crashing compiler"),
-            /* Ok(TapTree::Tree(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            )),*/
+            2u8 => {
+                let vec1 = Vec::<u8>::strict_decode(&mut d)?;
+                let vec2 = Vec::<u8>::strict_decode(&mut d)?;
+                Ok(TapTree::Tree(
+                    Arc::new(TapTree::strict_deserialize(&vec1)?),
+                    Arc::new(TapTree::strict_deserialize(&vec2)?),
+                ))
+            }
             wrong => Err(Error::EnumValueNotKnown("TapTree", wrong as usize)),
         }
     }
