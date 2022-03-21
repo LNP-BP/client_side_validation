@@ -14,21 +14,30 @@
 
 //! Embedded commitments (commit-embed-verify scheme).
 
+use bitcoin_hashes::sha256::Midstate;
+
 use crate::CommitEncode;
 
 /// Marker trait for specific embed-commitment protocols.
-pub trait EmbedCommitProtocol {}
+pub trait EmbedCommitProtocol {
+    /// Midstate for the protocol-specific tagged hash
+    const HASH_TAG_MIDSTATE: Midstate;
+}
 
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
-pub trait EmbedCommitProof<Msg, Container>
+pub trait EmbedCommitProof<Msg, Container, Protocol>
 where
     Self: Sized + Eq,
-    Container: EmbedCommitVerify<Msg>,
+    Container: EmbedCommitVerify<Msg, Protocol>,
     Msg: CommitEncode,
+    Protocol: EmbedCommitProtocol,
 {
     /// Restores original container before the commitment from the proof data
     /// and a container containing embedded commitment.
-    fn original_container(&self, commit_container: &Container) -> Container;
+    fn restore_original_container(
+        &self,
+        commit_container: &Container,
+    ) -> Container;
 }
 
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
@@ -47,20 +56,20 @@ where
 /// [`Self::embed_commit`] and `Verify: (Container*, Message, Proof) -> bool`
 /// (see [`Self::verify`]).
 ///
-/// This trait is heavily used in **deterministic bitcoin commitments**
-pub trait EmbedCommitVerify<Msg>
+/// This trait is heavily used in **deterministic bitcoin commitments**.
+///
+/// Generic parameter `Protocol` provides context & configuration for commitment
+/// scheme protocol used for this container type.
+pub trait EmbedCommitVerify<Msg, Protocol>
 where
     Self: Eq + Sized,
     Msg: CommitEncode,
+    Protocol: EmbedCommitProtocol,
 {
     /// The proof of the commitment produced as a result of
     /// [`EmbedCommitVerify::embed_commit`] procedure. This proof is later used
     /// for verification.
-    type Proof: EmbedCommitProof<Msg, Self>;
-
-    /// Context / configuration type for commitment scheme protocol used for
-    /// this container type.
-    type Protocol: EmbedCommitProtocol;
+    type Proof: EmbedCommitProof<Msg, Self, Protocol>;
 
     /// Error type that may be reported during
     /// [`EmbedCommitVerify::embed_commit``] procedure.
@@ -74,13 +83,12 @@ where
     fn embed_commit(
         &mut self,
         msg: &Msg,
-        protocol: &Self::Protocol,
     ) -> Result<Self::Proof, Self::CommitError>;
 
     /// Verifies commitment with commitment proof against the message.
     ///
     /// Default implementation reconstructs original container with the
-    /// [`EmbedCommitProof::original_container`] method and repeats
+    /// [`EmbedCommitProof::restore_original_container`] method and repeats
     /// [`Self::embed_commit`] procedure checking that the resulting proof and
     /// commitment matches the provided `self` and `proof`.
     ///
@@ -103,11 +111,18 @@ where
         self,
         msg: &Msg,
         proof: Self::Proof,
-        protocol: &Self::Protocol,
     ) -> Result<bool, Self::CommitError> {
-        let mut container_prime = proof.original_container(&self);
-        let proof_prime = container_prime.embed_commit(msg, protocol)?;
+        let mut container_prime = proof.restore_original_container(&self);
+        let proof_prime = container_prime.embed_commit(msg)?;
         Ok(proof_prime == proof && container_prime == self)
+    }
+
+    #[doc(hidden)]
+    fn _phantom(_: Protocol) {
+        unimplemented!(
+            "EmbedCommitVerify::_phantom is a marker method which must not be \
+             used"
+        )
     }
 }
 
@@ -121,8 +136,9 @@ pub mod test_helpers {
     use super::*;
 
     pub struct TestProtocol {}
-    impl EmbedCommitProtocol for TestProtocol {}
-    const PROTOCOL: TestProtocol = TestProtocol {};
+    impl EmbedCommitProtocol for TestProtocol {
+        const HASH_TAG_MIDSTATE: Midstate = Midstate([0u8; 32]);
+    }
 
     /// Runs round-trip of commitment-embed-verify for a given set of messages
     /// and provided container.
@@ -131,41 +147,32 @@ pub mod test_helpers {
         container: Container,
     ) where
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
-        Container: EmbedCommitVerify<Msg, Protocol = TestProtocol>
-            + Eq
-            + Hash
-            + Debug
-            + Clone,
+        Container:
+            EmbedCommitVerify<Msg, TestProtocol> + Eq + Hash + Debug + Clone,
         Container::Proof: Clone,
     {
         messages.iter().fold(
             HashSet::<Container>::with_capacity(messages.len()),
             |mut acc, msg| {
                 let mut commitment = container.clone();
-                let proof = commitment.embed_commit(msg, &PROTOCOL).unwrap();
+                let proof = commitment.embed_commit(msg).unwrap();
 
                 // Commitments MUST be deterministic: the same message must
                 // always produce the same commitment
                 (1..10).for_each(|_| {
                     let mut commitment_prime = container.clone();
-                    commitment_prime.embed_commit(msg, &PROTOCOL).unwrap();
+                    commitment_prime.embed_commit(msg).unwrap();
                     assert_eq!(commitment_prime, commitment);
                 });
 
                 // Testing verification
-                assert!(commitment
-                    .clone()
-                    .verify(msg, proof.clone(), &PROTOCOL)
-                    .unwrap());
+                assert!(commitment.clone().verify(msg, proof.clone()).unwrap());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
                     assert_eq!(
-                        commitment
-                            .clone()
-                            .verify(m, proof.clone(), &PROTOCOL)
-                            .unwrap(),
+                        commitment.clone().verify(m, proof.clone()).unwrap(),
                         m == msg
                     );
                 });
@@ -173,10 +180,7 @@ pub mod test_helpers {
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt
-                        .clone()
-                        .verify(msg, proof.clone(), &PROTOCOL)
-                        .unwrap());
+                    assert!(!cmt.clone().verify(msg, proof.clone()).unwrap());
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -208,27 +212,25 @@ mod test {
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     struct DummyProof(Vec<u8>);
 
-    impl<T> EmbedCommitProof<T, DummyVec> for DummyProof
+    impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
     where
         T: AsRef<[u8]> + Clone + CommitEncode,
     {
-        fn original_container(&self, _: &DummyVec) -> DummyVec {
+        fn restore_original_container(&self, _: &DummyVec) -> DummyVec {
             DummyVec(self.0.clone())
         }
     }
 
-    impl<T> EmbedCommitVerify<T> for DummyVec
+    impl<T> EmbedCommitVerify<T, TestProtocol> for DummyVec
     where
         T: AsRef<[u8]> + Clone + CommitEncode,
     {
         type Proof = DummyProof;
-        type Protocol = TestProtocol;
         type CommitError = Error;
 
         fn embed_commit(
             &mut self,
             msg: &T,
-            _protocol: &Self::Protocol,
         ) -> Result<Self::Proof, Self::CommitError> {
             let proof = self.0.clone();
             let result = &mut self.0;
