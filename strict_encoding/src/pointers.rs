@@ -33,6 +33,9 @@ impl StrictEncode for &[u8] {
 
 impl<const LEN: usize> StrictEncode for [u8; LEN] {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        if LEN > u16::MAX as usize {
+            return Err(Error::ExceedMaxItems(LEN));
+        }
         e.write_all(self)?;
         Ok(self.len())
     }
@@ -40,6 +43,9 @@ impl<const LEN: usize> StrictEncode for [u8; LEN] {
 
 impl<const LEN: usize> StrictDecode for [u8; LEN] {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        if LEN > u16::MAX as usize {
+            return Err(Error::ExceedMaxItems(LEN));
+        }
         let mut ret = [0u8; LEN];
         d.read_exact(&mut ret)?;
         Ok(ret)
