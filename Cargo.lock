@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.7.0-alpha.1"
+version = "0.7.0-alpha.2"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.7.0-alpha.1"
+version = "0.7.0-alpha.2"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -497,8 +497,9 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "miniscript"
-version = "6.0.1"
-source = "git+https://github.com/rust-bitcoin/rust-miniscript#a881b476ecb01aa507c7e4cf253b2ed718bf914e"
+version = "7.0.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c292a752fbb9862886ada5e6c8976944abed06a7d2fa54958fa5673dc5506c8"
 dependencies = [
  "bitcoin",
 ]
@@ -877,7 +878,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.8.0-rc.3"
+version = "1.8.0-rc.4"
 dependencies = [
  "amplify",
  "bitcoin",
