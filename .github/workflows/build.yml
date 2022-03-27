@@ -110,7 +110,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --workspace --all-targets --features all_msrv51
+          args: --workspace --features all_msrv51
   dependency:
     runs-on: ubuntu-latest
     steps:
