@@ -20,8 +20,8 @@ use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::util::taproot::{
-    ControlBlock, LeafVersion, TapBranchHash, TapLeafHash, TapSighashHash,
-    TapTweakHash, TaprootMerkleBranch,
+    ControlBlock, FutureLeafVersion, LeafVersion, TapBranchHash, TapLeafHash,
+    TapSighashHash, TapTweakHash, TaprootMerkleBranch,
 };
 use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
@@ -29,6 +29,7 @@ use bitcoin::{
     SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
     Txid, WPubkeyHash, WScriptHash, Wtxid, XOnlyPublicKey, XpubIdentifier,
 };
+use bitcoin_hashes::sha256;
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
 
@@ -72,11 +73,58 @@ impl Strategy for TapSighashHash {
     type Strategy = strategies::HashFixedBytes;
 }
 
-impl Strategy for LeafVersion {
-    type Strategy = strategies::Wrapped;
+impl StrictEncode for LeafVersion {
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.into_consensus().strict_encode(e)
+    }
 }
-impl Strategy for TaprootMerkleBranch {
-    type Strategy = strategies::Wrapped;
+
+impl StrictDecode for LeafVersion {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        let leaf_version = u8::strict_decode(d)?;
+        LeafVersion::from_consensus(leaf_version).map_err(|_| {
+            Error::DataIntegrityError(format!(
+                "incorrect LeafVersion `{}`",
+                leaf_version
+            ))
+        })
+    }
+}
+
+impl StrictEncode for FutureLeafVersion {
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.into_consensus().strict_encode(e)
+    }
+}
+
+impl StrictDecode for FutureLeafVersion {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        match LeafVersion::strict_decode(d)? {
+            LeafVersion::TapScript => {
+                Err(Error::DataIntegrityError(s!("known LeafVersion was \
+                                                  found while decoding \
+                                                  FutureLeafVersion")))
+            }
+            LeafVersion::Future(version) => Ok(version),
+        }
+    }
+}
+
+impl StrictEncode for TaprootMerkleBranch {
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl StrictDecode for TaprootMerkleBranch {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        let data = Vec::<sha256::Hash>::strict_decode(d)?;
+        TaprootMerkleBranch::from_inner(data).map_err(|_| {
+            Error::DataIntegrityError(s!(
+                "taproot merkle branch length exceeds 128 consensus limit"
+            ))
+        })
+    }
 }
 
 impl StrictEncode for secp256k1::SecretKey {
@@ -97,19 +145,12 @@ impl StrictDecode for secp256k1::SecretKey {
     }
 }
 
-// TODO: #17 Uncomment strict encoding for `KeyPair` and `TweakedKeyPair` types
-//       once there will be a new release after the merge of this PR:
-//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>.
-
-/*
-
 impl StrictEncode for bip340::TweakedKeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.into_inner().serialize_secure())?)
+        Ok(e.write(&self.clone().into_inner().serialize_secret())?)
     }
 }
-*/
 
 impl StrictDecode for bip340::TweakedKeyPair {
     #[inline]
@@ -127,14 +168,12 @@ impl StrictDecode for bip340::TweakedKeyPair {
     }
 }
 
-/*
-impl StrictEncode for bip340::KeyPair {
+impl StrictEncode for KeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.serialize_secure())?)
+        Ok(e.write(&self.serialize_secret())?)
     }
 }
- */
 
 impl StrictDecode for KeyPair {
     #[inline]
