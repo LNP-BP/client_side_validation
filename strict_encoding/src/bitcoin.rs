@@ -29,6 +29,7 @@ use bitcoin::{
     SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
     Txid, WPubkeyHash, WScriptHash, Wtxid, XOnlyPublicKey, XpubIdentifier,
 };
+use bitcoin_hashes::sha256;
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
 
@@ -109,8 +110,21 @@ impl StrictDecode for FutureLeafVersion {
     }
 }
 
-impl Strategy for TaprootMerkleBranch {
-    type Strategy = strategies::Wrapped;
+impl StrictEncode for TaprootMerkleBranch {
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl StrictDecode for TaprootMerkleBranch {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        let data = Vec::<sha256::Hash>::strict_decode(d)?;
+        TaprootMerkleBranch::from_inner(data).map_err(|_| {
+            Error::DataIntegrityError(s!(
+                "taproot merkle branch length exceeds 128 consensus limit"
+            ))
+        })
+    }
 }
 
 impl StrictEncode for secp256k1::SecretKey {
