@@ -182,6 +182,27 @@ where
     }
 }
 
+/// In terms of strict encoding, a slice is stored in form of
+/// usize-encoded length (see `StrictEncode` implementation for `usize`
+/// type for encoding platform-independent constant-length
+/// encoding rules) followed by a consequently-encoded vec items,
+/// according to their type.
+impl<T> StrictEncode for [T]
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let len = self.len() as usize;
+        // We handle oversize problems at the level of `usize` value
+        // serializaton
+        let mut encoded = len.strict_encode(&mut e)?;
+        for item in self {
+            encoded += item.strict_encode(&mut e)?;
+        }
+        Ok(encoded)
+    }
+}
+
 /// In terms of strict encoding, `Vec` is stored in form of
 /// usize-encoded length (see `StrictEncode` implementation for `usize`
 /// type for encoding platform-independent constant-length
@@ -191,13 +212,8 @@ impl<T> StrictEncode for Vec<T>
 where
     T: StrictEncode,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
-        let mut encoded = len.strict_encode(&mut e)?;
-        for item in self {
-            encoded += item.strict_encode(&mut e)?;
-        }
-        Ok(encoded)
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_slice().strict_encode(e)
     }
 }
 
