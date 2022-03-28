@@ -31,6 +31,22 @@ impl StrictEncode for &[u8] {
     }
 }
 
+impl<T> StrictEncode for [T]
+where
+    T: StrictEncode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let mut len = self.len();
+        // We handle oversize problems at the level of `usize` value
+        // serializaton
+        len += len.strict_encode(&mut e)?;
+        for item in self {
+            len += item.strict_encode(&mut e)?;
+        }
+        Ok(len)
+    }
+}
+
 impl<const LEN: usize> StrictEncode for [u8; LEN] {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(self)?;
