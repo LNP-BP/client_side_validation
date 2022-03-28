@@ -20,8 +20,8 @@ use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::util::taproot::{
-    ControlBlock, LeafVersion, TapBranchHash, TapLeafHash, TapSighashHash,
-    TapTweakHash, TaprootMerkleBranch,
+    ControlBlock, FutureLeafVersion, LeafVersion, TapBranchHash, TapLeafHash,
+    TapSighashHash, TapTweakHash, TaprootMerkleBranch,
 };
 use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
@@ -72,9 +72,43 @@ impl Strategy for TapSighashHash {
     type Strategy = strategies::HashFixedBytes;
 }
 
-impl Strategy for LeafVersion {
-    type Strategy = strategies::Wrapped;
+impl StrictEncode for LeafVersion {
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.into_consensus().strict_encode(e)
+    }
 }
+
+impl StrictDecode for LeafVersion {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        let leaf_version = u8::strict_decode(d)?;
+        LeafVersion::from_consensus(leaf_version).map_err(|_| {
+            Error::DataIntegrityError(format!(
+                "incorrect LeafVersion `{}`",
+                leaf_version
+            ))
+        })
+    }
+}
+
+impl StrictEncode for FutureLeafVersion {
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.into_consensus().strict_encode(e)
+    }
+}
+
+impl StrictDecode for FutureLeafVersion {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        match LeafVersion::strict_decode(d)? {
+            LeafVersion::TapScript => {
+                Err(Error::DataIntegrityError(s!("known LeafVersion was \
+                                                  found while decoding \
+                                                  FutureLeafVersion")))
+            }
+            LeafVersion::Future(version) => Ok(version),
+        }
+    }
+}
+
 impl Strategy for TaprootMerkleBranch {
     type Strategy = strategies::Wrapped;
 }
