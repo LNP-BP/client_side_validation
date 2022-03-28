@@ -20,13 +20,13 @@ use bitcoin::consensus::ReadExt;
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
 use bitcoin::XOnlyPublicKey;
 use miniscript::descriptor::{
-    Bare, DescriptorSinglePub, DescriptorXKey, InnerXKey, Pkh, Sh, ShInner,
-    SinglePubKey, TapTree, Tr, Wildcard, Wpkh, Wsh, WshInner,
+    self, Descriptor, DescriptorPublicKey, DescriptorSinglePub, DescriptorXKey,
+    InnerXKey, SinglePubKey, TapTree, Wildcard,
 };
 use miniscript::policy::concrete::Policy;
 use miniscript::{
-    BareCtx, Descriptor, DescriptorPublicKey, Legacy, Miniscript,
-    MiniscriptKey, Segwitv0, Tap, Terminal,
+    BareCtx, Legacy, Miniscript, MiniscriptKey, ScriptContext, Segwitv0, Tap,
+    Terminal,
 };
 
 use crate::{Error, StrictDecode, StrictEncode};
@@ -99,6 +99,12 @@ macro_rules! strict_encode_usize {
         $encoder.write_all(&(count as u16).to_le_bytes())?;
         2 // We know that we write exactly two bytes
     } };
+}
+
+impl From<miniscript::Error> for Error {
+    fn from(err: miniscript::Error) -> Self {
+        Error::DataIntegrityError(format!(": {}", err))
+    }
 }
 
 impl StrictEncode for BareCtx {
@@ -627,14 +633,11 @@ where
 const DESCRIPTOR_BARE: u8 = 0x00;
 const DESCRIPTOR_PKH: u8 = 0x01;
 const DESCRIPTOR_SH: u8 = 0x02;
-const DESCRIPTOR_SH_SORTED_MULTI: u8 = 0x03;
-const DESCRIPTOR_SH_WPKH: u8 = 0x08;
-const DESCRIPTOR_SH_WSH: u8 = 0x09;
-const DESCRIPTOR_SH_WSH_SORTED_MULTI: u8 = 0x0a;
 const DESCRIPTOR_WPKH: u8 = 0x10;
 const DESCRIPTOR_WSH: u8 = 0x11;
-const DESCRIPTOR_WSH_SORTED_MULTI: u8 = 0x12;
 const DESCRIPTOR_TR: u8 = 0x20;
+const DESCRIPTOR_SORTED_MULTI: u8 = 0x03;
+const DESCRIPTOR_MINISCRIPT: u8 = 0x04;
 
 impl StrictEncode for SinglePubKey {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -767,39 +770,22 @@ where
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
             Descriptor::Bare(bare) => {
-                strict_encode_list!(e; DESCRIPTOR_BARE, bare.as_inner())
+                strict_encode_list!(e; DESCRIPTOR_BARE, bare)
             }
             Descriptor::Pkh(pkh) => {
-                strict_encode_list!(e; DESCRIPTOR_PKH, pkh.as_inner())
+                strict_encode_list!(e; DESCRIPTOR_PKH, pkh)
             }
             Descriptor::Wpkh(wpkh) => {
-                strict_encode_list!(e; DESCRIPTOR_WPKH, wpkh.as_inner())
+                strict_encode_list!(e; DESCRIPTOR_WPKH, wpkh)
             }
-            Descriptor::Sh(sh) => match sh.as_inner() {
-                ShInner::Wsh(wsh) => match wsh.as_inner() {
-                    WshInner::SortedMulti(multi) => {
-                        strict_encode_list!(e; DESCRIPTOR_SH_WSH_SORTED_MULTI, multi.k, multi.pks)
-                    }
-                    WshInner::Ms(ms) => {
-                        strict_encode_list!(e; DESCRIPTOR_SH_WSH, ms)
-                    }
-                },
-                ShInner::Wpkh(wpkh) => {
-                    strict_encode_list!(e; DESCRIPTOR_SH_WPKH, wpkh.as_inner())
-                }
-                ShInner::SortedMulti(multi) => {
-                    strict_encode_list!(e; DESCRIPTOR_SH_SORTED_MULTI, multi.k, multi.pks)
-                }
-                ShInner::Ms(ms) => strict_encode_list!(e; DESCRIPTOR_SH, ms),
-            },
-            Descriptor::Wsh(wsh) => match wsh.as_inner() {
-                WshInner::SortedMulti(multi) => {
-                    strict_encode_list!(e; DESCRIPTOR_WSH_SORTED_MULTI, multi.k, multi.pks)
-                }
-                WshInner::Ms(ms) => strict_encode_list!(e; DESCRIPTOR_WSH, ms),
-            },
+            Descriptor::Sh(sh) => {
+                strict_encode_list!(e; DESCRIPTOR_SH, sh)
+            }
+            Descriptor::Wsh(wsh) => {
+                strict_encode_list!(e; DESCRIPTOR_WSH, wsh)
+            }
             Descriptor::Tr(tr) => {
-                strict_encode_list!(e; DESCRIPTOR_TR, tr.internal_key(), tr.taptree())
+                strict_encode_list!(e; DESCRIPTOR_TR, tr)
             }
         })
     }
@@ -811,57 +797,295 @@ where
     <Pk as MiniscriptKey>::Hash: StrictDecode,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        impl From<miniscript::Error> for Error {
-            fn from(err: miniscript::Error) -> Self {
-                Error::DataIntegrityError(format!(": {}", err))
-            }
-        }
-
         Ok(match u8::strict_decode(&mut d)? {
             DESCRIPTOR_BARE => {
-                Descriptor::Bare(Bare::new(Miniscript::strict_decode(&mut d)?)?)
+                Descriptor::Bare(descriptor::Bare::strict_decode(&mut d)?)
             }
             DESCRIPTOR_PKH => {
-                Descriptor::Pkh(Pkh::new(Pk::strict_decode(&mut d)?))
+                Descriptor::Pkh(descriptor::Pkh::strict_decode(&mut d)?)
             }
             DESCRIPTOR_SH => {
-                Descriptor::Sh(Sh::new(Miniscript::strict_decode(&mut d)?)?)
-            }
-            DESCRIPTOR_SH_SORTED_MULTI => Descriptor::Sh(Sh::new_sortedmulti(
-                usize::strict_decode(&mut d)?,
-                Vec::strict_decode(&mut d)?,
-            )?),
-            DESCRIPTOR_SH_WPKH => {
-                Descriptor::Sh(Sh::new_wpkh(Pk::strict_decode(&mut d)?)?)
-            }
-            DESCRIPTOR_SH_WSH => {
-                Descriptor::Sh(Sh::new_wsh(Miniscript::strict_decode(&mut d)?)?)
-            }
-            DESCRIPTOR_SH_WSH_SORTED_MULTI => {
-                Descriptor::Sh(Sh::new_wsh_sortedmulti(
-                    usize::strict_decode(&mut d)?,
-                    Vec::strict_decode(&mut d)?,
-                )?)
+                Descriptor::Sh(descriptor::Sh::strict_decode(&mut d)?)
             }
             DESCRIPTOR_WPKH => {
-                Descriptor::Wpkh(Wpkh::new(Pk::strict_decode(&mut d)?)?)
+                Descriptor::Wpkh(descriptor::Wpkh::strict_decode(&mut d)?)
             }
             DESCRIPTOR_WSH => {
-                Descriptor::Wsh(Wsh::new(Miniscript::strict_decode(&mut d)?)?)
+                Descriptor::Wsh(descriptor::Wsh::strict_decode(&mut d)?)
             }
-            DESCRIPTOR_WSH_SORTED_MULTI => {
-                Descriptor::Wsh(Wsh::new_sortedmulti(
-                    usize::strict_decode(&mut d)?,
-                    Vec::strict_decode(&mut d)?,
-                )?)
+            DESCRIPTOR_TR => {
+                Descriptor::Tr(descriptor::Tr::strict_decode(&mut d)?)
             }
-            DESCRIPTOR_TR => Descriptor::Tr(Tr::new(
-                StrictDecode::strict_decode(&mut d)?,
-                StrictDecode::strict_decode(&mut d)?,
-            )?),
             wrong => {
                 return Err(Error::DataIntegrityError(format!(
                     "unknown miniscript descriptor type: #{:#04X}",
+                    wrong
+                )))
+            }
+        })
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::Bare<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::Bare<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Self::new(StrictDecode::strict_decode(d)?).map_err(Error::from)
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::Pkh<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::Pkh<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(Self::new(StrictDecode::strict_decode(d)?))
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::Wpkh<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::Wpkh<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Self::new(StrictDecode::strict_decode(d)?).map_err(Error::from)
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::Sh<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::Sh<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(match descriptor::ShInner::strict_decode(d)? {
+            descriptor::ShInner::Wsh(wsh) => descriptor::Sh::new_with_wsh(wsh),
+            descriptor::ShInner::Wpkh(wpkh) => {
+                descriptor::Sh::new_with_wpkh(wpkh)
+            }
+            descriptor::ShInner::SortedMulti(inner) => {
+                descriptor::Sh::new_sortedmulti(inner.k, inner.pks)?
+            }
+            descriptor::ShInner::Ms(ms) => descriptor::Sh::new(ms)?,
+        })
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::Wsh<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().strict_encode(e)
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::Wsh<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        match descriptor::WshInner::strict_decode(d)? {
+            descriptor::WshInner::SortedMulti(inner) => {
+                descriptor::Wsh::new_sortedmulti(inner.k, inner.pks)
+            }
+            descriptor::WshInner::Ms(ms) => descriptor::Wsh::new(ms),
+        }
+        .map_err(Error::from)
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::Tr<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.internal_key(), self.taptree()))
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::Tr<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        descriptor::Tr::new(
+            StrictDecode::strict_decode(&mut d)?,
+            StrictDecode::strict_decode(&mut d)?,
+        )
+        .map_err(Error::from)
+    }
+}
+
+impl<Pk, Ctx> StrictEncode for descriptor::SortedMultiVec<Pk, Ctx>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    Ctx: ScriptContext,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.k, self.pks))
+    }
+}
+
+impl<Pk, Ctx> StrictDecode for descriptor::SortedMultiVec<Pk, Ctx>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    Ctx: ScriptContext,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        descriptor::SortedMultiVec::new(
+            StrictDecode::strict_decode(&mut d)?,
+            StrictDecode::strict_decode(&mut d)?,
+        )
+        .map_err(Error::from)
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::ShInner<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            descriptor::ShInner::Wsh(wsh) => {
+                strict_encode_list!(e; DESCRIPTOR_WSH, wsh)
+            }
+            descriptor::ShInner::Wpkh(wpkh) => {
+                strict_encode_list!(e; DESCRIPTOR_WPKH, wpkh)
+            }
+            descriptor::ShInner::SortedMulti(multi) => {
+                strict_encode_list!(e; DESCRIPTOR_SORTED_MULTI, multi)
+            }
+            descriptor::ShInner::Ms(ms) => {
+                strict_encode_list!(e; DESCRIPTOR_MINISCRIPT, ms)
+            }
+        })
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::ShInner<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(match u8::strict_decode(&mut d)? {
+            DESCRIPTOR_MINISCRIPT => {
+                descriptor::ShInner::Ms(StrictDecode::strict_decode(&mut d)?)
+            }
+            DESCRIPTOR_SORTED_MULTI => descriptor::ShInner::SortedMulti(
+                StrictDecode::strict_decode(&mut d)?,
+            ),
+            DESCRIPTOR_WPKH => {
+                descriptor::ShInner::Wpkh(StrictDecode::strict_decode(&mut d)?)
+            }
+            DESCRIPTOR_WSH => {
+                descriptor::ShInner::Wsh(StrictDecode::strict_decode(&mut d)?)
+            }
+            wrong => {
+                return Err(Error::DataIntegrityError(format!(
+                    "invalid miniscript ShInner descriptor type: #{:#04X}",
+                    wrong
+                )))
+            }
+        })
+    }
+}
+
+impl<Pk> StrictEncode for descriptor::WshInner<Pk>
+where
+    Pk: StrictEncode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictEncode,
+{
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(match self {
+            descriptor::WshInner::SortedMulti(multi) => {
+                strict_encode_list!(e; DESCRIPTOR_SORTED_MULTI, multi)
+            }
+            descriptor::WshInner::Ms(ms) => {
+                strict_encode_list!(e; DESCRIPTOR_MINISCRIPT, ms)
+            }
+        })
+    }
+}
+
+impl<Pk> StrictDecode for descriptor::WshInner<Pk>
+where
+    Pk: StrictDecode + MiniscriptKey,
+    <Pk as MiniscriptKey>::Hash: StrictDecode,
+{
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(match u8::strict_decode(&mut d)? {
+            DESCRIPTOR_MINISCRIPT => {
+                descriptor::WshInner::Ms(StrictDecode::strict_decode(&mut d)?)
+            }
+            DESCRIPTOR_SORTED_MULTI => descriptor::WshInner::SortedMulti(
+                StrictDecode::strict_decode(&mut d)?,
+            ),
+            wrong => {
+                return Err(Error::DataIntegrityError(format!(
+                    "invalid miniscript WshInner descriptor type: #{:#04X}",
                     wrong
                 )))
             }
@@ -979,7 +1203,7 @@ mod test {
 
         let secp = bitcoin::secp256k1::Secp256k1::new();
 
-        for s in &SET {
+        for s in SET {
             let (descr, _) = Descriptor::parse_descriptor(&secp, s).unwrap();
             test_object_encoding_roundtrip(&descr).unwrap();
         }
