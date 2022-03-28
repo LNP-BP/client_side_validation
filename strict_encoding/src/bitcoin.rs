@@ -97,19 +97,12 @@ impl StrictDecode for secp256k1::SecretKey {
     }
 }
 
-// TODO: #17 Uncomment strict encoding for `KeyPair` and `TweakedKeyPair` types
-//       once there will be a new release after the merge of this PR:
-//       <https://github.com/rust-bitcoin/rust-secp256k1/issues/298>.
-
-/*
-
 impl StrictEncode for bip340::TweakedKeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.into_inner().serialize_secure())?)
+        Ok(e.write(&self.clone().into_inner().serialize_secret())?)
     }
 }
-*/
 
 impl StrictDecode for bip340::TweakedKeyPair {
     #[inline]
@@ -127,14 +120,12 @@ impl StrictDecode for bip340::TweakedKeyPair {
     }
 }
 
-/*
-impl StrictEncode for bip340::KeyPair {
+impl StrictEncode for KeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.serialize_secure())?)
+        Ok(e.write(&self.serialize_secret())?)
     }
 }
- */
 
 impl StrictDecode for KeyPair {
     #[inline]
