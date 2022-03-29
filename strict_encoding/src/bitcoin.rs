@@ -75,7 +75,7 @@ impl Strategy for TapSighashHash {
 
 impl StrictEncode for LeafVersion {
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
-        self.into_consensus().strict_encode(e)
+        self.to_consensus().strict_encode(e)
     }
 }
 
@@ -93,7 +93,7 @@ impl StrictDecode for LeafVersion {
 
 impl StrictEncode for FutureLeafVersion {
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
-        self.into_consensus().strict_encode(e)
+        self.to_consensus().strict_encode(e)
     }
 }
 
@@ -147,8 +147,8 @@ impl StrictDecode for secp256k1::SecretKey {
 
 impl StrictEncode for bip340::TweakedKeyPair {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.clone().into_inner().serialize_secret())?)
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.into_inner().strict_encode(e)
     }
 }
 
@@ -171,7 +171,7 @@ impl StrictDecode for bip340::TweakedKeyPair {
 impl StrictEncode for KeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.serialize_secret())?)
+        Ok(e.write(&self.secret_bytes())?)
     }
 }
 
@@ -224,7 +224,7 @@ impl StrictEncode for XOnlyPublicKey {
 impl StrictDecode for XOnlyPublicKey {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
+        let mut buf = [0u8; secp256k1::constants::SCHNORR_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
         Self::from_slice(&buf[..]).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
@@ -242,7 +242,7 @@ impl StrictEncode for bip340::TweakedPublicKey {
 impl StrictDecode for bip340::TweakedPublicKey {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_PUBLIC_KEY_SIZE];
+        let mut buf = [0u8; secp256k1::constants::SCHNORR_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
         Ok(Self::dangerous_assume_tweaked(
             XOnlyPublicKey::from_slice(&buf[..]).map_err(|_| {
@@ -282,7 +282,7 @@ impl StrictEncode for schnorr::Signature {
 impl StrictDecode for schnorr::Signature {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; secp256k1::constants::SCHNORRSIG_SIGNATURE_SIZE];
+        let mut buf = [0u8; secp256k1::constants::SCHNORR_SIGNATURE_SIZE];
         d.read_exact(&mut buf)?;
         Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError(
@@ -295,14 +295,14 @@ impl StrictDecode for schnorr::Signature {
 impl StrictEncode for EcdsaSigHashType {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_u32().strict_encode(e)
+        self.to_u32().strict_encode(e)
     }
 }
 
 impl StrictDecode for EcdsaSigHashType {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
-        Ok(EcdsaSigHashType::from_u32_consensus(u32::strict_decode(d)?))
+        Ok(EcdsaSigHashType::from_consensus(u32::strict_decode(d)?))
     }
 }
 
@@ -903,12 +903,12 @@ pub(crate) mod test {
     ];
 
     static SCHNORR_BYTES: [u8; 64] = [
-        0x16, 0x2A, 0xDD, 0x99, 0x90, 0x6A, 0x93, 0x04, 0xD4, 0xD0, 0x79, 0x02,
-        0x73, 0xAA, 0xD1, 0xB3, 0x54, 0x13, 0x6C, 0x32, 0xBE, 0x53, 0xF0, 0x7D,
-        0xF8, 0x0F, 0x74, 0xB3, 0xF7, 0xBF, 0x99, 0xAE, 0x91, 0x13, 0x45, 0x76,
-        0xD0, 0x4B, 0x8A, 0x2D, 0x82, 0xDA, 0x7F, 0xE9, 0xDA, 0x43, 0x99, 0xF3,
-        0xBD, 0x99, 0xDF, 0x6B, 0xA3, 0xC6, 0xF9, 0xB4, 0xFB, 0x5E, 0x62, 0xDB,
-        0x1B, 0x15, 0xCF, 0xF3,
+        0xb2, 0xe6, 0x87, 0x0a, 0x24, 0xa5, 0xaf, 0x30, 0x54, 0xbd, 0xd0, 0x25,
+        0x23, 0xb4, 0xbd, 0xc0, 0x0a, 0xce, 0x93, 0xa7, 0xa8, 0xa4, 0x95, 0xb0,
+        0x92, 0x41, 0x87, 0xca, 0x61, 0x90, 0x71, 0x8e, 0xab, 0xe3, 0x8c, 0x3d,
+        0x12, 0x55, 0xad, 0x42, 0x9d, 0xff, 0x36, 0x93, 0x66, 0x2c, 0x3f, 0x0b,
+        0x5a, 0x57, 0xdd, 0x70, 0x8d, 0x53, 0xb0, 0xc3, 0x37, 0x3f, 0xec, 0xfb,
+        0xad, 0x82, 0x34, 0xa0,
     ];
 
     #[test]
@@ -933,7 +933,8 @@ pub(crate) mod test {
         test_encoding_roundtrip(&ecdsa, &ECDSA_BYTES).unwrap();
         assert!(secp.verify_ecdsa(&msg, &ecdsa, &pk_ecdsa).is_ok());
 
-        let schnorr = secp.sign_schnorr_no_aux_rand(&msg, &sk_schnorr);
+        let schnorr =
+            secp.sign_schnorr_with_aux_rand(&msg, &sk_schnorr, &[0u8; 32]);
         test_encoding_roundtrip(&schnorr, &SCHNORR_BYTES).unwrap();
         assert!(secp.verify_schnorr(&schnorr, &msg, &pk_schnorr).is_ok());
 
