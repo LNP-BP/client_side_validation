@@ -43,6 +43,7 @@ pub mod merkle;
 pub mod multi_commit;
 pub mod tagged_hash;
 
+use bitcoin_hashes::sha256::Midstate;
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
 pub use embed_commit::{
     CommitmentProtocol, EmbedCommitProof, EmbedCommitVerify,
@@ -54,3 +55,21 @@ pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
 pub use tagged_hash::TaggedHash;
 
 pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
+
+/// Marker trait for specific commitment protocols.
+///
+/// Generic parameter `Protocol` used in commitment scheme traits provides a
+/// context & configuration for the concrete implementations.
+///
+/// Introduction of such generic allows to:
+/// - implement trait for foreign data types;
+/// - add multiple implementations under different commitment protocols to the
+///   combination of the same message and container type (each of each will have
+///   its own `Proof` type defined as an associated generic).
+///
+/// Each of the commitment protocols must use [`Self::HASH_TAG_MIDSTATE`] as a
+/// part of tagged hashing of the message as a part of the commitment procedure.
+pub trait CommitmentProtocol {
+    /// Midstate for the protocol-specific tagged hash.
+    const HASH_TAG_MIDSTATE: Midstate;
+}

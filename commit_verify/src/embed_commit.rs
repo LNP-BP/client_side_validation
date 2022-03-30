@@ -16,25 +16,7 @@
 
 use bitcoin_hashes::sha256::Midstate;
 
-use crate::CommitEncode;
-
-/// Marker trait for specific commitment protocols.
-///
-/// Generic parameter `Protocol` used in commitment scheme traits provides a
-/// context & configuration for the concrete implementations.
-///
-/// Introduction of such generic allows to:
-/// - implement trait for foreign data types;
-/// - add multiple implementations under different commitment protocols to the
-///   combination of the same message and container type (each of each will have
-///   its own `Proof` type defined as an associated generic).
-///
-/// Each of the commitment protocols must use [`Self::HASH_TAG_MIDSTATE`] as a
-/// part of tagged hashing of the message as a part of the commitment procedure.
-pub trait CommitmentProtocol {
-    /// Midstate for the protocol-specific tagged hash.
-    const HASH_TAG_MIDSTATE: Midstate;
-}
+use crate::{CommitEncode, CommitmentProtocol};
 
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
 pub trait EmbedCommitProof<Msg, Container, Protocol>
