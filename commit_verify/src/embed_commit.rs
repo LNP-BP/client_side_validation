@@ -47,32 +47,65 @@ where
 /// deterministically *verified* when the message and the proof are *revealed*.
 ///
 /// To use *embed-commit-verify scheme* one needs to implement this trait for
-/// a data structure providing context for a specific commitment protocol, and
-/// provide it (through associated types) with the used container, message,
-/// proof and commitment types.
+/// a data structure acting as a container for a specific commitment under
+/// certain protocol, specified as generic parameter. The container type must
+/// specify as associated types proof and commitment types.
 ///
 /// Operations with *embed-commit-verify scheme* may be represented in form of
-/// `EmbedCommit: (Container, Message) -> (Container*, Proof)` (see
-/// [`Self::embed_commit`] and `Verify: (Container*, Message, Proof) -> bool`
+/// `EmbedCommit: (Container, Message) -> (Container', Proof)` (see
+/// [`Self::embed_commit`] and `Verify: (Container', Message, Proof) -> bool`
 /// (see [`Self::verify`]).
 ///
 /// This trait is heavily used in **deterministic bitcoin commitments**.
 ///
+/// # Protocol definition
+///
 /// Generic parameter `Protocol` provides context & configuration for commitment
 /// scheme protocol used for this container type.
+///
+/// Introduction of this generic allows to:
+/// - implement trait for foreign data types;
+/// - add multiple implementations under different commitment protocols to the
+///   combination of the same message and container type (each of each will have
+///   its own `Proof` type defined as an associated generic).
+///
+/// Usually represents an uninstantiable type, but may be a structure
+/// containing commitment protocol configuration or context objects.
+///
+/// ```
+/// # use bitcoin_hashes::sha256::Midstate;
+/// # use secp256k1zkp::Secp256k1;
+/// # use commit_verify::CommitmentProtocol;
+///
+/// // Uninstantiable type
+/// pub enum Lnpbp6 {}
+///
+/// impl CommitmentProtocol for Lnpbp6 {
+///     const HASH_TAG_MIDSTATE: Midstate = Midstate(
+///         [0u8; 32], // replace with the actual midstate constant
+///     );
+/// }
+///
+/// // Protocol definition containing context object
+/// pub struct Lnpbp1 {
+///     pub secp: Secp256k1,
+/// }
+/// // ...
+/// ```
 pub trait EmbedCommitVerify<Msg, Protocol>
 where
     Self: Eq + Sized,
     Msg: CommitEncode,
-    Protocol: EmbedCommitProtocol,
+    Protocol: CommitmentProtocol,
 {
     /// The proof of the commitment produced as a result of
-    /// [`EmbedCommitVerify::embed_commit`] procedure. This proof is later used
+    /// [`Self::embed_commit`] procedure. This proof is later used
     /// for verification.
     type Proof: EmbedCommitProof<Msg, Self, Protocol>;
 
-    /// Error type that may be reported during
-    /// [`EmbedCommitVerify::embed_commit``] procedure.
+    /// Error type that may be reported during [`Self::embed_commit`] procedure.
+    /// It may also be returned from [`Self::verify`] in case the proof data are
+    /// invalid and the commitment can't be re-created.
     type CommitError: std::error::Error;
 
     /// Creates a commitment to a message and embeds it into the provided
@@ -104,8 +137,10 @@ where
     /// information for debugging.
     ///
     /// The proper way of using the function in a well-debugged software should
-    /// be `if commitment.verify(...).expect("proof managing system") { .. }`
-    /// and not `if commitment.verify(...).unwrap_or(false) { .. }`.
+    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
+    /// However if the proofs are provided by some sort of user/network input
+    /// from an untrusted party, a proper form would be
+    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     #[inline]
     fn verify(
         self,
@@ -116,6 +151,20 @@ where
         let proof_prime = container_prime.embed_commit(msg)?;
         Ok(proof_prime == proof && container_prime == self)
     }
+
+    /// Phantom method used to add `Protocol` generic parameter to the trait.
+    ///
+    /// # Panics
+    ///
+    /// Always panics when called.
+    #[doc(hidden)]
+    fn _phantom(_: Protocol) {
+        unimplemented!(
+            "EmbedCommitVerify::_phantom is a marker method which must not be \
+             used"
+        )
+    }
+}
 
     #[doc(hidden)]
     fn _phantom(_: Protocol) {
