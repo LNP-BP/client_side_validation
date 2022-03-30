@@ -53,6 +53,9 @@ pub use tagged_hash::TaggedHash;
 
 pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
 
+// TODO: Improve support of creating tagged hashes of the messages at the
+//       commitment protocol level.
+
 /// Marker trait for specific commitment protocols.
 ///
 /// Generic parameter `Protocol` used in commitment scheme traits provides a
