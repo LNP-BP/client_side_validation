@@ -19,7 +19,7 @@ use bitcoin_hashes::sha256::Midstate;
 use crate::CommitEncode;
 
 /// Marker trait for specific embed-commitment protocols.
-pub trait EmbedCommitProtocol {
+pub trait CommitmentProtocol {
     /// Midstate for the protocol-specific tagged hash
     const HASH_TAG_MIDSTATE: Midstate;
 }
@@ -30,7 +30,7 @@ where
     Self: Sized + Eq,
     Container: EmbedCommitVerify<Msg, Protocol>,
     Msg: CommitEncode,
-    Protocol: EmbedCommitProtocol,
+    Protocol: CommitmentProtocol,
 {
     /// Restores original container before the commitment from the proof data
     /// and a container containing embedded commitment.
@@ -136,7 +136,7 @@ pub mod test_helpers {
     use super::*;
 
     pub struct TestProtocol {}
-    impl EmbedCommitProtocol for TestProtocol {
+    impl CommitmentProtocol for TestProtocol {
         const HASH_TAG_MIDSTATE: Midstate = Midstate([0u8; 32]);
     }
 

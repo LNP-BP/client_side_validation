@@ -45,7 +45,7 @@ pub mod tagged_hash;
 
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
 pub use embed_commit::{
-    EmbedCommitProof, EmbedCommitProtocol, EmbedCommitVerify,
+    CommitmentProtocol, EmbedCommitProof, EmbedCommitVerify,
 };
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
