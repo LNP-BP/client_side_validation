@@ -43,11 +43,8 @@ pub mod merkle;
 pub mod multi_commit;
 pub mod tagged_hash;
 
-use bitcoin_hashes::sha256::Midstate;
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
-pub use embed_commit::{
-    CommitmentProtocol, EmbedCommitProof, EmbedCommitVerify,
-};
+pub use embed_commit::{EmbedCommitProof, EmbedCommitVerify};
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
@@ -67,9 +64,16 @@ pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
 ///   combination of the same message and container type (each of each will have
 ///   its own `Proof` type defined as an associated generic).
 ///
-/// Each of the commitment protocols must use [`Self::HASH_TAG_MIDSTATE`] as a
+/// Each of the commitment protocols should use [`Self::HASH_TAG_MIDSTATE`] as a
 /// part of tagged hashing of the message as a part of the commitment procedure.
 pub trait CommitmentProtocol {
     /// Midstate for the protocol-specific tagged hash.
-    const HASH_TAG_MIDSTATE: Midstate;
+    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate>;
+}
+
+/// Protocol defining commits created by taking a simple untagged hash of a
+/// specific type.
+pub struct UntaggedProtocol;
+impl CommitmentProtocol for UntaggedProtocol {
+    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate> = None;
 }

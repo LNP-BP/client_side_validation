@@ -14,8 +14,6 @@
 
 //! Embedded commitments (commit-embed-verify scheme).
 
-use bitcoin_hashes::sha256::Midstate;
-
 use crate::{CommitEncode, CommitmentProtocol};
 
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
@@ -75,9 +73,9 @@ where
 /// pub enum Lnpbp6 {}
 ///
 /// impl CommitmentProtocol for Lnpbp6 {
-///     const HASH_TAG_MIDSTATE: Midstate = Midstate(
+///     const HASH_TAG_MIDSTATE: Option<Midstate> = Some(Midstate(
 ///         [0u8; 32], // replace with the actual midstate constant
-///     );
+///     ));
 /// }
 ///
 /// // Protocol definition containing context object
@@ -217,9 +215,9 @@ where
 /// pub enum Lnpbp6 {}
 ///
 /// impl CommitmentProtocol for Lnpbp6 {
-///     const HASH_TAG_MIDSTATE: Midstate = Midstate(
+///     const HASH_TAG_MIDSTATE: Option<Midstate> = Some(Midstate(
 ///         [0u8; 32], // replace with the actual midstate constant
-///     );
+///     ));
 /// }
 ///
 /// // Protocol definition containing context object
@@ -308,11 +306,13 @@ pub mod test_helpers {
     use core::hash::Hash;
     use std::collections::HashSet;
 
+    use bitcoin_hashes::sha256::Midstate;
+
     use super::*;
 
     pub enum TestProtocol {}
     impl CommitmentProtocol for TestProtocol {
-        const HASH_TAG_MIDSTATE: Midstate = Midstate([0u8; 32]);
+        const HASH_TAG_MIDSTATE: Option<Midstate> = Some(Midstate([0u8; 32]));
     }
 
     pub const SUPPLEMENT: [u8; 32] = [0xFFu8; 32];
@@ -494,7 +494,7 @@ mod test {
             msg: &T,
         ) -> Result<Self::Commitment, Self::CommitError> {
             let mut engine = sha256::Hash::engine();
-            engine.input(TestProtocol::HASH_TAG_MIDSTATE.as_ref());
+            engine.input(TestProtocol::HASH_TAG_MIDSTATE.unwrap().as_ref());
             engine.input(supplement);
             engine.input(msg.as_ref());
             Ok(sha256::Hash::from_engine(engine))
