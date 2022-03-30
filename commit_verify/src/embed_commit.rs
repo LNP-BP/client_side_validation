@@ -316,10 +316,12 @@ pub mod test_helpers {
 
     use super::*;
 
-    pub struct TestProtocol {}
+    pub enum TestProtocol {}
     impl CommitmentProtocol for TestProtocol {
         const HASH_TAG_MIDSTATE: Midstate = Midstate([0u8; 32]);
     }
+
+    pub const SUPPLEMENT: [u8; 32] = [0xFFu8; 32];
 
     /// Runs round-trip of commitment-embed-verify for a given set of messages
     /// and provided container.
@@ -372,12 +374,77 @@ pub mod test_helpers {
             },
         );
     }
+
+    /// Runs round-trip of commitment-embed-verify for a given set of messages
+    /// and provided container.
+    pub fn convolve_commit_verify_suite<Msg, Container>(
+        messages: Vec<Msg>,
+        container: Container,
+    ) where
+        Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
+        Container: ConvolveCommitVerify<Msg, [u8; 32], TestProtocol>
+            + Eq
+            + Hash
+            + Debug
+            + Clone,
+        Container::Commitment: Clone + Debug + Hash + Eq,
+    {
+        messages.iter().fold(
+            HashSet::<Container::Commitment>::with_capacity(messages.len()),
+            |mut acc, msg| {
+                let commitment =
+                    container.convolve_commit(&SUPPLEMENT, msg).unwrap();
+
+                // Commitments MUST be deterministic: the same message must
+                // always produce the same commitment
+                (1..10).for_each(|_| {
+                    let commitment_prime =
+                        container.convolve_commit(&SUPPLEMENT, msg).unwrap();
+                    assert_eq!(commitment_prime, commitment);
+                });
+
+                // Testing verification
+                assert!(container
+                    .clone()
+                    .verify(&SUPPLEMENT, msg, commitment.clone())
+                    .unwrap());
+
+                messages.iter().for_each(|m| {
+                    // Testing that commitment verification succeeds only
+                    // for the original message and fails for the rest
+                    assert_eq!(
+                        container
+                            .clone()
+                            .verify(&SUPPLEMENT, m, commitment.clone())
+                            .unwrap(),
+                        m == msg
+                    );
+                });
+
+                acc.iter().for_each(|commitment| {
+                    // Testing that verification against other commitments
+                    // returns `false`
+                    assert!(!container
+                        .clone()
+                        .verify(&SUPPLEMENT, msg, commitment.clone())
+                        .unwrap());
+                });
+
+                // Detecting collision: each message should produce a unique
+                // commitment even if the same container is used
+                assert!(acc.insert(commitment));
+
+                acc
+            },
+        );
+    }
 }
 
 #[cfg(test)]
 mod test {
     use core::fmt::Debug;
-    use core::hash::Hash;
+
+    use bitcoin_hashes::{sha256, Hash, HashEngine};
 
     use super::test_helpers::*;
     use super::*;
@@ -420,11 +487,39 @@ mod test {
         }
     }
 
+    impl<T> ConvolveCommitVerify<T, [u8; 32], TestProtocol> for DummyVec
+    where
+        T: AsRef<[u8]> + Clone + CommitEncode,
+    {
+        type Commitment = sha256::Hash;
+        type CommitError = Error;
+
+        fn convolve_commit(
+            &self,
+            supplement: &[u8; 32],
+            msg: &T,
+        ) -> Result<Self::Commitment, Self::CommitError> {
+            let mut engine = sha256::Hash::engine();
+            engine.input(TestProtocol::HASH_TAG_MIDSTATE.as_ref());
+            engine.input(supplement);
+            engine.input(msg.as_ref());
+            Ok(sha256::Hash::from_engine(engine))
+        }
+    }
+
     #[test]
     fn test_embed_commit() {
         embed_commit_verify_suite::<Vec<u8>, DummyVec>(
             gen_messages(),
             DummyVec(vec![]),
+        );
+    }
+
+    #[test]
+    fn test_convolve_commit() {
+        convolve_commit_verify_suite::<Vec<u8>, DummyVec>(
+            gen_messages(),
+            DummyVec(vec![0xC0; 15]),
         );
     }
 }
