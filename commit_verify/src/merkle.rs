@@ -22,7 +22,10 @@ use std::iter::FromIterator;
 
 use bitcoin_hashes::{sha256, Hash, HashEngine};
 
-use crate::{commit_encode, CommitEncode, CommitVerify, ConsensusCommit};
+use crate::{
+    commit_encode, CommitEncode, CommitVerify, ConsensusCommit,
+    UntaggedProtocol,
+};
 
 /// Marker trait for types that require merklization of the underlying data
 /// during [`ConsensusCommit`] procedure. Allows specifying custom tag for the
@@ -51,12 +54,12 @@ impl commit_encode::Strategy for MerkleNode {
     type Strategy = commit_encode::strategies::UsingStrict;
 }
 
-impl<MSG> CommitVerify<MSG> for MerkleNode
+impl<Msg> CommitVerify<Msg, UntaggedProtocol> for MerkleNode
 where
-    MSG: AsRef<[u8]>,
+    Msg: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &MSG) -> MerkleNode { MerkleNode::hash(msg.as_ref()) }
+    fn commit(msg: &Msg) -> MerkleNode { MerkleNode::hash(msg.as_ref()) }
 }
 
 impl<A, B> ConsensusCommit for (A, B)

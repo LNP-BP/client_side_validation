@@ -44,9 +44,7 @@ pub mod multi_commit;
 pub mod tagged_hash;
 
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
-pub use embed_commit::{
-    EmbedCommitProof, EmbedCommitProtocol, EmbedCommitVerify,
-};
+pub use embed_commit::{EmbedCommitProof, EmbedCommitVerify};
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
@@ -54,3 +52,31 @@ pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
 pub use tagged_hash::TaggedHash;
 
 pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
+
+// TODO: Improve support of creating tagged hashes of the messages at the
+//       commitment protocol level.
+
+/// Marker trait for specific commitment protocols.
+///
+/// Generic parameter `Protocol` used in commitment scheme traits provides a
+/// context & configuration for the concrete implementations.
+///
+/// Introduction of such generic allows to:
+/// - implement trait for foreign data types;
+/// - add multiple implementations under different commitment protocols to the
+///   combination of the same message and container type (each of each will have
+///   its own `Proof` type defined as an associated generic).
+///
+/// Each of the commitment protocols should use [`Self::HASH_TAG_MIDSTATE`] as a
+/// part of tagged hashing of the message as a part of the commitment procedure.
+pub trait CommitmentProtocol {
+    /// Midstate for the protocol-specific tagged hash.
+    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate>;
+}
+
+/// Protocol defining commits created by taking a simple untagged hash of a
+/// specific type.
+pub struct UntaggedProtocol;
+impl CommitmentProtocol for UntaggedProtocol {
+    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate> = None;
+}

@@ -33,6 +33,7 @@ use strict_encoding::StrictEncode;
 use crate::TryCommitVerify;
 use crate::{
     commit_encode, CommitEncode, CommitVerify, ConsensusCommit, TaggedHash,
+    UntaggedProtocol,
 };
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
@@ -161,7 +162,7 @@ const MIDSTATE_ENTROPY: [u8; 32] = [
 ];
 
 #[cfg(feature = "rand")]
-impl TryCommitVerify<MultiSource> for MultiCommitBlock {
+impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitBlock {
     type Error = Error;
 
     fn try_commit(source: &MultiSource) -> Result<Self, Error> {
@@ -263,7 +264,7 @@ impl sha256t::Tag for Lnpbp4Tag {
 )]
 pub struct MultiCommitment(sha256t::Hash<Lnpbp4Tag>);
 
-impl<M> CommitVerify<M> for MultiCommitment
+impl<M> CommitVerify<M, UntaggedProtocol> for MultiCommitment
 where
     M: AsRef<[u8]>,
 {
@@ -272,7 +273,7 @@ where
 }
 
 #[cfg(feature = "rand")]
-impl TryCommitVerify<MultiSource> for MultiCommitment {
+impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitment {
     type Error = Error;
 
     fn try_commit(msg: &MultiSource) -> Result<Self, Self::Error> {
