@@ -29,7 +29,7 @@ where
     fn restore_original_container(
         &self,
         commit_container: &Container,
-    ) -> Container;
+    ) -> Result<Container, Container::CommitError>;
 }
 
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
@@ -139,7 +139,7 @@ where
         msg: &Msg,
         proof: Self::Proof,
     ) -> Result<bool, Self::CommitError> {
-        let mut container_prime = proof.restore_original_container(&self);
+        let mut container_prime = proof.restore_original_container(&self)?;
         let proof_prime = container_prime.embed_commit(msg)?;
         Ok(proof_prime == proof && container_prime == self)
     }
@@ -458,8 +458,11 @@ mod test {
     where
         T: AsRef<[u8]> + Clone + CommitEncode,
     {
-        fn restore_original_container(&self, _: &DummyVec) -> DummyVec {
-            DummyVec(self.0.clone())
+        fn restore_original_container(
+            &self,
+            _: &DummyVec,
+        ) -> Result<DummyVec, Error> {
+            Ok(DummyVec(self.0.clone()))
         }
     }
 
