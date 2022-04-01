@@ -16,6 +16,21 @@
 
 use crate::{CommitEncode, CommitmentProtocol};
 
+/// Trait for equivalence verification. Implemented for all types implemeting
+/// `Eq`. For non-`Eq` types this trait provides way to implement custom
+/// equivalence verification used during commitment verification procedure.
+pub trait VerifyEq {
+    /// Verifies commit-equivalence of two instances of the same type.
+    fn verify_eq(&self, other: &Self) -> bool;
+}
+
+impl<T> VerifyEq for T
+where
+    T: Eq,
+{
+    fn verify_eq(&self, other: &Self) -> bool { self == other }
+}
+
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
 pub trait EmbedCommitProof<Msg, Container, Protocol>
 where
@@ -86,7 +101,7 @@ where
 /// ```
 pub trait EmbedCommitVerify<Msg, Protocol>
 where
-    Self: Eq + Sized,
+    Self: Sized,
     Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
@@ -135,13 +150,17 @@ where
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     #[inline]
     fn verify(
-        self,
+        &self,
         msg: &Msg,
         proof: Self::Proof,
-    ) -> Result<bool, Self::CommitError> {
-        let mut container_prime = proof.restore_original_container(&self)?;
+    ) -> Result<bool, Self::CommitError>
+    where
+        Self: VerifyEq,
+        Self::Proof: VerifyEq,
+    {
+        let mut container_prime = proof.restore_original_container(self)?;
         let proof_prime = container_prime.embed_commit(msg)?;
-        Ok(proof_prime == proof && container_prime == self)
+        Ok(proof_prime.verify_eq(&proof) && self.verify_eq(&container_prime))
     }
 
     /// Phantom method used to add `Protocol` generic parameter to the trait.
@@ -228,7 +247,7 @@ where
 /// ```
 pub trait ConvolveCommitVerify<Msg, Suppl, Protocol>
 where
-    Self: Sized + Eq,
+    Self: Sized,
     Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
@@ -276,13 +295,16 @@ where
     /// from an untrusted party, a proper form would be
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     fn verify(
-        self,
+        &self,
         supplement: &Suppl,
         msg: &Msg,
         commitment: Self::Commitment,
-    ) -> Result<bool, Self::CommitError> {
+    ) -> Result<bool, Self::CommitError>
+    where
+        Self::Commitment: VerifyEq,
+    {
         let commitment_prime = self.convolve_commit(supplement, msg)?;
-        Ok(commitment_prime == commitment)
+        Ok(commitment_prime.verify_eq(&commitment))
     }
 
     /// Phantom method used to add `Protocol` generic parameter to the trait.
@@ -377,11 +399,11 @@ pub mod test_helpers {
     ) where
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
         Container: ConvolveCommitVerify<Msg, [u8; 32], TestProtocol>
-            + Eq
+            + VerifyEq
             + Hash
             + Debug
             + Clone,
-        Container::Commitment: Clone + Debug + Hash + Eq,
+        Container::Commitment: Clone + Debug + Hash + VerifyEq,
     {
         messages.iter().fold(
             HashSet::<Container::Commitment>::with_capacity(messages.len()),
