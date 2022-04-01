@@ -135,7 +135,7 @@ where
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     #[inline]
     fn verify(
-        self,
+        &self,
         msg: &Msg,
         proof: Self::Proof,
     ) -> Result<bool, Self::CommitError> {
@@ -276,7 +276,7 @@ where
     /// from an untrusted party, a proper form would be
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     fn verify(
-        self,
+        &self,
         supplement: &Suppl,
         msg: &Msg,
         commitment: Self::Commitment,
