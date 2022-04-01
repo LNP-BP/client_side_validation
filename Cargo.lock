@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.7.0-alpha.5"
+version = "0.7.0-alpha.6"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
