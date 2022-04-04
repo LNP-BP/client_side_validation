@@ -44,7 +44,7 @@ where
     fn restore_original_container(
         &self,
         commit_container: &Container,
-    ) -> Result<Container, Container::CommitError>;
+    ) -> Result<Container, Container::VerifyError>;
 }
 
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
@@ -115,6 +115,10 @@ where
     /// invalid and the commitment can't be re-created.
     type CommitError: std::error::Error;
 
+    /// Error type that may be reported during [`Self::verify`] procedure.
+    /// It must be a subset of [`Self::CommitError`].
+    type VerifyError: std::error::Error + From<Self::CommitError>;
+
     /// Creates a commitment to a message and embeds it into the provided
     /// container (`self`) by mutating it and returning commitment proof.
     ///
@@ -153,7 +157,7 @@ where
         &self,
         msg: &Msg,
         proof: Self::Proof,
-    ) -> Result<bool, Self::CommitError>
+    ) -> Result<bool, Self::VerifyError>
     where
         Self: VerifyEq,
         Self::Proof: VerifyEq,
@@ -494,6 +498,7 @@ mod test {
     {
         type Proof = DummyProof;
         type CommitError = Error;
+        type VerifyError = Error;
 
         fn embed_commit(
             &mut self,
