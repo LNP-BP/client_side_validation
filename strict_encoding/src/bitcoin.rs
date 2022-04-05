@@ -724,7 +724,7 @@ impl StrictDecode for TapTree {
         let builder = Vec::<(u8, Script)>::strict_decode(d)?
             .into_iter()
             .try_fold(TaprootBuilder::new(), |builder, (depth, script)| {
-                builder.add_leaf(depth as usize, script)
+                builder.add_leaf(depth, script)
             })
             .map_err(|err| Error::DataIntegrityError(err.to_string()))?;
         TapTree::from_inner(builder)
