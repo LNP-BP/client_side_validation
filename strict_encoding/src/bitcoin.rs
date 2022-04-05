@@ -15,6 +15,7 @@
 use std::io;
 use std::io::{Read, Write};
 
+use bitcoin::psbt::PsbtSigHashType;
 use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
@@ -288,6 +289,20 @@ impl StrictDecode for schnorr::Signature {
                 "Invalid secp256k1 Schnorr signature data".to_string(),
             )
         })
+    }
+}
+
+impl StrictEncode for PsbtSigHashType {
+    #[inline]
+    fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_u32().strict_encode(e)
+    }
+}
+
+impl StrictDecode for PsbtSigHashType {
+    #[inline]
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        u32::strict_decode(d).map(PsbtSigHashType::from_u32)
     }
 }
 
