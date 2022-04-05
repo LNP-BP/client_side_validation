@@ -15,7 +15,7 @@
 use std::io;
 use std::io::{Read, Write};
 
-use bitcoin::psbt::PsbtSigHashType;
+use bitcoin::psbt::{self, PsbtSigHashType};
 use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
@@ -669,6 +669,42 @@ impl StrictDecode for bip32::ExtendedPrivKey {
                 "Extended privkey integrity is broken".to_string(),
             )
         })
+    }
+}
+
+impl StrictEncode for psbt::raw::Key {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.type_value, self.key))
+    }
+}
+
+impl StrictDecode for psbt::raw::Key {
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(strict_decode_self!(d; type_value, key; crate))
+    }
+}
+
+impl StrictEncode for psbt::raw::Pair {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.key, self.value))
+    }
+}
+
+impl StrictDecode for psbt::raw::Pair {
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(strict_decode_self!(d; key, value; crate))
+    }
+}
+
+impl StrictEncode for psbt::raw::ProprietaryKey {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.prefix, self.subtype, self.key))
+    }
+}
+
+impl StrictDecode for psbt::raw::ProprietaryKey {
+    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        Ok(strict_decode_self!(d; prefix, subtype, key; crate))
     }
 }
 
