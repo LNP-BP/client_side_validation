@@ -27,7 +27,8 @@ use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
     EcdsaSigHashType, KeyPair, OutPoint, PubkeyHash, SchnorrSig,
     SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
-    Txid, WPubkeyHash, WScriptHash, Wtxid, XOnlyPublicKey, XpubIdentifier,
+    Txid, WPubkeyHash, WScriptHash, Witness, Wtxid, XOnlyPublicKey,
+    XpubIdentifier,
 };
 use bitcoin_hashes::sha256;
 
@@ -429,6 +430,9 @@ impl StrictDecode for bitcoin::PublicKey {
 }
 
 impl Strategy for OutPoint {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for Witness {
     type Strategy = strategies::BitcoinConsensus;
 }
 impl Strategy for TxOut {
