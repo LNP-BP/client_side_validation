@@ -20,8 +20,9 @@ use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::taproot::{
-    ControlBlock, FutureLeafVersion, LeafVersion, TapBranchHash, TapLeafHash,
-    TapSighashHash, TapTweakHash, TaprootBuilder, TaprootMerkleBranch,
+    ControlBlock, FutureLeafVersion, LeafVersion, ScriptLeaf, TapBranchHash,
+    TapLeafHash, TapSighashHash, TapTweakHash, TaprootBuilder,
+    TaprootMerkleBranch,
 };
 use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
@@ -539,6 +540,20 @@ impl StrictDecode for ControlBlock {
     }
 }
 
+impl StrictEncode for ScriptLeaf {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.script(), self.leaf_version()))
+    }
+}
+
+/* TODO: Uncomment once ScriptLeaf::new will become public
+impl StrictDecode for ScriptLeaf {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(ScriptLeaf::new())
+    }
+}
+ */
+
 impl StrictEncode for bitcoin::Network {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -715,7 +730,10 @@ impl StrictEncode for TapTree {
                 Script::strict_encode(self, e)
             }
         }
-        self.iter().collect::<Vec<_>>().strict_encode(e)
+        self.script_leaves()
+            .cloned()
+            .collect::<Vec<_>>()
+            .strict_encode(e)
     }
 }
 
@@ -727,7 +745,7 @@ impl StrictDecode for TapTree {
                 builder.add_leaf(depth, script)
             })
             .map_err(|err| Error::DataIntegrityError(err.to_string()))?;
-        TapTree::from_inner(builder)
+        TapTree::from_builder(builder)
             .map_err(|_| Error::DataIntegrityError(s!("incomplete tree")))
     }
 }
