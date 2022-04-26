@@ -15,18 +15,19 @@
 use std::io;
 use std::io::{Read, Write};
 
-use bitcoin::psbt::{self, PsbtSigHashType, TapTree};
+use bitcoin::psbt::{self, PsbtSighashType, TapTree};
 use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::taproot::{
-    ControlBlock, FutureLeafVersion, LeafVersion, TapBranchHash, TapLeafHash,
-    TapSighashHash, TapTweakHash, TaprootBuilder, TaprootMerkleBranch,
+    ControlBlock, FutureLeafVersion, LeafVersion, ScriptLeaf, TapBranchHash,
+    TapLeafHash, TapSighashHash, TapTweakHash, TaprootBuilder,
+    TaprootMerkleBranch,
 };
 use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
-    EcdsaSigHashType, KeyPair, OutPoint, PubkeyHash, SchnorrSig,
-    SchnorrSigHashType, Script, ScriptHash, SigHash, Transaction, TxIn, TxOut,
+    EcdsaSighashType, KeyPair, OutPoint, PubkeyHash, SchnorrSig,
+    SchnorrSighashType, Script, ScriptHash, Sighash, Transaction, TxIn, TxOut,
     Txid, WPubkeyHash, WScriptHash, Witness, Wtxid, XOnlyPublicKey,
     XpubIdentifier,
 };
@@ -58,7 +59,7 @@ impl Strategy for ScriptHash {
 impl Strategy for WScriptHash {
     type Strategy = strategies::HashFixedBytes;
 }
-impl Strategy for SigHash {
+impl Strategy for Sighash {
     type Strategy = strategies::HashFixedBytes;
 }
 impl Strategy for TapBranchHash {
@@ -293,46 +294,46 @@ impl StrictDecode for schnorr::Signature {
     }
 }
 
-impl StrictEncode for PsbtSigHashType {
+impl StrictEncode for PsbtSighashType {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
         self.to_u32().strict_encode(e)
     }
 }
 
-impl StrictDecode for PsbtSigHashType {
+impl StrictDecode for PsbtSighashType {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
-        u32::strict_decode(d).map(PsbtSigHashType::from_u32)
+        u32::strict_decode(d).map(PsbtSighashType::from_u32)
     }
 }
 
-impl StrictEncode for EcdsaSigHashType {
+impl StrictEncode for EcdsaSighashType {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
         self.to_u32().strict_encode(e)
     }
 }
 
-impl StrictDecode for EcdsaSigHashType {
+impl StrictDecode for EcdsaSighashType {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
-        Ok(EcdsaSigHashType::from_consensus(u32::strict_decode(d)?))
+        Ok(EcdsaSighashType::from_consensus(u32::strict_decode(d)?))
     }
 }
 
-impl StrictEncode for SchnorrSigHashType {
+impl StrictEncode for SchnorrSighashType {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
         (*self as u8).strict_encode(e)
     }
 }
 
-impl StrictDecode for SchnorrSigHashType {
+impl StrictDecode for SchnorrSighashType {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
-        SchnorrSigHashType::from_u8(u8::strict_decode(d)?).map_err(|_| {
-            Error::DataIntegrityError(s!("invalid BIP431 SigHashType value"))
+        SchnorrSighashType::from_u8(u8::strict_decode(d)?).map_err(|_| {
+            Error::DataIntegrityError(s!("invalid BIP431 SighashType value"))
         })
     }
 }
@@ -539,6 +540,20 @@ impl StrictDecode for ControlBlock {
     }
 }
 
+impl StrictEncode for ScriptLeaf {
+    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(strict_encode_list!(e; self.script(), self.leaf_version()))
+    }
+}
+
+/* TODO: Uncomment once ScriptLeaf::new will become public
+impl StrictDecode for ScriptLeaf {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
+        Ok(ScriptLeaf::new())
+    }
+}
+ */
+
 impl StrictEncode for bitcoin::Network {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -715,7 +730,10 @@ impl StrictEncode for TapTree {
                 Script::strict_encode(self, e)
             }
         }
-        self.iter().collect::<Vec<_>>().strict_encode(e)
+        self.script_leaves()
+            .cloned()
+            .collect::<Vec<_>>()
+            .strict_encode(e)
     }
 }
 
@@ -724,10 +742,10 @@ impl StrictDecode for TapTree {
         let builder = Vec::<(u8, Script)>::strict_decode(d)?
             .into_iter()
             .try_fold(TaprootBuilder::new(), |builder, (depth, script)| {
-                builder.add_leaf(depth as usize, script)
+                builder.add_leaf(depth, script)
             })
             .map_err(|err| Error::DataIntegrityError(err.to_string()))?;
-        TapTree::from_inner(builder)
+        TapTree::from_builder(builder)
             .map_err(|_| Error::DataIntegrityError(s!("incomplete tree")))
     }
 }
@@ -825,7 +843,7 @@ pub(crate) mod test {
         )
         .unwrap();
         test_encoding_roundtrip(
-            &SigHash::from_slice(&HASH256_BYTES).unwrap(),
+            &Sighash::from_slice(&HASH256_BYTES).unwrap(),
             HASH256_BYTES,
         )
         .unwrap();
