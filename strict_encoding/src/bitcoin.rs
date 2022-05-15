@@ -723,6 +723,10 @@ impl StrictDecode for psbt::raw::ProprietaryKey {
     }
 }
 
+impl Strategy for psbt::PartiallySignedTransaction {
+    type Strategy = strategies::BitcoinConsensus;
+}
+
 impl StrictEncode for TapTree {
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
         impl StrictEncode for &Script {
