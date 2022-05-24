@@ -31,10 +31,6 @@
 //! standardizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in a wrong way.
 
-#[cfg(all(test, feature = "async"))]
-#[macro_use]
-extern crate async_trait;
-
 pub extern crate commit_verify;
 pub extern crate single_use_seals;
 pub extern crate strict_encoding;

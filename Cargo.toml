@@ -1,6 +1,6 @@
 [package]
 name = "client_side_validation"
-version = "0.7.0-alpha.2"
+version = "0.7.0-alpha.3"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Client-side validation foundation library"
