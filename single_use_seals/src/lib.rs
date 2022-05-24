@@ -131,7 +131,7 @@ pub trait SealProtocol<Seal> {
     type Witness;
 
     /// Message type that is supported by the current single-use-seal
-    type Message: AsRef<[u8]>;
+    type Message;
 
     /// Publication id that may be used for referencing publication of
     /// witness data in the medium. By default set `()`, so [`SealProtocol`]
@@ -214,7 +214,7 @@ where
     type Witness: Sync + Send;
 
     /// Message type that is supported by the current single-use-seal
-    type Message: AsRef<[u8]>;
+    type Message;
 
     /// Publication id that may be used for referencing publication of
     /// witness data in the medium. By default set `()`, so
