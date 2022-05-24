@@ -17,7 +17,6 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 use std::ops::AddAssign;
 
-use single_use_seals::SingleUseSeal;
 use strict_encoding::{StrictDecode, StrictEncode};
 
 /// Result of client-side validation operation
@@ -63,10 +62,10 @@ pub trait ValidationLog:
 pub trait SealIssue: ValidationLog + std::error::Error {
     /// Type defining single-use-seals used by the client-side-validated data
     /// and the seal resolver
-    type SingleUseSeal: SingleUseSeal;
+    type Seal;
 
     /// Method returning single-use-seal specific to the reported issue
-    fn seal(&self) -> &Self::SingleUseSeal;
+    fn seal(&self) -> &Self::Seal;
 }
 
 /// Validation failures marker trait indicating that the data had not passed
@@ -250,7 +249,7 @@ where
     pub fn resolve_seal_issues<Resolver>(&mut self, _resolver: &mut Resolver)
     where
         Resolver: SealResolver<
-            <R::SealIssue as SealIssue>::SingleUseSeal,
+            <R::SealIssue as SealIssue>::Seal,
             Error = R::SealIssue,
         >,
     {
@@ -305,7 +304,7 @@ where
     ) -> Status<Self::ValidationReport>
     where
         Resolver: SealResolver<
-            <<<Self as ClientData>::ValidationReport as ValidationReport>::SealIssue as SealIssue>::SingleUseSeal,
+            <<<Self as ClientData>::ValidationReport as ValidationReport>::SealIssue as SealIssue>::Seal,
             Error = <<Self as ClientData>::ValidationReport as ValidationReport>::SealIssue,
         >,
     {
@@ -335,7 +334,7 @@ pub trait ClientData {
     /// [`Status`] object.
     ///
     /// This type defines also a type of single-use-seals via
-    /// [`ValidationReport::SealIssue`] - [`SealIssue::SingleUseSeal`].
+    /// [`ValidationReport::SealIssue`]`<Seal>`.
     type ValidationReport: ValidationReport;
 
     /// Method returning single-use-seal reference which corresponds to the
@@ -345,7 +344,7 @@ pub trait ClientData {
     fn single_use_seal(
         &self,
     ) -> Option<
-        &<<Self::ValidationReport as ValidationReport>::SealIssue as SealIssue>::SingleUseSeal,
+        &<<Self::ValidationReport as ValidationReport>::SealIssue as SealIssue>::Seal,
     >;
 
     /// Validates internal consistency of the current client-side-validated data
@@ -374,11 +373,11 @@ pub trait ClientData {
 /// and it does not require to produce a deterministic result for the same
 /// given data piece and context: the seal resolver may depend on previous
 /// operation history and depend on type and other external parameters.
-pub trait SealResolver<Seal: SingleUseSeal> {
+pub trait SealResolver<Seal> {
     /// Error type returned by [`SealResolver::resolve_trust`], which should
     /// cover both errors in accessing single-use-seal medium (like network
     /// connectivity) or evidences of the facts the seal was not (yet) closed.
-    type Error: SealIssue<SingleUseSeal = Seal>;
+    type Error: SealIssue<Seal = Seal>;
 
     /// Resolves trust to the provided single-use-seal.
     ///
@@ -396,10 +395,10 @@ mod test {
     //! of an array of data items, each of which has a name bound to a certain
     //! bitcoin single-use-seal.
 
+    use single_use_seals::SealStatus;
+
     use super::*;
-    use crate::single_use_seals::SealMedium;
-    #[cfg(feature = "async")]
-    use crate::single_use_seals::SealMediumAsync;
+    use crate::single_use_seals::SealProtocol;
 
     #[test]
     fn test() {
@@ -415,43 +414,28 @@ mod test {
         )]
         struct Seal {}
 
-        #[cfg_attr(feature = "async", async_trait)]
-        impl SingleUseSeal for Seal {
+        struct Protocol {}
+
+        impl SealProtocol<Seal> for Protocol {
             type Witness = ();
             type Message = Vec<u8>;
-            type Definition = Self;
+            type PublicationId = ();
             type Error = Issue;
-
-            fn close(
-                &self,
-                _over: &Self::Message,
-            ) -> Result<Self::Witness, Self::Error> {
-                Ok(())
-            }
 
             fn verify(
                 &self,
+                _seal: &Seal,
                 _msg: &Self::Message,
                 _witness: &Self::Witness,
-                _medium: &impl SealMedium<Self>,
-            ) -> Result<bool, Self::Error>
-            where
-                Self: Sized,
-            {
+            ) -> Result<bool, Self::Error> {
                 Ok(true)
             }
 
-            #[cfg(feature = "async")]
-            async fn verify_async(
+            fn get_seal_status(
                 &self,
-                _msg: &Self::Message,
-                _witness: &Self::Witness,
-                _medium: &impl SealMediumAsync<Self>,
-            ) -> Result<bool, Self::Error>
-            where
-                Self: Sized + Sync + Send,
-            {
-                panic!()
+                _seal: &Seal,
+            ) -> Result<SealStatus, Self::Error> {
+                Ok(SealStatus::Undefined)
             }
         }
 
@@ -474,9 +458,9 @@ mod test {
         impl ValidationFailure for Issue {}
 
         impl SealIssue for Issue {
-            type SingleUseSeal = Seal;
+            type Seal = Seal;
 
-            fn seal(&self) -> &Self::SingleUseSeal { &self.seal }
+            fn seal(&self) -> &Self::Seal { &self.seal }
         }
 
         impl ValidationReport for Report {
