@@ -395,7 +395,7 @@ mod test {
     //! of an array of data items, each of which has a name bound to a certain
     //! bitcoin single-use-seal.
 
-    use single_use_seals::SealStatus;
+    use single_use_seals::{SealStatus, SealVerify};
 
     use super::*;
     use crate::single_use_seals::SealProtocol;
@@ -422,6 +422,15 @@ mod test {
             type PublicationId = ();
             type Error = Issue;
 
+            fn get_seal_status(
+                &self,
+                _seal: &Seal,
+            ) -> Result<SealStatus, Self::Error> {
+                Ok(SealStatus::Undefined)
+            }
+        }
+
+        impl SealVerify<'_, Seal> for Protocol {
             fn verify(
                 &self,
                 _seal: &Seal,
@@ -429,13 +438,6 @@ mod test {
                 _witness: &Self::Witness,
             ) -> Result<bool, Self::Error> {
                 Ok(true)
-            }
-
-            fn get_seal_status(
-                &self,
-                _seal: &Seal,
-            ) -> Result<SealStatus, Self::Error> {
-                Ok(SealStatus::Undefined)
             }
         }
 
