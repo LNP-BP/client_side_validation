@@ -34,7 +34,7 @@ where
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
 pub trait EmbedCommitProof<Msg, Container, Protocol>
 where
-    Self: Sized + Eq,
+    Self: Sized + VerifyEq,
     Container: EmbedCommitVerify<Msg, Protocol>,
     Msg: CommitEncode,
     Protocol: CommitmentProtocol,
@@ -261,22 +261,24 @@ pub mod test_helpers {
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
         Source: ConvolveCommitVerify<Msg, [u8; 32], TestProtocol>
             + VerifyEq
+            + Eq
             + Hash
             + Debug
             + Clone,
-        Source::Commitment: Clone + Debug + Hash + VerifyEq,
-        [u8; 32]: ConvolveCommitProof<Msg, Source, TestProtocol>,
+        Source::Commitment: Clone + Debug + Hash + VerifyEq + Eq,
+        [u8; 32]:
+            ConvolveCommitProof<Msg, Source, TestProtocol, Suppl = [u8; 32]>,
     {
         messages.iter().fold(
             HashSet::<Source::Commitment>::with_capacity(messages.len()),
             |mut acc, msg| {
-                let commitment =
+                let (commitment, _) =
                     container.convolve_commit(&SUPPLEMENT, msg).unwrap();
 
                 // Commitments MUST be deterministic: the same message must
                 // always produce the same commitment
                 (1..10).for_each(|_| {
-                    let commitment_prime =
+                    let (commitment_prime, _) =
                         container.convolve_commit(&SUPPLEMENT, msg).unwrap();
                     assert_eq!(commitment_prime, commitment);
                 });
@@ -374,12 +376,12 @@ mod test {
             &self,
             supplement: &[u8; 32],
             msg: &T,
-        ) -> Result<Self::Commitment, Self::CommitError> {
+        ) -> Result<(Self::Commitment, [u8; 32]), Self::CommitError> {
             let mut engine = sha256::Hash::engine();
             engine.input(TestProtocol::HASH_TAG_MIDSTATE.unwrap().as_ref());
             engine.input(supplement);
             engine.input(msg.as_ref());
-            Ok(sha256::Hash::from_engine(engine))
+            Ok((sha256::Hash::from_engine(engine), *supplement))
         }
     }
 
@@ -387,9 +389,13 @@ mod test {
     where
         T: AsRef<[u8]> + Clone + CommitEncode,
     {
+        type Suppl = [u8; 32];
+
         fn restore_original(&self, _: &sha256::Hash) -> DummyVec {
             DummyVec(vec![])
         }
+
+        fn extract_supplement(&self) -> &Self::Suppl { self }
     }
 
     #[test]

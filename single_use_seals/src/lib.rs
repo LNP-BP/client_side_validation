@@ -220,7 +220,7 @@ where
                 return Ok(false);
             }
         }
-        return Ok(true);
+        Ok(true)
     }
 }
 
@@ -324,8 +324,9 @@ where
     ) -> Result<bool, Self::Error>;
 
     /// Performs batch verification of the seals. Default implementation
-    /// iterates through the seals and calls [`Self::verify`] for each of them,
-    /// returning `false` on first failure (not verifying the rest of seals).
+    /// iterates through the seals and calls [`Self::verify_async`] for each of
+    /// them, returning `false` on first failure (not verifying the rest of
+    /// seals).
     async fn verify_async_batch<I>(
         &self,
         seals: I,
