@@ -26,8 +26,8 @@ where
     Protocol: CommitmentProtocol,
 {
     /// Restores the original source before the commitment from the supplement
-    /// (the `self`).
-    fn restore_original(&self) -> Source;
+    /// (the `self`) and commitment.
+    fn restore_original(&self, commitment: &Source::Commitment) -> Source;
 
     /// Verifies commitment using proof (the `self`) against the message.
     ///
@@ -59,7 +59,7 @@ where
     where
         Self: VerifyEq,
     {
-        let original = self.restore_original();
+        let original = self.restore_original(&commitment);
         let commitment_prime = original.convolve_commit(self, msg)?;
         Ok(commitment.verify_eq(&commitment_prime))
     }

@@ -387,7 +387,9 @@ mod test {
     where
         T: AsRef<[u8]> + Clone + CommitEncode,
     {
-        fn restore_original(&self) -> DummyVec { DummyVec(vec![]) }
+        fn restore_original(&self, _: &sha256::Hash) -> DummyVec {
+            DummyVec(vec![])
+        }
     }
 
     #[test]
