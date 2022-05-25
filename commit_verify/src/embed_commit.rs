@@ -181,11 +181,69 @@ where
     }
 }
 
+/// Supplement type used by [`ConvolveCommitVerify`] protocol.
+pub trait ConvolveCommitProof<Msg, Source, Protocol>
+where
+    Self: Sized + Eq,
+    Source: ConvolveCommitVerify<Msg, Self, Protocol>,
+    Msg: CommitEncode,
+    Protocol: CommitmentProtocol,
+{
+    /// Restores the original source before the commitment from the supplement
+    /// (the `self`).
+    fn restore_original(&self) -> Source;
+
+    /// Verifies commitment using proof (the `self`) against the message.
+    ///
+    /// Default implementation repeats [`Self::convolve_commit`] procedure,
+    /// restoring the original value out of proof data, checking that the
+    /// resulting commitment matches the provided one in the `commitment`
+    /// parameter.
+    ///
+    /// Errors if the commitment can't be created, i.e. the
+    /// [`Self::convolve_commit`] procedure for the original, restored
+    /// from the proof, can't be performed. This means that the verification has
+    /// failed and the commitment and/or the proof are invalid. The function
+    /// returns error in this case (ano not simply `false`) since this
+    /// usually means the software error in managing container and proof
+    /// data, or selection of a different commitment protocol parameters
+    /// comparing to the ones used during commitment creation. In all these
+    /// cases we'd like to provide devs with more information for debugging.
+    ///
+    /// The proper way of using the function in a well-debugged software should
+    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
+    /// However if the proofs are provided by some sort of user/network input
+    /// from an untrusted party, a proper form would be
+    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
+    fn verify(
+        &self,
+        msg: &Msg,
+        commitment: Source::Commitment,
+    ) -> Result<bool, Source::CommitError>
+    where
+        Self: VerifyEq,
+    {
+        let original = self.restore_original();
+        let commitment_prime = original.convolve_commit(self, msg)?;
+        Ok(commitment.verify_eq(&commitment_prime))
+    }
+}
+
 /// Trait for *convolve-commit-verify scheme*, where some data structure (named
 /// *container*) may commit to existing *message* using *supplement* and
-/// producing final *commitment* value. The commitment can't be use to restore
+/// producing final *commitment* value. The commitment can't be used to restore
 /// original message, however the fact of the commitment may be
-/// deterministically *verified* when the message and the proof are *revealed*.
+/// deterministically *verified* when the message and the supplement (now acting
+/// as a *proof*) proof are *revealed*.
+///
+/// In other words, *convolve-commit* takes an object (`self`), a *supplement*,
+/// convolves them in certain way together and than uses the result to produce a
+/// commitment to a *message*:
+/// `self + supplement -> internal_repr; internal_repr + msg -> commitment`.
+/// Later on, supplement becomes a proof, and a verifier presented with a
+/// message and the proof may do the commitment verification in the following
+/// way:
+/// `extract( -> `
 ///
 /// To use *convolve-commit-verify scheme* one needs to implement this trait for
 /// a data structure acting as a container for a specific commitment under
@@ -196,7 +254,7 @@ where
 ///
 /// The difference between *convolve-commit-verify* and *embed-commit-verify*
 /// schemes is in the fact that unlike embed-commit, convolve-commit does not
-/// produces a proof external to the commitment, but instead requires additional
+/// produce a proof external to the commitment, but instead requires additional
 /// immutable supplement information which is not a part of the container
 /// converted into the commitment. As an example one may consider procedures of
 /// homomorphic public key tweaking with the hash of the message, which is
@@ -253,6 +311,7 @@ pub trait ConvolveCommitVerify<Msg, Suppl, Protocol>
 where
     Self: Sized,
     Msg: CommitEncode,
+    Suppl: ConvolveCommitProof<Msg, Self, Protocol>,
     Protocol: CommitmentProtocol,
 {
     /// Commitment type produced as a result of [`Self::convolve_commit`]
@@ -275,41 +334,6 @@ where
         supplement: &Suppl,
         msg: &Msg,
     ) -> Result<Self::Commitment, Self::CommitError>;
-
-    /// Verifies commitment with commitment proof against the message.
-    ///
-    /// Default implementation repeats [`Self::convolve_commit`] procedure
-    /// checking that the resulting commitment matches the provided one as
-    /// the `commitment` parameter.
-    ///
-    /// Errors if the provided commitment can't be created, i.e. the
-    /// [`Self::convolve_commit`] procedure for the original container, restored
-    /// from the proof and current container, can't be performed. This means
-    /// that the verification has failed and the commitment and proof are
-    /// invalid. The function returns error in this case (ano not simply
-    /// `false`) since this usually means the software error in managing
-    /// container and proof data, or selection of a different commitment
-    /// protocol parameters comparing to the ones used during commitment
-    /// creation. In all these cases we'd like to provide devs with more
-    /// information for debugging.
-    ///
-    /// The proper way of using the function in a well-debugged software should
-    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
-    /// However if the proofs are provided by some sort of user/network input
-    /// from an untrusted party, a proper form would be
-    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
-    fn verify(
-        &self,
-        supplement: &Suppl,
-        msg: &Msg,
-        commitment: Self::Commitment,
-    ) -> Result<bool, Self::CommitError>
-    where
-        Self::Commitment: VerifyEq,
-    {
-        let commitment_prime = self.convolve_commit(supplement, msg)?;
-        Ok(commitment_prime.verify_eq(&commitment))
-    }
 
     /// Phantom method used to add `Protocol` generic parameter to the trait.
     ///
@@ -397,20 +421,21 @@ pub mod test_helpers {
 
     /// Runs round-trip of commitment-embed-verify for a given set of messages
     /// and provided container.
-    pub fn convolve_commit_verify_suite<Msg, Container>(
+    pub fn convolve_commit_verify_suite<Msg, Source>(
         messages: Vec<Msg>,
-        container: Container,
+        container: Source,
     ) where
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
-        Container: ConvolveCommitVerify<Msg, [u8; 32], TestProtocol>
+        Source: ConvolveCommitVerify<Msg, [u8; 32], TestProtocol>
             + VerifyEq
             + Hash
             + Debug
             + Clone,
-        Container::Commitment: Clone + Debug + Hash + VerifyEq,
+        Source::Commitment: Clone + Debug + Hash + VerifyEq,
+        [u8; 32]: ConvolveCommitProof<Msg, Source, TestProtocol>,
     {
         messages.iter().fold(
-            HashSet::<Container::Commitment>::with_capacity(messages.len()),
+            HashSet::<Source::Commitment>::with_capacity(messages.len()),
             |mut acc, msg| {
                 let commitment =
                     container.convolve_commit(&SUPPLEMENT, msg).unwrap();
@@ -424,19 +449,13 @@ pub mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(container
-                    .clone()
-                    .verify(&SUPPLEMENT, msg, commitment.clone())
-                    .unwrap());
+                assert!(SUPPLEMENT.verify(msg, commitment.clone()).unwrap());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
                     assert_eq!(
-                        container
-                            .clone()
-                            .verify(&SUPPLEMENT, m, commitment.clone())
-                            .unwrap(),
+                        SUPPLEMENT.verify(m, commitment.clone()).unwrap(),
                         m == msg
                     );
                 });
@@ -444,9 +463,8 @@ pub mod test_helpers {
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!container
-                        .clone()
-                        .verify(&SUPPLEMENT, msg, commitment.clone())
+                    assert!(!SUPPLEMENT
+                        .verify(msg, commitment.clone())
                         .unwrap());
                 });
 
@@ -529,6 +547,13 @@ mod test {
             engine.input(msg.as_ref());
             Ok(sha256::Hash::from_engine(engine))
         }
+    }
+
+    impl<T> ConvolveCommitProof<T, DummyVec, TestProtocol> for [u8; 32]
+    where
+        T: AsRef<[u8]> + Clone + CommitEncode,
+    {
+        fn restore_original(&self) -> DummyVec { DummyVec(vec![]) }
     }
 
     #[test]
