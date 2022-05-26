@@ -160,10 +160,14 @@ pub struct BlocksMismatch;
 
 impl MultiCommitBlock {
     /// Conceals all LNPBP-4 data except specific protocol.
-    pub fn conceal_except(&mut self, protocol_id: ProtocolId) -> usize {
+    pub fn conceal_except(&mut self, protocols: &[ProtocolId]) -> usize {
         self.entropy = None;
         self.commitments.iter_mut().fold(0usize, |mut count, item| {
-            if item.protocol != Some(protocol_id) {
+            if !item
+                .protocol
+                .map(|protocol| protocols.contains(&protocol))
+                .unwrap_or_default()
+            {
                 item.protocol = None;
                 count += 1;
             }
