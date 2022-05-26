@@ -118,7 +118,7 @@ impl MultiCommitItem {
 /// To create commitment use [`TryCommitVerify::try_commit`] method.
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+#[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictEncode, StrictDecode)]
 #[cfg_attr(
     feature = "serde",
@@ -132,6 +132,7 @@ pub struct MultiCommitBlock {
     /// Entropy used for placeholders. May be unknown if the message is not
     /// constructed via [`TryCommitVerify::try_commit`] method but is provided
     /// by a third-party, whishing to conceal that information.
+    #[getter(as_copy)]
     entropy: Option<u64>,
 }
 
