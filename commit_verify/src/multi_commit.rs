@@ -25,6 +25,7 @@
 use std::collections::BTreeMap;
 use std::io;
 
+use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t};
 use strict_encoding::StrictEncode;
@@ -83,6 +84,8 @@ pub enum Error {
     CantFitInMaxSlots,
 }
 
+/// Single item within a multi-message commitment, consisting of optional
+/// protocol information (if known) and the actual single message commitment
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -91,8 +94,6 @@ pub enum Error {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display)]
 #[display("{message}")]
 #[derive(StrictEncode, StrictDecode)]
-/// Single item within a multi-message commitment, consisting of optional
-/// protocol information (if known) and the actual single message commitment
 pub struct MultiCommitItem {
     /// Protocol identifier, which may be hidden or absent for commitment
     /// placeholders
@@ -112,36 +113,26 @@ impl MultiCommitItem {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
-)]
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Debug,
-    Default,
-    StrictEncode,
-    StrictDecode
-)]
 /// Multi-message commitment data according to [LNPBP-4] specification.
 ///
 /// To create commitment use [`TryCommitVerify::try_commit`] method.
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+#[derive(StrictEncode, StrictDecode)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct MultiCommitBlock {
     /// Array of commitment items (see [`MultiCommitItem`])
-    pub commitments: Vec<MultiCommitItem>,
+    commitments: Vec<MultiCommitItem>,
 
     /// Entropy used for placeholders. May be unknown if the message is not
     /// constructed via [`TryCommitVerify::try_commit`] method but is provided
     /// by a third-party, whishing to conceal that information.
-    pub entropy: Option<u64>,
+    entropy: Option<u64>,
 }
 
 // When we commit to `MultiCommitBlock` we do not use `entropy`, since we
@@ -151,6 +142,33 @@ impl CommitEncode for MultiCommitBlock {
         self.commitments
             .strict_encode(e)
             .expect("CommitEncode of Vec<MultiCommitItem> has failed")
+    }
+}
+
+fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
+    let rem =
+        u256::from_le_bytes(protocol_id.into_inner()) % u256::from(len as u64);
+    rem.low_u64() as u16
+}
+
+impl MultiCommitBlock {
+    /// Conceals all LNPBP-4 data except specific protocol.
+    pub fn conceal_except(&mut self, protocol_id: ProtocolId) -> usize {
+        self.entropy = None;
+        self.commitments.iter_mut().fold(0usize, |mut count, item| {
+            if item.protocol != Some(protocol_id) {
+                item.protocol = None;
+                count += 1;
+            }
+            count
+        })
+    }
+
+    /// Verify that the LNPBP-4 structure contains commitment to the given
+    /// message under the given protocol.
+    pub fn verify(&self, protocol_id: ProtocolId, message: Message) -> bool {
+        let pos = protocol_id_pos(protocol_id, self.commitments.len());
+        self.commitments[pos as usize].message == message
     }
 }
 
@@ -166,7 +184,6 @@ impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitBlock {
     type Error = Error;
 
     fn try_commit(source: &MultiSource) -> Result<Self, Error> {
-        use amplify::num::u256;
         use bitcoin_hashes::{Hash, HashEngine};
         use rand::{thread_rng, Rng};
 
@@ -185,10 +202,9 @@ impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitBlock {
 
             let mut ordered = BTreeMap::<usize, (ProtocolId, Message)>::new();
             if source.messages.iter().all(|(protocol, message)| {
-                let rem = u256::from_le_bytes(protocol.into_inner())
-                    % u256::from(n as u64);
+                let pos = protocol_id_pos(*protocol, n);
                 ordered
-                    .insert(rem.low_u64() as usize, (*protocol, *message))
+                    .insert(pos as usize, (*protocol, *message))
                     .is_none()
             }) {
                 break ordered;
