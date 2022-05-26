@@ -89,8 +89,12 @@ where
         sha256t::Hash::from_slice(slice).map(Self::from_inner)
     }
 
-    /// Returns 32-byte slice array representing internal hash data
+    /// Returns a reference to 32-byte slice array representing internal hash
+    /// data
     fn as_slice(&'a self) -> &'a [u8; 32] { self.as_inner().as_inner() }
+
+    /// Converts to a 32-byte slice array representing internal hash data
+    fn to_bytes(&'a self) -> [u8; 32] { *self.as_slice() }
 
     /// Constructs tagged hash from a given hexadecimal string
     fn from_hex(hex: &str) -> Result<Self, hex::Error>
