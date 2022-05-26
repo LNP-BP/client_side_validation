@@ -151,6 +151,13 @@ fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
     rem.low_u64() as u16
 }
 
+/// Error merging two [`MultiCommitBlock`]s.
+#[derive(
+    Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error
+)]
+#[display("LNPBP-4 blocks can't be merged since they commit to different data")]
+pub struct BlocksMismatch;
+
 impl MultiCommitBlock {
     /// Conceals all LNPBP-4 data except specific protocol.
     pub fn conceal_except(&mut self, protocol_id: ProtocolId) -> usize {
@@ -162,6 +169,21 @@ impl MultiCommitBlock {
             }
             count
         })
+    }
+
+    /// Merges two blocks keeping revealed data.
+    pub fn merge(mut self, other: Self) -> Result<Self, BlocksMismatch> {
+        if self.consensus_commit() != other.consensus_commit() {
+            return Err(BlocksMismatch);
+        }
+
+        self.entropy = self.entropy.or(other.entropy);
+
+        self.commitments.iter_mut().zip(other.commitments).for_each(
+            |(item, other)| item.protocol = item.protocol.or(other.protocol),
+        );
+
+        Ok(self)
     }
 
     /// Verify that the LNPBP-4 structure contains commitment to the given
