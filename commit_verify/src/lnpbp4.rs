@@ -94,11 +94,14 @@ pub type MessageMap = BTreeMap<ProtocolId, Message>;
 )]
 #[display(doc_comments)]
 pub enum Error {
-    /// Number of messages ({0}) for LNPBP-4 commitment which exceeds the
+    /// can't create commitment for an empty message list and zero tree depth.
+    Empty,
+
+    /// number of messages ({0}) for LNPBP-4 commitment which exceeds the
     /// protocol limit of 2^16
     TooManyMessages(usize),
 
-    /// The provided number of messages can't fit LNPBP-4 commitment size
+    /// the provided number of messages can't fit LNPBP-4 commitment size
     /// limits for a given set of protocol ids.
     CantFitInMaxSlots,
 }
@@ -135,6 +138,10 @@ mod commit {
         type Error = Error;
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
+            if source.min_depth == 0 && source.messages.is_empty() {
+                return Err(Error::Empty);
+            }
+
             let entropy = thread_rng().next_u64();
 
             let mut tree = MerkleTree {
