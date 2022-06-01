@@ -46,7 +46,7 @@ use std::collections::BTreeMap;
 
 use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
-use bitcoin_hashes::sha256;
+use bitcoin_hashes::{sha256, Hash, HashEngine};
 
 use crate::merkle::MerkleNode;
 
@@ -65,6 +65,27 @@ pub type ProtocolId = Slice32;
 /// may have a different tag, we can't use [`sha256t`] type directly and use its
 /// [`sha256::Hash`] equivalent.
 pub type Message = sha256::Hash;
+
+// "LNPBP4:entropy"
+const MIDSTATE_ENTROPY: [u8; 32] = [
+    0xF4, 0x0D, 0x86, 0x94, 0x9F, 0xFF, 0xAD, 0xEE, 0x19, 0xEA, 0x50, 0x20,
+    0x60, 0xAB, 0x6B, 0xAD, 0x11, 0x61, 0xB2, 0x35, 0x83, 0xD3, 0x78, 0x18,
+    0x52, 0x0D, 0xD4, 0xD1, 0xD8, 0x88, 0x1E, 0x61,
+];
+
+// "LNPBP4:leaf"
+const MIDSTATE_LEAF: [u8; 32] = [
+    0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
+    0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
+    0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
+];
+
+// "LNPBP4:node"
+const MIDSTATE_NODE: [u8; 32] = [
+    0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
+    0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
+    0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
+];
 
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -196,14 +217,14 @@ impl MerkleTree {
 }
 
 /// LNPBP-4 Merkle tree node.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(StrictEncode, StrictDecode)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-pub enum TreeNode {
+enum TreeNode {
     /// A node of the tree with concealed leaf or tree branch information.
     ConcealedNode {
         /// Depth of the node.
@@ -220,6 +241,47 @@ pub enum TreeNode {
     },
 }
 
+impl TreeNode {
+    fn with(
+        hash1: MerkleNode,
+        hash2: MerkleNode,
+        tree_depth: u8,
+        node_depth: u8,
+        offset: u16,
+    ) -> TreeNode {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_NODE);
+        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
+        engine.input(&tree_depth.to_le_bytes());
+        engine.input(&node_depth.to_le_bytes());
+        engine.input(&offset.to_le_bytes());
+        engine.input(&hash1[..]);
+        engine.input(&hash2[..]);
+        let hash = MerkleNode::from_engine(engine);
+        TreeNode::ConcealedNode {
+            depth: node_depth,
+            hash,
+        }
+    }
+
+    pub fn merkle_node_with(&self, depth: u8) -> MerkleNode {
+        match self {
+            TreeNode::ConcealedNode { hash, .. } => *hash,
+            TreeNode::CommitmentLeaf {
+                protocol_id,
+                message,
+            } => {
+                let midstate = sha256::Midstate::from_inner(MIDSTATE_LEAF);
+                let mut engine =
+                    sha256::HashEngine::from_midstate(midstate, 64);
+                engine.input(&depth.to_le_bytes());
+                engine.input(&protocol_id[..]);
+                engine.input(&message[..]);
+                MerkleNode::from_engine(engine)
+            }
+        }
+    }
+}
+
 /// Partially-concealed merkle tree data.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictEncode, StrictDecode)]
@@ -234,6 +296,7 @@ pub struct MerkleBlock {
     depth: u8,
 
     /// Tree cross-section.
+    #[getter(skip)]
     cross_section: Vec<TreeNode>,
 
     /// Entropy used for placeholders. May be unknown if the message is not
@@ -282,6 +345,94 @@ impl From<&MerkleTree> for MerkleBlock {
 
 impl From<MerkleTree> for MerkleBlock {
     fn from(tree: MerkleTree) -> Self { MerkleBlock::from(&tree) }
+}
+
+/// commitment under protocol id {0} is absent from the known part of a given
+/// LNPBP-4 Merkle block.
+#[derive(
+    Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error
+)]
+#[display(doc_comments)]
+pub struct LeafNotKnown(ProtocolId);
+
+impl MerkleBlock {
+    /// Conceals all commitments in the block except for the commitment under
+    /// given `protocol_id`. Also removes information about the entropy value
+    /// used.
+    ///
+    /// # Returns
+    ///
+    /// Number of concealed nodes.
+    ///
+    /// # Error
+    ///
+    /// If leaf with the given `protocol_id` is not found (absent or already
+    /// concealed), errors with [`LeafNotKnown`] error.
+    pub fn conceal_except(
+        &mut self,
+        protocol_id: ProtocolId,
+    ) -> Result<usize, LeafNotKnown> {
+        let mut count = 0usize;
+        let mut found = false;
+
+        self.entropy = None;
+
+        // Conceal all leafs except of one
+        for node in &mut self.cross_section {
+            match node {
+                TreeNode::ConcealedNode { .. } => {
+                    // Do nothing
+                }
+                TreeNode::CommitmentLeaf { protocol_id: p, .. }
+                    if *p == protocol_id =>
+                {
+                    found = true;
+                }
+                TreeNode::CommitmentLeaf { .. } => {
+                    count += 1;
+                    *node = TreeNode::ConcealedNode {
+                        depth: self.depth,
+                        hash: node.merkle_node_with(self.depth),
+                    };
+                }
+            }
+        }
+
+        if !found {
+            return Err(LeafNotKnown(protocol_id));
+        }
+
+        loop {
+            assert!(!self.cross_section.is_empty());
+            let len = self.cross_section.len() - 1;
+            for pos in 0..len {
+                let (n1, n2) =
+                    (self.cross_section[pos], self.cross_section[pos + 1]);
+                match (n1, n2) {
+                    (
+                        TreeNode::ConcealedNode {
+                            depth: depth1,
+                            hash: hash1,
+                        },
+                        TreeNode::ConcealedNode {
+                            depth: depth2,
+                            hash: hash2,
+                        },
+                    ) if depth1 == depth2 => {
+                        self.cross_section[pos] = TreeNode::with(
+                            hash1, hash2, self.depth, depth1, pos as u16,
+                        );
+                        self.cross_section.remove(pos + 1);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            break;
+        }
+
+        Ok(count)
+    }
 }
 
 /// A proof of the merkle commitment.
