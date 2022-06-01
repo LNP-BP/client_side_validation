@@ -245,16 +245,36 @@ pub struct MerkleBlock {
 
 impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
+        let map = tree
+            .ordered_map()
+            .expect("internal MerkleTree inconsistency");
+
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
+
+        let cross_section = (0..=tree.width())
+            .into_iter()
+            .map(|pos| {
+                map.get(&pos)
+                    .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
+                        protocol_id: *protocol_id,
+                        message: *message,
+                    })
+                    .unwrap_or_else(|| {
+                        let mut engine =
+                            sha256::HashEngine::from_midstate(midstate, 64);
+                        engine.input(&tree.entropy.to_le_bytes());
+                        engine.input(&(pos as u16).to_le_bytes());
+                        TreeNode::ConcealedNode {
+                            depth: tree.depth,
+                            hash: MerkleNode::from_engine(engine),
+                        }
+                    })
+            })
+            .collect();
+
         MerkleBlock {
             depth: tree.depth,
-            cross_section: tree
-                .messages
-                .iter()
-                .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
-                    protocol_id: *protocol_id,
-                    message: *message,
-                })
-                .collect(),
+            cross_section,
             entropy: Some(tree.entropy),
         }
     }
