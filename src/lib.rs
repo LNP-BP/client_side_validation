@@ -41,5 +41,5 @@ pub use api::{
     ClientData, ClientSideValidate, SealIssue, SealResolver, Status,
     ValidationFailure, ValidationLog, ValidationReport, Validity,
 };
-pub use commit_verify::{commit_encode, merkle, multi_commit, tagged_hash};
+pub use commit_verify::{commit_encode, merkle, lnpbp4, tagged_hash};
 pub use strict_encoding::derive::{StrictDecode, StrictEncode};

@@ -41,7 +41,7 @@ pub mod commit_verify;
 pub mod convolve_commit;
 pub mod embed_commit;
 pub mod merkle;
-pub mod multi_commit;
+pub mod lnpbp4;
 pub mod tagged_hash;
 
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
@@ -49,7 +49,6 @@ pub use embed_commit::{EmbedCommitProof, EmbedCommitVerify};
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
-pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
 pub use tagged_hash::TaggedHash;
 
 pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
