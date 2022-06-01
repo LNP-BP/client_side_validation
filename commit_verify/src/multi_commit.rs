@@ -244,6 +244,7 @@ impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitBlock {
             let mut rng = thread_rng();
             rng.gen::<u64>()
         };
+
         let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
         let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
         engine.input(&entropy.to_le_bytes());

@@ -43,11 +43,15 @@
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::BTreeMap;
+use amplify::num::u256;
 
-use amplify::Slice32;
+use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::sha256;
 
 use crate::merkle::MerkleNode;
+
+/// Maximal depth of LNPBP-4 commitment tree.
+pub const MAX_TREE_DEPTH: u8 = 16;
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
 /// procedure.
@@ -65,8 +69,8 @@ pub type Message = sha256::Hash;
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct MultiSource {
-    /// Minimal length of the created LNPBP-4 commitment buffer
-    pub min_length: u16,
+    /// Minimal depth of the created LNPBP-4 commitment tree
+    pub min_depth: u8,
     /// Map of the messages by their respective protocol ids
     pub messages: MessageMap,
 }
@@ -74,7 +78,7 @@ pub struct MultiSource {
 impl Default for MultiSource {
     fn default() -> Self {
         MultiSource {
-            min_length: 3,
+            min_depth: 3,
             messages: Default::default(),
         }
     }
@@ -82,6 +86,22 @@ impl Default for MultiSource {
 
 /// Map from protocol ids to commitment messages.
 pub type MessageMap = BTreeMap<ProtocolId, Message>;
+
+/// Errors generated during multi-message commitment process by
+/// [`MerkleTree::try_commit`]
+#[derive(
+Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, Debug, Display
+)]
+#[display(doc_comments)]
+pub enum Error {
+    /// Number of messages ({0}) for LNPBP-4 commitment which exceeds the
+    /// protocol limit of 2^16
+    TooManyMessages(usize),
+
+    /// The provided number of messages can't fit LNPBP-4 commitment size
+    /// limits for a given set of protocol ids.
+    CantFitInMaxSlots,
+}
 
 /// Complete information about LNPBP-4 merkle tree.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
@@ -92,19 +112,82 @@ pub type MessageMap = BTreeMap<ProtocolId, Message>;
     serde(crate = "serde_crate")
 )]
 pub struct MerkleTree {
-    /// Tree height (up to 16).
+    /// Tree depth (up to 16).
     #[getter(as_copy)]
-    height: u8,
-
-    /// Map of the messages by their respective protocol ids
-    messages: MessageMap,
+    depth: u8,
 
     /// Entropy used for placeholders.
     #[getter(as_copy)]
     entropy: u64,
+
+    /// Map of the messages by their respective protocol ids
+    messages: MessageMap,
 }
 
-impl MerkleTree {}
+#[cfg(feature = "rand")]
+mod commit {
+    use rand::{RngCore, thread_rng};
+    use super::*;
+    use crate::{TryCommitVerify, UntaggedProtocol};
+
+    impl TryCommitVerify<MultiSource, UntaggedProtocol> for MerkleTree {
+        type Error = Error;
+
+        fn try_commit(source: &MultiSource) -> Result<Self, Error> {
+            let entropy = thread_rng().next_u64();
+
+            let mut tree = MerkleTree {
+                depth: source.min_depth,
+                messages: source.messages.clone(),
+                entropy
+            };
+
+            if source.messages.len() > 2usize.pow(MAX_TREE_DEPTH as u32) {
+                return Err(Error::TooManyMessages(source.messages.len()));
+            }
+
+            let mut depth = tree.depth as usize;
+            loop {
+                if depth > MAX_TREE_DEPTH as usize {
+                    return Err(Error::CantFitInMaxSlots);
+                }
+                tree.depth = depth as u8;
+
+                if tree.ordered_map().is_some() {
+                    return Ok(tree)
+                }
+                depth += 1;
+            }
+        }
+    }
+}
+
+fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
+    let rem =
+        u256::from_le_bytes(protocol_id.into_inner()) % u256::from(len as u64);
+    rem.low_u64() as u16
+}
+
+impl MerkleTree {
+    /// Computes the width of the merkle tree.
+    pub fn width(&self) -> usize {
+        2usize.pow(self.depth as u32)
+    }
+
+    fn ordered_map(&self) -> Option<BTreeMap::<usize, (ProtocolId, Message)>> {
+        let mut ordered = BTreeMap::<usize, (ProtocolId, Message)>::new();
+        if self.messages.iter().all(|(protocol, message)| {
+            let pos = protocol_id_pos(*protocol, self.width());
+            ordered
+                .insert(pos as usize, (*protocol, *message))
+                .is_none()
+        }) {
+            Some(ordered)
+        } else {
+            None
+        }
+    }
+}
 
 /// LNPBP-4 Merkle tree node.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -140,9 +223,9 @@ pub enum TreeNode {
     serde(crate = "serde_crate")
 )]
 pub struct MerkleBlock {
-    /// Tree height (up to 16).
+    /// Tree depth (up to 16).
     #[getter(as_copy)]
-    height: u8,
+    depth: u8,
 
     /// Tree cross-section.
     cross_section: Vec<TreeNode>,
@@ -157,6 +240,7 @@ pub struct MerkleBlock {
     entropy: Option<u64>,
 }
 
+/// A proof of the merkle commitment.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictEncode, StrictDecode)]
 #[cfg_attr(
@@ -164,15 +248,10 @@ pub struct MerkleBlock {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-/// A proof of the merkle commitment.
 pub struct MerkleProof {
-    /// Tree height (up to 16).
-    #[getter(as_copy)]
-    height: u8,
-
     /// Position of the leaf in the tree.
     ///
-    /// Used to determine chrality of the node hashing partners on each step of
+    /// Used to determine chirality of the node hashing partners on each step of
     /// the path.
     #[getter(as_copy)]
     pos: u16,
