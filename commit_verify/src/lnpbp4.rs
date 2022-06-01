@@ -43,8 +43,8 @@
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::BTreeMap;
-use amplify::num::u256;
 
+use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::sha256;
 
@@ -90,7 +90,7 @@ pub type MessageMap = BTreeMap<ProtocolId, Message>;
 /// Errors generated during multi-message commitment process by
 /// [`MerkleTree::try_commit`]
 #[derive(
-Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, Debug, Display
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, Debug, Display
 )]
 #[display(doc_comments)]
 pub enum Error {
@@ -126,7 +126,8 @@ pub struct MerkleTree {
 
 #[cfg(feature = "rand")]
 mod commit {
-    use rand::{RngCore, thread_rng};
+    use rand::{thread_rng, RngCore};
+
     use super::*;
     use crate::{TryCommitVerify, UntaggedProtocol};
 
@@ -139,7 +140,7 @@ mod commit {
             let mut tree = MerkleTree {
                 depth: source.min_depth,
                 messages: source.messages.clone(),
-                entropy
+                entropy,
             };
 
             if source.messages.len() > 2usize.pow(MAX_TREE_DEPTH as u32) {
@@ -154,7 +155,7 @@ mod commit {
                 tree.depth = depth as u8;
 
                 if tree.ordered_map().is_some() {
-                    return Ok(tree)
+                    return Ok(tree);
                 }
                 depth += 1;
             }
@@ -170,11 +171,9 @@ fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
 
 impl MerkleTree {
     /// Computes the width of the merkle tree.
-    pub fn width(&self) -> usize {
-        2usize.pow(self.depth as u32)
-    }
+    pub fn width(&self) -> usize { 2usize.pow(self.depth as u32) }
 
-    fn ordered_map(&self) -> Option<BTreeMap::<usize, (ProtocolId, Message)>> {
+    fn ordered_map(&self) -> Option<BTreeMap<usize, (ProtocolId, Message)>> {
         let mut ordered = BTreeMap::<usize, (ProtocolId, Message)>::new();
         if self.messages.iter().all(|(protocol, message)| {
             let pos = protocol_id_pos(*protocol, self.width());
@@ -230,14 +229,32 @@ pub struct MerkleBlock {
     /// Tree cross-section.
     cross_section: Vec<TreeNode>,
 
-    /// Map of the messages by their respective protocol ids
-    known_messages: MessageMap,
-
     /// Entropy used for placeholders. May be unknown if the message is not
     /// constructed via [`TryCommitVerify::try_commit`] method but is provided
     /// by a third-party, whishing to conceal that information.
     #[getter(as_copy)]
     entropy: Option<u64>,
+}
+
+impl From<&MerkleTree> for MerkleBlock {
+    fn from(tree: &MerkleTree) -> Self {
+        MerkleBlock {
+            depth: tree.depth,
+            cross_section: tree
+                .messages
+                .iter()
+                .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
+                    protocol_id: *protocol_id,
+                    message: *message,
+                })
+                .collect(),
+            entropy: Some(tree.entropy),
+        }
+    }
+}
+
+impl From<MerkleTree> for MerkleBlock {
+    fn from(tree: MerkleTree) -> Self { MerkleBlock::from(&tree) }
 }
 
 /// A proof of the merkle commitment.
@@ -251,8 +268,8 @@ pub struct MerkleBlock {
 pub struct MerkleProof {
     /// Position of the leaf in the tree.
     ///
-    /// Used to determine chirality of the node hashing partners on each step of
-    /// the path.
+    /// Used to determine chirality of the node hashing partners on each step
+    /// of the path.
     #[getter(as_copy)]
     pos: u16,
 
