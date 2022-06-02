@@ -497,7 +497,7 @@ impl CommitConceal for MerkleBlock {
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
         let mut concealed = self.clone();
         concealed
-            .conceal_except(&[])
+            .conceal_except_any(&[])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
         MultiCommitment::hash(
@@ -578,6 +578,28 @@ impl MerkleBlock {
     /// already concealed), errors with [`LeafNotKnown`] error.
     pub fn conceal_except(
         &mut self,
+        protocol_id: ProtocolId,
+    ) -> Result<usize, LeafNotKnown> {
+        self.conceal_except_any([protocol_id])
+    }
+
+    /// Conceals all commitments in the block except for the commitment under
+    /// given `protocol_id`. Also removes information about the entropy value
+    /// used.
+    ///
+    /// # Returns
+    ///
+    /// Number of concealed nodes.
+    ///
+    /// # Error
+    ///
+    /// If leaf with the given `protocol_id` is not found (absent or already
+    /// concealed), errors with [`LeafNotKnown`] error.
+    // This API is not public in order to prevent from creating degenerate
+    // Merkle blocks with no leaf nodes, which will be equal to the
+    // MultiCommitment object.
+    fn conceal_except_any(
+        &mut self,
         protocols: impl AsRef<[ProtocolId]>,
     ) -> Result<usize, LeafNotKnown> {
         let protocols = protocols.as_ref();
@@ -652,7 +674,7 @@ impl MerkleBlock {
         mut self,
         protocol_id: ProtocolId,
     ) -> Result<MerkleProof, LeafNotKnown> {
-        self.conceal_except([protocol_id])?;
+        self.conceal_except(protocol_id)?;
         let mut map = BTreeMap::<u8, MerkleNode>::new();
         for node in &self.cross_section {
             match node {
