@@ -212,13 +212,6 @@ pub struct MerkleTree {
     messages: MessageMap,
 }
 
-impl CommitEncode for MerkleTree {
-    fn commit_encode<E: Write>(&self, e: E) -> usize {
-        let commitment = self.commit_conceal();
-        commitment.strict_encode(e).expect("memory encoder failure")
-    }
-}
-
 impl CommitConceal for MerkleTree {
     type ConcealedCommitment = MultiCommitment;
 
@@ -258,6 +251,13 @@ impl CommitConceal for MerkleTree {
         debug_assert_eq!(layer.len(), 1);
 
         MultiCommitment::hash(&layer[0][..])
+    }
+}
+
+impl CommitEncode for MerkleTree {
+    fn commit_encode<E: Write>(&self, e: E) -> usize {
+        let commitment = self.commit_conceal();
+        commitment.strict_encode(e).expect("memory encoder failure")
     }
 }
 
@@ -488,6 +488,33 @@ impl From<&MerkleTree> for MerkleBlock {
 
 impl From<MerkleTree> for MerkleBlock {
     fn from(tree: MerkleTree) -> Self { MerkleBlock::from(&tree) }
+}
+
+impl CommitConceal for MerkleBlock {
+    type ConcealedCommitment = MultiCommitment;
+
+    /// Reduces merkle tree into merkle tree root.
+    fn commit_conceal(&self) -> Self::ConcealedCommitment {
+        let mut concealed = self.clone();
+        concealed
+            .conceal_except(&[])
+            .expect("broken internal MerkleBlock structure");
+        debug_assert_eq!(concealed.cross_section.len(), 1);
+        MultiCommitment::hash(
+            &concealed.cross_section[0].merkle_node_with(0)[..],
+        )
+    }
+}
+
+impl CommitEncode for MerkleBlock {
+    fn commit_encode<E: Write>(&self, e: E) -> usize {
+        let commitment = self.commit_conceal();
+        commitment.strict_encode(e).expect("memory encoder failure")
+    }
+}
+
+impl ConsensusCommit for MerkleBlock {
+    type Commitment = MultiCommitment;
 }
 
 /// commitment under protocol id {0} is absent from the known part of a given
