@@ -24,7 +24,7 @@ use bitcoin_hashes::{sha256, Hash, HashEngine};
 
 use crate::{
     commit_encode, CommitEncode, CommitVerify, ConsensusCommit,
-    UntaggedProtocol,
+    PrehashedProtocol,
 };
 
 /// Marker trait for types that require merklization of the underlying data
@@ -54,7 +54,7 @@ impl commit_encode::Strategy for MerkleNode {
     type Strategy = commit_encode::strategies::UsingStrict;
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for MerkleNode
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for MerkleNode
 where
     Msg: AsRef<[u8]>,
 {

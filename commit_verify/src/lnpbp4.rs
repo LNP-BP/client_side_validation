@@ -54,7 +54,7 @@ use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
 use crate::{
     CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
-    TryCommitVerify, UntaggedProtocol,
+    PrehashedProtocol, TryCommitVerify,
 };
 
 /// Maximal depth of LNPBP-4 commitment tree.
@@ -134,7 +134,7 @@ impl sha256t::Tag for Lnpbp4Tag {
 )]
 pub struct MultiCommitment(sha256t::Hash<Lnpbp4Tag>);
 
-impl<M> CommitVerify<M, UntaggedProtocol> for MultiCommitment
+impl<M> CommitVerify<M, PrehashedProtocol> for MultiCommitment
 where
     M: AsRef<[u8]>,
 {
@@ -143,7 +143,7 @@ where
 }
 
 #[cfg(feature = "rand")]
-impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitment {
+impl TryCommitVerify<MultiSource, PrehashedProtocol> for MultiCommitment {
     type Error = Error;
 
     fn try_commit(msg: &MultiSource) -> Result<Self, Self::Error> {
@@ -270,9 +270,9 @@ mod commit {
     use rand::{thread_rng, RngCore};
 
     use super::*;
-    use crate::{TryCommitVerify, UntaggedProtocol};
+    use crate::{PrehashedProtocol, TryCommitVerify};
 
-    impl TryCommitVerify<MultiSource, UntaggedProtocol> for MerkleTree {
+    impl TryCommitVerify<MultiSource, PrehashedProtocol> for MerkleTree {
         type Error = Error;
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
