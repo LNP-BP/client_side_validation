@@ -526,8 +526,46 @@ impl ConsensusCommit for MerkleBlock {
 pub struct LeafNotKnown(ProtocolId);
 
 impl MerkleBlock {
+    fn with(
+        proof: &MerkleProof,
+        protocol_id: ProtocolId,
+        message: Message,
+    ) -> Self {
+        let path = proof.as_path();
+        let mut pos = proof.pos;
+
+        let mut dir = Vec::with_capacity(path.len());
+        let mut rev = Vec::with_capacity(path.len());
+        for node in path {
+            if pos / 2 >= proof.width() as u16 {
+                dir.push(*node);
+            } else {
+                rev.push(*node);
+            }
+            pos = pos - pos / 2;
+        }
+
+        let hash2node = |hash| TreeNode::ConcealedNode {
+            depth: proof.depth(),
+            hash,
+        };
+        let mut cross_section = Vec::with_capacity(path.len() + 1);
+        cross_section.extend(dir.into_iter().map(hash2node));
+        cross_section.push(TreeNode::CommitmentLeaf {
+            protocol_id,
+            message,
+        });
+        cross_section.extend(rev.into_iter().rev().map(hash2node));
+
+        MerkleBlock {
+            depth: path.len() as u8,
+            cross_section,
+            entropy: None,
+        }
+    }
+
     /// Conceals all commitments in the block except for the commitment under
-    /// given `protocol_id`. Also removes information about the entropy value
+    /// given `protocol_id`s. Also removes information about the entropy value
     /// used.
     ///
     /// # Returns
@@ -536,8 +574,8 @@ impl MerkleBlock {
     ///
     /// # Error
     ///
-    /// If leaf with the given `protocol_id` is not found (absent or already
-    /// concealed), errors with [`LeafNotKnown`] error.
+    /// If leaf with any of the given `protocol_id` is not found (absent or
+    /// already concealed), errors with [`LeafNotKnown`] error.
     pub fn conceal_except(
         &mut self,
         protocols: impl AsRef<[ProtocolId]>,
@@ -671,5 +709,35 @@ pub struct MerkleProof {
     pos: u16,
 
     /// Merkle proof path consisting of node hashing partners.
+    #[getter(skip)]
     path: Vec<MerkleNode>,
+}
+
+impl MerkleProof {
+    /// Computes the depth of the merkle tree.
+    pub fn depth(&self) -> u8 { self.path.len() as u8 + 1 }
+
+    /// Computes the width of the merkle tree.
+    pub fn width(&self) -> usize { 2usize.pow(self.depth() as u32) }
+
+    /// Converts the proof into inner merkle path representation
+    pub fn into_path(self) -> Vec<MerkleNode> { self.path }
+
+    /// Constructs the proof into inner merkle path representation
+    pub fn to_path(&self) -> Vec<MerkleNode> { self.path.clone() }
+
+    /// Returns inner merkle path representation
+    pub fn as_path(&self) -> &[MerkleNode] { &self.path }
+
+    /// Verifies that the given proof is a valid proof for the `commitment` to
+    /// the `message` ybder the given `protocol_id`.
+    pub fn verify(
+        &self,
+        protocol_id: ProtocolId,
+        message: Message,
+        commitment: MultiCommitment,
+    ) -> bool {
+        let block = MerkleBlock::with(self, protocol_id, message);
+        commitment == block.commit_conceal()
+    }
 }
