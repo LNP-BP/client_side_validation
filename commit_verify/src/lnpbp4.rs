@@ -419,6 +419,17 @@ impl TreeNode {
         }
     }
 
+    pub fn depth(&self) -> Option<u8> {
+        match self {
+            TreeNode::ConcealedNode { depth, .. } => Some(*depth),
+            TreeNode::CommitmentLeaf { .. } => None,
+        }
+    }
+
+    pub fn depth_or(&self, tree_depth: u8) -> u8 {
+        self.depth().unwrap_or(tree_depth)
+    }
+
     pub fn merkle_node_with(&self, depth: u8) -> MerkleNode {
         match self {
             TreeNode::ConcealedNode { hash, .. } => *hash,
@@ -524,6 +535,13 @@ impl ConsensusCommit for MerkleBlock {
 )]
 #[display(doc_comments)]
 pub struct LeafNotKnown(ProtocolId);
+
+/// attempt to merge unrelated LNPBP-4 proof.
+#[derive(
+    Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error
+)]
+#[display(doc_comments)]
+pub struct UnrelatedProof;
 
 impl MerkleBlock {
     fn with(
@@ -668,6 +686,57 @@ impl MerkleBlock {
         Ok(count)
     }
 
+    /// Merges information from the given `proof` to the merkle block, revealing
+    /// path related to te `commitment` to the message under the given
+    /// `protocol_id`.
+    pub fn merge_reveal(
+        &mut self,
+        proof: &MerkleProof,
+        protocol_id: ProtocolId,
+        message: Message,
+    ) -> Result<u16, UnrelatedProof> {
+        let block = MerkleBlock::with(proof, protocol_id, message);
+        self.merge_reveal_other(block)
+    }
+
+    fn merge_reveal_other(
+        &mut self,
+        other: MerkleBlock,
+    ) -> Result<u16, UnrelatedProof> {
+        if self.consensus_commit() != other.consensus_commit() {
+            return Err(UnrelatedProof);
+        }
+
+        let mut cross_section = Vec::with_capacity(
+            self.cross_section.len() + other.cross_section.len(),
+        );
+        let mut a = self.cross_section.clone().into_iter().peekable();
+        let mut b = other.cross_section.into_iter().peekable();
+
+        while let Some(n1) = a.peek().copied() {
+            let n2 = b
+                .next()
+                .expect("broken merkle block merge-reveal algorithm");
+            if n1 == n2 {
+                cross_section.push(n1);
+            } else if n1.depth_or(self.depth) < n2.depth_or(self.depth) {
+                cross_section.extend(b.by_ref().take_while(|n| {
+                    n.depth_or(self.depth) > n1.depth_or(self.depth)
+                }));
+            } else if n1.depth_or(self.depth) > n2.depth_or(self.depth) {
+                cross_section.extend(a.by_ref().take_while(|n| {
+                    n.depth_or(self.depth) > n1.depth_or(self.depth)
+                }));
+            } else {
+                unreachable!("broken merkle block merge-reveal algorithm")
+            }
+        }
+
+        self.cross_section = cross_section;
+
+        Ok(self.cross_section.len() as u16)
+    }
+
     /// Converts the merkle block into a merkle proof for the inclusion of a
     /// commitment under given `protocol_id`.
     pub fn into_merkle_proof(
@@ -752,7 +821,7 @@ impl MerkleProof {
     pub fn as_path(&self) -> &[MerkleNode] { &self.path }
 
     /// Verifies that the given proof is a valid proof for the `commitment` to
-    /// the `message` ybder the given `protocol_id`.
+    /// the `message` under the given `protocol_id`.
     pub fn verify(
         &self,
         protocol_id: ProtocolId,
