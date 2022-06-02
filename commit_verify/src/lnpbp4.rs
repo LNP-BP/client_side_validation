@@ -315,6 +315,11 @@ fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
 }
 
 impl MerkleTree {
+    /// Computes position for a given `protocol_id` within the tree leaves.
+    pub fn protocol_id_pos(&self, protocol_id: ProtocolId) -> u16 {
+        protocol_id_pos(protocol_id, self.width())
+    }
+
     /// Computes the width of the merkle tree.
     pub fn width(&self) -> usize { 2usize.pow(self.depth as u32) }
 
@@ -573,6 +578,51 @@ impl MerkleBlock {
 
         Ok(count)
     }
+
+    /// Converts the merkle block into a merkle proof for the inclusion of a
+    /// commitment under given `protocol_id`.
+    pub fn into_merkle_proof(
+        mut self,
+        protocol_id: ProtocolId,
+    ) -> Result<MerkleProof, LeafNotKnown> {
+        self.conceal_except(protocol_id)?;
+        let mut map = BTreeMap::<u8, MerkleNode>::new();
+        for node in &self.cross_section {
+            match node {
+                TreeNode::ConcealedNode { depth, hash } => {
+                    map.insert(*depth, *hash)
+                        .expect("MerkleBlock conceal procedure is broken");
+                }
+                TreeNode::CommitmentLeaf { .. } => {}
+            }
+        }
+        debug_assert_eq!(
+            self.depth as usize,
+            map.len(),
+            "MerkleBlock conceal procedure is broken"
+        );
+        Ok(MerkleProof {
+            pos: self.protocol_id_pos(protocol_id),
+            path: map.into_values().collect(),
+        })
+    }
+
+    /// Constructs merkle proof for the inclusion of a commitment under given
+    /// `protocol_id` for the current Merkle block.
+    pub fn to_merkle_proof(
+        &self,
+        protocol_id: ProtocolId,
+    ) -> Result<MerkleProof, LeafNotKnown> {
+        self.clone().into_merkle_proof(protocol_id)
+    }
+
+    /// Computes position for a given `protocol_id` within the tree leaves.
+    pub fn protocol_id_pos(&self, protocol_id: ProtocolId) -> u16 {
+        protocol_id_pos(protocol_id, self.width())
+    }
+
+    /// Computes the width of the merkle tree.
+    pub fn width(&self) -> usize { 2usize.pow(self.depth as u32) }
 }
 
 /// A proof of the merkle commitment.
