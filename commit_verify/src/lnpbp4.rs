@@ -42,7 +42,7 @@
 //!
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 
 use amplify::num::u256;
@@ -540,10 +540,12 @@ impl MerkleBlock {
     /// concealed), errors with [`LeafNotKnown`] error.
     pub fn conceal_except(
         &mut self,
-        protocol_id: ProtocolId,
+        protocols: impl AsRef<[ProtocolId]>,
     ) -> Result<usize, LeafNotKnown> {
+        let protocols = protocols.as_ref();
+
         let mut count = 0usize;
-        let mut found = false;
+        let mut not_found = protocols.iter().copied().collect::<BTreeSet<_>>();
 
         self.entropy = None;
 
@@ -554,9 +556,9 @@ impl MerkleBlock {
                     // Do nothing
                 }
                 TreeNode::CommitmentLeaf { protocol_id: p, .. }
-                    if *p == protocol_id =>
+                    if protocols.contains(p) =>
                 {
-                    found = true;
+                    not_found.remove(p);
                 }
                 TreeNode::CommitmentLeaf { .. } => {
                     count += 1;
@@ -568,7 +570,7 @@ impl MerkleBlock {
             }
         }
 
-        if !found {
+        if let Some(protocol_id) = not_found.into_iter().next() {
             return Err(LeafNotKnown(protocol_id));
         }
 
@@ -612,7 +614,7 @@ impl MerkleBlock {
         mut self,
         protocol_id: ProtocolId,
     ) -> Result<MerkleProof, LeafNotKnown> {
-        self.conceal_except(protocol_id)?;
+        self.conceal_except([protocol_id])?;
         let mut map = BTreeMap::<u8, MerkleNode>::new();
         for node in &self.cross_section {
             match node {
