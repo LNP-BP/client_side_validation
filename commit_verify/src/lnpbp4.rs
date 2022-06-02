@@ -228,8 +228,6 @@ impl CommitConceal for MerkleTree {
             .ordered_map()
             .expect("internal MerkleTree inconsistency");
 
-        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
-
         let mut layer = (0..=self.width())
             .into_iter()
             .map(|pos| {
@@ -242,11 +240,7 @@ impl CommitConceal for MerkleTree {
                         .merkle_node_with(self.depth)
                     })
                     .unwrap_or_else(|| {
-                        let mut engine =
-                            sha256::HashEngine::from_midstate(midstate, 64);
-                        engine.input(&self.entropy.to_le_bytes());
-                        engine.input(&(pos as u16).to_le_bytes());
-                        MerkleNode::from_engine(engine)
+                        MerkleNode::with_entropy(self.entropy, pos as u16)
                     })
             })
             .collect::<Vec<_>>();
@@ -254,8 +248,9 @@ impl CommitConceal for MerkleTree {
         for depth in (0..self.depth).rev() {
             for pos in 0..(layer.len() - 1) {
                 let (n1, n2) = (layer[pos], layer[pos + 1]);
-                layer[pos] =
-                    MerkleNode::with(n1, n2, self.depth, depth, pos as u16);
+                layer[pos] = MerkleNode::with_branch(
+                    n1, n2, self.depth, depth, pos as u16,
+                );
                 layer.remove(pos + 1);
             }
         }
@@ -364,7 +359,28 @@ enum TreeNode {
 }
 
 impl MerkleNode {
-    fn with(
+    fn with_commitment(
+        protocol_id: ProtocolId,
+        message: Message,
+        depth: u8,
+    ) -> MerkleNode {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_LEAF);
+        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
+        engine.input(&depth.to_le_bytes());
+        engine.input(&protocol_id[..]);
+        engine.input(&message[..]);
+        MerkleNode::from_engine(engine)
+    }
+
+    fn with_entropy(entropy: u64, pos: u16) -> MerkleNode {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
+        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
+        engine.input(&entropy.to_le_bytes());
+        engine.input(&pos.to_le_bytes());
+        MerkleNode::from_engine(engine)
+    }
+
+    fn with_branch(
         hash1: MerkleNode,
         hash2: MerkleNode,
         tree_depth: u8,
@@ -392,7 +408,7 @@ impl TreeNode {
     ) -> TreeNode {
         TreeNode::ConcealedNode {
             depth: node_depth,
-            hash: MerkleNode::with(
+            hash: MerkleNode::with_branch(
                 hash1, hash2, tree_depth, node_depth, offset,
             ),
         }
@@ -404,15 +420,7 @@ impl TreeNode {
             TreeNode::CommitmentLeaf {
                 protocol_id,
                 message,
-            } => {
-                let midstate = sha256::Midstate::from_inner(MIDSTATE_LEAF);
-                let mut engine =
-                    sha256::HashEngine::from_midstate(midstate, 64);
-                engine.input(&depth.to_le_bytes());
-                engine.input(&protocol_id[..]);
-                engine.input(&message[..]);
-                MerkleNode::from_engine(engine)
-            }
+            } => MerkleNode::with_commitment(*protocol_id, *message, depth),
         }
     }
 }
@@ -447,8 +455,6 @@ impl From<&MerkleTree> for MerkleBlock {
             .ordered_map()
             .expect("internal MerkleTree inconsistency");
 
-        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
-
         let cross_section = (0..=tree.width())
             .into_iter()
             .map(|pos| {
@@ -457,15 +463,12 @@ impl From<&MerkleTree> for MerkleBlock {
                         protocol_id: *protocol_id,
                         message: *message,
                     })
-                    .unwrap_or_else(|| {
-                        let mut engine =
-                            sha256::HashEngine::from_midstate(midstate, 64);
-                        engine.input(&tree.entropy.to_le_bytes());
-                        engine.input(&(pos as u16).to_le_bytes());
-                        TreeNode::ConcealedNode {
-                            depth: tree.depth,
-                            hash: MerkleNode::from_engine(engine),
-                        }
+                    .unwrap_or_else(|| TreeNode::ConcealedNode {
+                        depth: tree.depth,
+                        hash: MerkleNode::with_entropy(
+                            tree.entropy,
+                            pos as u16,
+                        ),
                     })
             })
             .collect();
