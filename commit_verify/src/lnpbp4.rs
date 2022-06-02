@@ -43,12 +43,19 @@
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::BTreeMap;
+use std::io::Write;
 
 use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
-use bitcoin_hashes::{sha256, Hash, HashEngine};
+use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
+use strict_encoding::StrictEncode;
 
 use crate::merkle::MerkleNode;
+use crate::tagged_hash::TaggedHash;
+use crate::{
+    CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
+    TryCommitVerify, UntaggedProtocol,
+};
 
 /// Maximal depth of LNPBP-4 commitment tree.
 pub const MAX_TREE_DEPTH: u8 = 16;
@@ -66,26 +73,83 @@ pub type ProtocolId = Slice32;
 /// [`sha256::Hash`] equivalent.
 pub type Message = sha256::Hash;
 
-// "LNPBP4:entropy"
+// SHA256("LNPBP4:entropy")
 const MIDSTATE_ENTROPY: [u8; 32] = [
     0xF4, 0x0D, 0x86, 0x94, 0x9F, 0xFF, 0xAD, 0xEE, 0x19, 0xEA, 0x50, 0x20,
     0x60, 0xAB, 0x6B, 0xAD, 0x11, 0x61, 0xB2, 0x35, 0x83, 0xD3, 0x78, 0x18,
     0x52, 0x0D, 0xD4, 0xD1, 0xD8, 0x88, 0x1E, 0x61,
 ];
 
-// "LNPBP4:leaf"
+// TODO: Fix value
+// SHA256("LNPBP4:leaf")
 const MIDSTATE_LEAF: [u8; 32] = [
     0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
     0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
     0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
 ];
 
-// "LNPBP4:node"
+// TODO: Fix value
+// SHA256("LNPBP4:node")
 const MIDSTATE_NODE: [u8; 32] = [
     0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
     0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
     0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
 ];
+
+// SHA256("LNPBP4")
+const MIDSTATE_LNPBP4: [u8; 32] = [
+    0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
+    0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
+    0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
+];
+
+/// Tag used for [`MultiCommitment`] hash type
+pub struct Lnpbp4Tag;
+
+impl sha256t::Tag for Lnpbp4Tag {
+    #[inline]
+    fn engine() -> sha256::HashEngine {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_LNPBP4);
+        sha256::HashEngine::from_midstate(midstate, 64)
+    }
+}
+
+/// Final [LNPBP-4] commitment value.
+///
+/// Represents tagged hash (with [`Lnpbp4Tag`]) of the sequentially serialized
+/// [`MultiCommitBlock::commitments`].
+///
+/// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+#[derive(
+    Wrapper, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, From
+)]
+#[derive(StrictEncode, StrictDecode)]
+#[wrapper(
+    Debug, Display, LowerHex, Index, IndexRange, IndexFrom, IndexTo, IndexFull
+)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", transparent)
+)]
+pub struct MultiCommitment(sha256t::Hash<Lnpbp4Tag>);
+
+impl<M> CommitVerify<M, UntaggedProtocol> for MultiCommitment
+where
+    M: AsRef<[u8]>,
+{
+    #[inline]
+    fn commit(msg: &M) -> MultiCommitment { MultiCommitment::hash(msg) }
+}
+
+#[cfg(feature = "rand")]
+impl TryCommitVerify<MultiSource, UntaggedProtocol> for MultiCommitment {
+    type Error = Error;
+
+    fn try_commit(msg: &MultiSource) -> Result<Self, Self::Error> {
+        Ok(MerkleTree::try_commit(msg)?.consensus_commit())
+    }
+}
 
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -146,6 +210,64 @@ pub struct MerkleTree {
 
     /// Map of the messages by their respective protocol ids
     messages: MessageMap,
+}
+
+impl CommitEncode for MerkleTree {
+    fn commit_encode<E: Write>(&self, e: E) -> usize {
+        let commitment = self.commit_conceal();
+        commitment.strict_encode(e).expect("memory encoder failure")
+    }
+}
+
+impl CommitConceal for MerkleTree {
+    type ConcealedCommitment = MultiCommitment;
+
+    /// Reduces merkle tree into merkle tree root.
+    fn commit_conceal(&self) -> Self::ConcealedCommitment {
+        let map = self
+            .ordered_map()
+            .expect("internal MerkleTree inconsistency");
+
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
+
+        let mut layer = (0..=self.width())
+            .into_iter()
+            .map(|pos| {
+                map.get(&pos)
+                    .map(|(protocol_id, message)| {
+                        TreeNode::CommitmentLeaf {
+                            protocol_id: *protocol_id,
+                            message: *message,
+                        }
+                        .merkle_node_with(self.depth)
+                    })
+                    .unwrap_or_else(|| {
+                        let mut engine =
+                            sha256::HashEngine::from_midstate(midstate, 64);
+                        engine.input(&self.entropy.to_le_bytes());
+                        engine.input(&(pos as u16).to_le_bytes());
+                        MerkleNode::from_engine(engine)
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        for depth in (0..self.depth).rev() {
+            for pos in 0..(layer.len() - 1) {
+                let (n1, n2) = (layer[pos], layer[pos + 1]);
+                layer[pos] =
+                    MerkleNode::with(n1, n2, self.depth, depth, pos as u16);
+                layer.remove(pos + 1);
+            }
+        }
+
+        debug_assert_eq!(layer.len(), 1);
+
+        MultiCommitment::hash(&layer[0][..])
+    }
+}
+
+impl ConsensusCommit for MerkleTree {
+    type Commitment = MultiCommitment;
 }
 
 #[cfg(feature = "rand")]
@@ -241,6 +363,25 @@ enum TreeNode {
     },
 }
 
+impl MerkleNode {
+    fn with(
+        hash1: MerkleNode,
+        hash2: MerkleNode,
+        tree_depth: u8,
+        node_depth: u8,
+        offset: u16,
+    ) -> MerkleNode {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_NODE);
+        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
+        engine.input(&tree_depth.to_le_bytes());
+        engine.input(&node_depth.to_le_bytes());
+        engine.input(&offset.to_le_bytes());
+        engine.input(&hash1[..]);
+        engine.input(&hash2[..]);
+        MerkleNode::from_engine(engine)
+    }
+}
+
 impl TreeNode {
     fn with(
         hash1: MerkleNode,
@@ -249,17 +390,11 @@ impl TreeNode {
         node_depth: u8,
         offset: u16,
     ) -> TreeNode {
-        let midstate = sha256::Midstate::from_inner(MIDSTATE_NODE);
-        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
-        engine.input(&tree_depth.to_le_bytes());
-        engine.input(&node_depth.to_le_bytes());
-        engine.input(&offset.to_le_bytes());
-        engine.input(&hash1[..]);
-        engine.input(&hash2[..]);
-        let hash = MerkleNode::from_engine(engine);
         TreeNode::ConcealedNode {
             depth: node_depth,
-            hash,
+            hash: MerkleNode::with(
+                hash1, hash2, tree_depth, node_depth, offset,
+            ),
         }
     }
 
@@ -404,8 +539,8 @@ impl MerkleBlock {
 
         loop {
             assert!(!self.cross_section.is_empty());
-            let len = self.cross_section.len() - 1;
-            for pos in 0..len {
+            let prev_count = count;
+            for pos in 0..self.cross_section.len() - 1 {
                 let (n1, n2) =
                     (self.cross_section[pos], self.cross_section[pos + 1]);
                 match (n1, n2) {
@@ -419,16 +554,18 @@ impl MerkleBlock {
                             hash: hash2,
                         },
                     ) if depth1 == depth2 => {
+                        count += 1;
                         self.cross_section[pos] = TreeNode::with(
                             hash1, hash2, self.depth, depth1, pos as u16,
                         );
                         self.cross_section.remove(pos + 1);
-                        break;
                     }
                     _ => {}
                 }
             }
-            break;
+            if count == prev_count {
+                break;
+            }
         }
 
         Ok(count)
