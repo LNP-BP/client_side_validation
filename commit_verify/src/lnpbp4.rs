@@ -52,6 +52,8 @@ use strict_encoding::StrictEncode;
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
+#[cfg(doc)]
+use crate::TryCommitVerify;
 use crate::{
     CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
     PrehashedProtocol,
@@ -452,7 +454,7 @@ pub struct MerkleBlock {
     cross_section: Vec<TreeNode>,
 
     /// Entropy used for placeholders. May be unknown if the message is not
-    /// constructed via [`TryCommitVerify::try_commit`] method but is provided
+    /// constructed via [`MerkleTree::try_commit`] method but is provided
     /// by a third-party, whishing to conceal that information.
     #[getter(as_copy)]
     entropy: Option<u64>,
@@ -895,6 +897,7 @@ mod test {
 
         let tree = MerkleTree::try_commit(&src).unwrap();
         assert_eq!(tree.depth, 3);
+        assert_eq!(tree.width(), 8);
 
         assert_ne!(tree.commit_conceal()[..], tree.consensus_commit()[..]);
         assert_eq!(
@@ -909,5 +912,47 @@ mod test {
         assert_ne!(tree.entropy, tree2.entropy);
         assert_ne!(tree, tree2);
         assert_ne!(tree.consensus_commit(), tree2.consensus_commit());
+    }
+
+    #[test]
+    fn test_block() {
+        let src = gen_source();
+        let tree = MerkleTree::try_commit(&src).unwrap();
+        let block = MerkleBlock::from(&tree);
+        assert_eq!(tree.depth, block.depth);
+        assert_eq!(tree.width(), block.width());
+        assert_eq!(Some(tree.entropy), block.entropy);
+
+        eprintln!("{:#?}", tree.messages);
+        eprintln!("{:#?}", block.cross_section);
+
+        let mut iter = src.messages.iter();
+        let first = iter.next().unwrap();
+        let second = iter.next().unwrap();
+        let third = iter.next().unwrap();
+
+        assert_eq!(block.cross_section[0], TreeNode::CommitmentLeaf {
+            protocol_id: *third.0,
+            message: *third.1,
+        });
+        assert_eq!(block.cross_section[3], TreeNode::CommitmentLeaf {
+            protocol_id: *first.0,
+            message: *first.1,
+        });
+        assert_eq!(block.cross_section[6], TreeNode::CommitmentLeaf {
+            protocol_id: *second.0,
+            message: *second.1,
+        });
+
+        assert_eq!(protocol_id_pos(*first.0, 8), 3);
+        assert_eq!(protocol_id_pos(*second.0, 8), 6);
+        assert_eq!(protocol_id_pos(*third.0, 8), 0);
+
+        for pos in [1usize, 2, 4, 5, 7] {
+            assert_eq!(block.cross_section[pos], TreeNode::ConcealedNode {
+                depth: 3,
+                hash: MerkleNode::with_entropy(tree.entropy, pos as u16)
+            });
+        }
     }
 }
