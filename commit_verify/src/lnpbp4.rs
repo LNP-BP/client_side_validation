@@ -517,7 +517,7 @@ impl CommitConceal for MerkleBlock {
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
         let mut concealed = self.clone();
         concealed
-            .conceal_except_any(&[])
+            .conceal_except(&[])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
         concealed.cross_section[0].merkle_node_with(0)
@@ -605,31 +605,9 @@ impl MerkleBlock {
     ///
     /// # Error
     ///
-    /// If leaf with any of the given `protocol_id` is not found (absent or
-    /// already concealed), errors with [`LeafNotKnown`] error.
-    pub fn conceal_except(
-        &mut self,
-        protocol_id: ProtocolId,
-    ) -> Result<usize, LeafNotKnown> {
-        self.conceal_except_any([protocol_id])
-    }
-
-    /// Conceals all commitments in the block except for the commitment under
-    /// given `protocol_id`. Also removes information about the entropy value
-    /// used.
-    ///
-    /// # Returns
-    ///
-    /// Number of concealed nodes.
-    ///
-    /// # Error
-    ///
     /// If leaf with the given `protocol_id` is not found (absent or already
     /// concealed), errors with [`LeafNotKnown`] error.
-    // This API is not public in order to prevent from creating degenerate
-    // Merkle blocks with no leaf nodes, which will be equal to the
-    // MultiCommitment object.
-    fn conceal_except_any(
+    pub fn conceal_except(
         &mut self,
         protocols: impl AsRef<[ProtocolId]>,
     ) -> Result<usize, LeafNotKnown> {
@@ -820,7 +798,7 @@ impl MerkleBlock {
         mut self,
         protocol_id: ProtocolId,
     ) -> Result<MerkleProof, LeafNotKnown> {
-        self.conceal_except(protocol_id)?;
+        self.conceal_except([protocol_id])?;
         let mut map = BTreeMap::<u8, MerkleNode>::new();
         for node in &self.cross_section {
             match node {
@@ -1052,7 +1030,7 @@ mod test {
         let first = iter.next().unwrap();
 
         let mut block = orig_block.clone();
-        assert_eq!(block.conceal_except(*first.0).unwrap(), 6);
+        assert_eq!(block.conceal_except([*first.0]).unwrap(), 6);
 
         assert_eq!(block.entropy, None);
 
@@ -1075,7 +1053,7 @@ mod test {
 
         for ((proto, msg), pos) in src.messages.into_iter().zip([3, 6, 0]) {
             let mut block = orig_block.clone();
-            block.conceal_except(proto).unwrap();
+            block.conceal_except([proto]).unwrap();
 
             let proof1 = block.to_merkle_proof(proto).unwrap();
             let proof2 = orig_block.to_merkle_proof(proto).unwrap();
@@ -1106,7 +1084,7 @@ mod test {
 
         for (proto, msg) in src.messages {
             let mut block = orig_block.clone();
-            block.conceal_except(proto).unwrap();
+            block.conceal_except([proto]).unwrap();
             assert_eq!(block.consensus_commit(), tree.consensus_commit());
 
             let proof = block.to_merkle_proof(proto).unwrap();
@@ -1126,7 +1104,7 @@ mod test {
         let first = iter.next().unwrap();
 
         let mut block = orig_block.clone();
-        block.conceal_except(*first.0).unwrap();
+        block.conceal_except([*first.0]).unwrap();
 
         let proof1 = block.to_merkle_proof(*first.0).unwrap();
 
@@ -1148,7 +1126,7 @@ mod test {
             .unwrap();
 
         orig_block
-            .conceal_except_any(src.messages.into_keys().collect::<Vec<_>>())
+            .conceal_except(src.messages.into_keys().collect::<Vec<_>>())
             .unwrap();
         assert_eq!(orig_block, new_block);
     }
