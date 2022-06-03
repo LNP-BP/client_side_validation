@@ -203,6 +203,44 @@ where
     }
 }
 
+/// Wrapper for vectors which may have up to `u32::MAX` elements in strict
+/// encoding representation.
+#[derive(Wrapper, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+pub struct LargeVec<T>(Vec<T>)
+where
+    T: Clone + StrictEncode + StrictDecode;
+
+impl<T> StrictEncode for LargeVec<T>
+where
+    T: Clone + StrictEncode + StrictDecode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let mut len = self.0.len();
+        if len > u32::MAX as usize {
+            return Err(Error::ExceedMaxItems(len));
+        }
+        (len as u32).strict_encode(&mut e)?;
+        for el in &self.0 {
+            len += el.strict_encode(&mut e)?;
+        }
+        Ok(len)
+    }
+}
+
+impl<T> StrictDecode for LargeVec<T>
+where
+    T: Clone + StrictDecode + StrictEncode,
+{
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u32::strict_decode(&mut d)?;
+        let mut data = Vec::<T>::with_capacity(len as usize);
+        for _ in 0..len {
+            data.push(T::strict_decode(&mut d)?);
+        }
+        Ok(data.into())
+    }
+}
+
 /// In terms of strict encoding, `Vec` is stored in form of
 /// usize-encoded length (see `StrictEncode` implementation for `usize`
 /// type for encoding platform-independent constant-length
