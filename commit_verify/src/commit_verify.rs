@@ -18,7 +18,7 @@ use bitcoin_hashes::{
     hash160, ripemd160, sha1, sha256, sha256d, sha256t, sha512, siphash24, Hash,
 };
 
-use crate::{CommitmentProtocol, UntaggedProtocol};
+use crate::{CommitmentProtocol, PrehashedProtocol};
 
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements
@@ -61,7 +61,7 @@ where
     }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha1::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha1::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -69,7 +69,7 @@ where
     fn commit(msg: &Msg) -> sha1::Hash { sha1::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for ripemd160::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for ripemd160::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -79,7 +79,7 @@ where
     }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for hash160::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for hash160::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -87,7 +87,7 @@ where
     fn commit(msg: &Msg) -> hash160::Hash { hash160::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha256::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha256::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -95,7 +95,7 @@ where
     fn commit(msg: &Msg) -> sha256::Hash { sha256::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha256d::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha256d::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -103,7 +103,7 @@ where
     fn commit(msg: &Msg) -> sha256d::Hash { sha256d::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg, T> CommitVerify<Msg, UntaggedProtocol> for sha256t::Hash<T>
+impl<Msg, T> CommitVerify<Msg, PrehashedProtocol> for sha256t::Hash<T>
 where
     Msg: AsRef<[u8]>,
     T: sha256t::Tag,
@@ -114,7 +114,7 @@ where
     }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for siphash24::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for siphash24::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -124,7 +124,7 @@ where
     }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha512::Hash
+impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha512::Hash
 where
     Msg: AsRef<[u8]>,
 {
@@ -179,7 +179,7 @@ pub mod test_helpers {
     pub fn commit_verify_suite<Msg, Cmt>(messages: Vec<Msg>)
     where
         Msg: AsRef<[u8]> + Eq,
-        Cmt: CommitVerify<Msg, UntaggedProtocol> + Eq + Hash + Debug,
+        Cmt: CommitVerify<Msg, PrehashedProtocol> + Eq + Hash + Debug,
     {
         messages.iter().fold(
             HashSet::<Cmt>::with_capacity(messages.len()),
@@ -231,7 +231,7 @@ mod test {
     struct Error;
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     struct DummyHashCommitment(sha256d::Hash);
-    impl<T> CommitVerify<T, UntaggedProtocol> for DummyHashCommitment
+    impl<T> CommitVerify<T, PrehashedProtocol> for DummyHashCommitment
     where
         T: AsRef<[u8]>,
     {

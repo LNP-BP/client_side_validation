@@ -40,8 +40,8 @@ pub mod commit_encode;
 pub mod commit_verify;
 pub mod convolve_commit;
 pub mod embed_commit;
+pub mod lnpbp4;
 pub mod merkle;
-pub mod multi_commit;
 pub mod tagged_hash;
 
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
@@ -49,7 +49,6 @@ pub use embed_commit::{EmbedCommitProof, EmbedCommitVerify};
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
-pub use multi_commit::{Message, MultiCommitBlock, MultiCommitItem};
 pub use tagged_hash::TaggedHash;
 
 pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
@@ -75,9 +74,9 @@ pub trait CommitmentProtocol {
     const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate>;
 }
 
-/// Protocol defining commits created by taking a simple untagged hash of a
-/// specific type.
-pub struct UntaggedProtocol;
-impl CommitmentProtocol for UntaggedProtocol {
+/// Protocol defining commits created by using externally created hash value
+/// *optionally pretagged).
+pub struct PrehashedProtocol;
+impl CommitmentProtocol for PrehashedProtocol {
     const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate> = None;
 }

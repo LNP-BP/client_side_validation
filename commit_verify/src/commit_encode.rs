@@ -39,7 +39,7 @@ use std::io;
 
 use bitcoin_hashes::HashEngine;
 
-use crate::{CommitVerify, UntaggedProtocol};
+use crate::{CommitVerify, PrehashedProtocol};
 
 /// Prepares the data to the *consensus commit* procedure by first running
 /// necessary conceal and merklization procedures, and them performing strict
@@ -268,7 +268,7 @@ pub trait CommitConceal {
 /// output.
 pub trait ConsensusCommit: Sized + CommitEncode {
     /// Type of the resulting commitment
-    type Commitment: CommitVerify<Vec<u8>, UntaggedProtocol>;
+    type Commitment: CommitVerify<Vec<u8>, PrehashedProtocol>;
 
     /// Performs commitment to client-side-validated data
     #[inline]
