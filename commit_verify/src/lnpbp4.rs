@@ -34,7 +34,7 @@
 //!
 //! Summary of the operations with LNPBP-4 data structures:
 //!
-//! - [`TryCommitVerify::try_commit`]: [`MultiSource`] -> [`MerkleTree`]
+//! - [`MerkleTree::try_commit`]: [`MultiSource`] -> [`MerkleTree`]
 //! - [`MerkleBlock::from`]: [`MerkleTree`] -> `Self`
 //! - [`MerkleBlock::conceal_except`]: `Self`, [`ProtocolId`] -> [`MerkleProof`]
 //! - [`MerkleBlock::from`]: [`MerkleProof`] -> `Self`
@@ -202,7 +202,7 @@ pub struct MerkleTree {
 }
 
 impl CommitConceal for MerkleTree {
-    type ConcealedCommitment = MultiCommitment;
+    type ConcealedCommitment = MerkleNode;
 
     /// Reduces merkle tree into merkle tree root.
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
@@ -227,7 +227,6 @@ impl CommitConceal for MerkleTree {
             })
             .collect::<Vec<_>>();
 
-        println!("{:#?}", layer);
         for depth in (0..self.depth).rev() {
             let mut pos = 0usize;
             let mut len = layer.len() - 1;
@@ -244,7 +243,7 @@ impl CommitConceal for MerkleTree {
 
         debug_assert_eq!(layer.len(), 1);
 
-        MultiCommitment::hash(&layer[0][..])
+        layer[0]
     }
 }
 
@@ -496,7 +495,7 @@ impl From<MerkleTree> for MerkleBlock {
 }
 
 impl CommitConceal for MerkleBlock {
-    type ConcealedCommitment = MultiCommitment;
+    type ConcealedCommitment = MerkleNode;
 
     /// Reduces merkle tree into merkle tree root.
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
@@ -505,9 +504,7 @@ impl CommitConceal for MerkleBlock {
             .conceal_except_any(&[])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
-        MultiCommitment::hash(
-            &concealed.cross_section[0].merkle_node_with(0)[..],
-        )
+        concealed.cross_section[0].merkle_node_with(0)
     }
 }
 
@@ -823,7 +820,7 @@ impl MerkleProof {
         commitment: MultiCommitment,
     ) -> bool {
         let block = MerkleBlock::with(self, protocol_id, message);
-        commitment == block.commit_conceal()
+        commitment == block.consensus_commit()
     }
 }
 
@@ -898,6 +895,12 @@ mod test {
 
         let tree = MerkleTree::try_commit(&src).unwrap();
         assert_eq!(tree.depth, 3);
+
+        assert_ne!(tree.commit_conceal()[..], tree.consensus_commit()[..]);
+        assert_eq!(
+            MultiCommitment::hash(tree.commit_conceal()),
+            tree.consensus_commit()
+        );
 
         let tree2 = MerkleTree::try_commit(&src).unwrap();
         assert_eq!(tree2.depth, 3);
