@@ -550,12 +550,16 @@ impl MerkleBlock {
         let mut dir = Vec::with_capacity(path.len());
         let mut rev = Vec::with_capacity(path.len());
         for (depth, hash) in path.iter().enumerate() {
-            let list = if pos >= width / 2 { &mut dir } else { &mut rev };
+            let list = if pos >= width / 2 {
+                pos -= width / 2;
+                &mut dir
+            } else {
+                &mut rev
+            };
             list.push(TreeNode::ConcealedNode {
                 depth: depth as u8 + 1,
                 hash: *hash,
             });
-            pos = pos - pos / 2;
             width /= 2;
         }
 
@@ -747,23 +751,40 @@ impl MerkleBlock {
         let mut cross_section = Vec::with_capacity(
             self.cross_section.len() + other.cross_section.len(),
         );
-        let mut a = self.cross_section.clone().into_iter().peekable();
-        let mut b = other.cross_section.into_iter().peekable();
+        let mut a = self.cross_section.clone().into_iter();
+        let mut b = other.cross_section.into_iter();
 
-        while let Some(n1) = a.peek().copied() {
-            let n2 = b
-                .next()
-                .expect("broken merkle block merge-reveal algorithm");
+        let mut last_a = a.next();
+        let mut last_b = b.next();
+        while let (Some(n1), Some(n2)) = (last_a, last_b) {
             if n1 == n2 {
                 cross_section.push(n1);
+                last_a = a.next();
+                last_b = b.next();
             } else if n1.depth_or(self.depth) < n2.depth_or(self.depth) {
+                cross_section.push(n2);
                 cross_section.extend(b.by_ref().take_while(|n| {
-                    n.depth_or(self.depth) > n1.depth_or(self.depth)
+                    if n.depth_or(self.depth) > n1.depth_or(self.depth) {
+                        last_b = None;
+                        true
+                    } else {
+                        last_b = Some(*n);
+                        false
+                    }
                 }));
+                last_a = a.next();
             } else if n1.depth_or(self.depth) > n2.depth_or(self.depth) {
+                cross_section.push(n1);
                 cross_section.extend(a.by_ref().take_while(|n| {
-                    n.depth_or(self.depth) > n1.depth_or(self.depth)
+                    if n.depth_or(self.depth) > n2.depth_or(self.depth) {
+                        last_a = None;
+                        true
+                    } else {
+                        last_a = Some(*n);
+                        false
+                    }
                 }));
+                last_b = b.next();
             } else {
                 unreachable!("broken merkle block merge-reveal algorithm")
             }
@@ -1035,7 +1056,6 @@ mod test {
         for ((proto, msg), pos) in src.messages.into_iter().zip([3, 6, 0]) {
             let mut block = orig_block.clone();
             block.conceal_except(proto).unwrap();
-            assert_eq!(block.consensus_commit(), tree.consensus_commit());
 
             let proof1 = block.to_merkle_proof(proto).unwrap();
             let proof2 = orig_block.to_merkle_proof(proto).unwrap();
@@ -1056,10 +1076,28 @@ mod test {
     }
 
     #[test]
-    fn test_merge_reveal() {
+    fn test_proof_roundtrip() {
         let src = gen_source();
         let tree = MerkleTree::try_commit(&src).unwrap();
         let orig_block = MerkleBlock::from(&tree);
+
+        for (proto, msg) in src.messages {
+            let mut block = orig_block.clone();
+            block.conceal_except(proto).unwrap();
+            assert_eq!(block.consensus_commit(), tree.consensus_commit());
+
+            let proof = block.to_merkle_proof(proto).unwrap();
+            let new_block = MerkleBlock::with(&proof, proto, msg);
+            assert_eq!(block, new_block);
+            assert_eq!(block.consensus_commit(), new_block.consensus_commit());
+        }
+    }
+
+    #[test]
+    fn test_merge_reveal() {
+        let src = gen_source();
+        let tree = MerkleTree::try_commit(&src).unwrap();
+        let mut orig_block = MerkleBlock::from(&tree);
 
         let mut iter = src.messages.iter();
         let first = iter.next().unwrap();
@@ -1068,17 +1106,24 @@ mod test {
         block.conceal_except(*first.0).unwrap();
 
         let proof1 = block.to_merkle_proof(*first.0).unwrap();
-        let proof2 = orig_block.to_merkle_proof(*first.0).unwrap();
 
-        assert_eq!(proof1, proof2);
+        let mut new_block = MerkleBlock::with(&proof1, *first.0, *first.1);
+        assert_eq!(block, new_block);
 
-        assert_eq!(proof1.pos, 3);
-        assert_eq!(proof1.path, vec![
-            block.cross_section[3].merkle_node_with(1),
-            block.cross_section[0].merkle_node_with(2),
-            block.cross_section[1].merkle_node_with(3)
-        ]);
+        let second = iter.next().unwrap();
+        let third = iter.next().unwrap();
 
-        proof1.verify(*first.0, *first.1, tree.consensus_commit());
+        let proof2 = orig_block.to_merkle_proof(*second.0).unwrap();
+        let proof3 = orig_block.to_merkle_proof(*third.0).unwrap();
+
+        new_block
+            .merge_reveal(&proof2, *second.0, *second.1)
+            .unwrap();
+        new_block.merge_reveal(&proof3, *third.0, *third.1).unwrap();
+
+        orig_block
+            .conceal_except_any(src.messages.into_keys().collect::<Vec<_>>())
+            .unwrap();
+        assert_eq!(orig_block, new_block);
     }
 }
