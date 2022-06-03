@@ -52,8 +52,6 @@ use strict_encoding::StrictEncode;
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
-#[cfg(feature = "rand")]
-use crate::TryCommitVerify;
 use crate::{
     CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
     PrehashedProtocol,
@@ -142,15 +140,6 @@ where
     fn commit(msg: &M) -> MultiCommitment { MultiCommitment::hash(msg) }
 }
 
-#[cfg(feature = "rand")]
-impl TryCommitVerify<MultiSource, PrehashedProtocol> for MultiCommitment {
-    type Error = Error;
-
-    fn try_commit(msg: &MultiSource) -> Result<Self, Self::Error> {
-        Ok(MerkleTree::try_commit(msg)?.consensus_commit())
-    }
-}
-
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct MultiSource {
@@ -221,7 +210,7 @@ impl CommitConceal for MerkleTree {
             .ordered_map()
             .expect("internal MerkleTree inconsistency");
 
-        let mut layer = (0..=self.width())
+        let mut layer = (0..self.width())
             .into_iter()
             .map(|pos| {
                 map.get(&pos)
@@ -238,13 +227,18 @@ impl CommitConceal for MerkleTree {
             })
             .collect::<Vec<_>>();
 
+        println!("{:#?}", layer);
         for depth in (0..self.depth).rev() {
-            for pos in 0..(layer.len() - 1) {
+            let mut pos = 0usize;
+            let mut len = layer.len() - 1;
+            while pos < len {
                 let (n1, n2) = (layer[pos], layer[pos + 1]);
                 layer[pos] = MerkleNode::with_branch(
                     n1, n2, self.depth, depth, pos as u16,
                 );
                 layer.remove(pos + 1);
+                len -= 1;
+                pos += 1;
             }
         }
 
@@ -471,7 +465,7 @@ impl From<&MerkleTree> for MerkleBlock {
             .ordered_map()
             .expect("internal MerkleTree inconsistency");
 
-        let cross_section = (0..=tree.width())
+        let cross_section = (0..tree.width())
             .into_iter()
             .map(|pos| {
                 map.get(&pos)
@@ -836,6 +830,27 @@ impl MerkleProof {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::TryCommitVerify;
+
+    fn gen_proto_id(index: usize) -> ProtocolId {
+        let hash = sha256::Hash::hash(format!("protocol#{}", index).as_bytes());
+        ProtocolId::from(hash.into_inner())
+    }
+
+    fn gen_msg(index: usize) -> Message {
+        Message::hash(format!("message#{}", index).as_bytes())
+    }
+
+    fn gen_source() -> MultiSource {
+        MultiSource {
+            min_depth: 3,
+            messages: bmap! {
+                gen_proto_id(0) => gen_msg(0),
+                gen_proto_id(1) => gen_msg(1),
+                gen_proto_id(2) => gen_msg(2)
+            },
+        }
+    }
 
     #[test]
     fn test_lnpbp4_tag() {
@@ -864,9 +879,9 @@ mod test {
         let mut engine = Message::engine();
         engine.input(&tag_hash[..]);
         engine.input(&tag_hash[..]);
-        println!("{:#04x?}", engine.midstate().0);
         assert_eq!(midstate, engine.midstate());
     }
+
     #[test]
     fn test_node_tag() {
         let midstate = sha256::Midstate::from_inner(MIDSTATE_NODE);
@@ -874,7 +889,22 @@ mod test {
         let mut engine = Message::engine();
         engine.input(&tag_hash[..]);
         engine.input(&tag_hash[..]);
-        println!("{:#04x?}", engine.midstate().0);
         assert_eq!(midstate, engine.midstate());
+    }
+
+    #[test]
+    fn test_tree() {
+        let src = gen_source();
+
+        let tree = MerkleTree::try_commit(&src).unwrap();
+        assert_eq!(tree.depth, 3);
+
+        let tree2 = MerkleTree::try_commit(&src).unwrap();
+        assert_eq!(tree2.depth, 3);
+
+        // Each time we must generate different randomness
+        assert_ne!(tree.entropy, tree2.entropy);
+        assert_ne!(tree, tree2);
+        assert_ne!(tree.consensus_commit(), tree2.consensus_commit());
     }
 }
