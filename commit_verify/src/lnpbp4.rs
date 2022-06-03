@@ -104,7 +104,7 @@ const MIDSTATE_LNPBP4: [u8; 32] = [
     0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
 ];
 
-/// Tag used for [`MultiCommitment`] hash type
+/// Tag used for [`CommitmentHash`] hash type
 pub struct Lnpbp4Tag;
 
 impl sha256t::Tag for Lnpbp4Tag {
@@ -133,14 +133,14 @@ impl sha256t::Tag for Lnpbp4Tag {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct MultiCommitment(sha256t::Hash<Lnpbp4Tag>);
+pub struct CommitmentHash(sha256t::Hash<Lnpbp4Tag>);
 
-impl<M> CommitVerify<M, PrehashedProtocol> for MultiCommitment
+impl<M> CommitVerify<M, PrehashedProtocol> for CommitmentHash
 where
     M: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &M) -> MultiCommitment { MultiCommitment::hash(msg) }
+    fn commit(msg: &M) -> CommitmentHash { CommitmentHash::hash(msg) }
 }
 
 /// Structured source multi-message data for commitment creation
@@ -258,7 +258,7 @@ impl CommitEncode for MerkleTree {
 }
 
 impl ConsensusCommit for MerkleTree {
-    type Commitment = MultiCommitment;
+    type Commitment = CommitmentHash;
 }
 
 #[cfg(feature = "rand")]
@@ -519,7 +519,7 @@ impl CommitEncode for MerkleBlock {
 }
 
 impl ConsensusCommit for MerkleBlock {
-    type Commitment = MultiCommitment;
+    type Commitment = CommitmentHash;
 }
 
 /// commitment under protocol id {0} is absent from the known part of a given
@@ -886,7 +886,7 @@ impl MerkleProof {
         &self,
         protocol_id: ProtocolId,
         message: Message,
-        commitment: MultiCommitment,
+        commitment: CommitmentHash,
     ) -> bool {
         let block = MerkleBlock::with(self, protocol_id, message);
         commitment == block.consensus_commit()
@@ -968,7 +968,7 @@ mod test {
 
         assert_ne!(tree.commit_conceal()[..], tree.consensus_commit()[..]);
         assert_eq!(
-            MultiCommitment::hash(tree.commit_conceal()),
+            CommitmentHash::hash(tree.commit_conceal()),
             tree.consensus_commit()
         );
 
