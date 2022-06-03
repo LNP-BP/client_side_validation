@@ -36,7 +36,8 @@
 //!
 //! - [`MerkleTree::try_commit`]: [`MultiSource`] -> [`MerkleTree`]
 //! - [`MerkleBlock::from`]: [`MerkleTree`] -> `Self`
-//! - [`MerkleBlock::conceal_except`]: `Self`, [`ProtocolId`] -> [`MerkleProof`]
+//! - [`MerkleBlock::into_merkle_proof`]: `Self`, [`ProtocolId`] ->
+//!   [`MerkleProof`]
 //! - [`MerkleBlock::from`]: [`MerkleProof`] -> `Self`
 //! - [`MerkleBlock::merge_reveal`]: `Self`, [`MerkleProof`] -> `Self`
 //!
@@ -544,29 +545,27 @@ impl MerkleBlock {
     ) -> Self {
         let path = proof.as_path();
         let mut pos = proof.pos;
+        let mut width = proof.width() as u16;
 
         let mut dir = Vec::with_capacity(path.len());
         let mut rev = Vec::with_capacity(path.len());
-        for node in path {
-            if pos / 2 >= proof.width() as u16 {
-                dir.push(*node);
-            } else {
-                rev.push(*node);
-            }
+        for (depth, hash) in path.iter().enumerate() {
+            let list = if pos >= width / 2 { &mut dir } else { &mut rev };
+            list.push(TreeNode::ConcealedNode {
+                depth: depth as u8 + 1,
+                hash: *hash,
+            });
             pos = pos - pos / 2;
+            width = width / 2;
         }
 
-        let hash2node = |hash| TreeNode::ConcealedNode {
-            depth: proof.depth(),
-            hash,
-        };
         let mut cross_section = Vec::with_capacity(path.len() + 1);
-        cross_section.extend(dir.into_iter().map(hash2node));
+        cross_section.extend(dir);
         cross_section.push(TreeNode::CommitmentLeaf {
             protocol_id,
             message,
         });
-        cross_section.extend(rev.into_iter().rev().map(hash2node));
+        cross_section.extend(rev.into_iter().rev());
 
         MerkleBlock {
             depth: path.len() as u8,
@@ -677,8 +676,7 @@ impl MerkleBlock {
                         );
                         self.cross_section.remove(pos + 1);
                         count += 1;
-                        offset +=
-                            2u16.pow(self.depth as u32 - depth1 as u32 + 1);
+                        offset += 2u16.pow(self.depth as u32 - depth as u32);
                         len -= 1;
                     }
                     (TreeNode::CommitmentLeaf { .. }, _) => {
@@ -761,8 +759,10 @@ impl MerkleBlock {
         for node in &self.cross_section {
             match node {
                 TreeNode::ConcealedNode { depth, hash } => {
-                    map.insert(*depth, *hash)
-                        .expect("MerkleBlock conceal procedure is broken");
+                    debug_assert!(
+                        map.insert(*depth, *hash).is_none(),
+                        "MerkleBlock conceal procedure is broken"
+                    );
                 }
                 TreeNode::CommitmentLeaf { .. } => {}
             }
@@ -819,7 +819,7 @@ pub struct MerkleProof {
 
 impl MerkleProof {
     /// Computes the depth of the merkle tree.
-    pub fn depth(&self) -> u8 { self.path.len() as u8 + 1 }
+    pub fn depth(&self) -> u8 { self.path.len() as u8 }
 
     /// Computes the width of the merkle tree.
     pub fn width(&self) -> usize { 2usize.pow(self.depth() as u32) }
@@ -998,7 +998,49 @@ mod test {
         });
 
         assert_eq!(block.consensus_commit(), orig_block.consensus_commit());
+    }
 
-        eprintln!("{:#?}", block);
+    #[test]
+    fn test_proof_roundtrip() {
+        let src = gen_source();
+        let tree = MerkleTree::try_commit(&src).unwrap();
+        let mut block = MerkleBlock::from(&tree);
+
+        let mut iter = src.messages.iter();
+        let first = iter.next().unwrap();
+
+        block.conceal_except(*first.0).unwrap();
+
+        let proof = block.to_merkle_proof(*first.0).unwrap();
+
+        let new_block = MerkleBlock::with(&proof, *first.0, *first.1);
+        assert_eq!(block, new_block);
+    }
+
+    #[test]
+    fn test_proof() {
+        let src = gen_source();
+        let tree = MerkleTree::try_commit(&src).unwrap();
+        let orig_block = MerkleBlock::from(&tree);
+
+        let mut iter = src.messages.iter();
+        let first = iter.next().unwrap();
+
+        let mut block = orig_block.clone();
+        block.conceal_except(*first.0).unwrap();
+
+        let proof1 = block.to_merkle_proof(*first.0).unwrap();
+        let proof2 = orig_block.to_merkle_proof(*first.0).unwrap();
+
+        assert_eq!(proof1, proof2);
+
+        assert_eq!(proof1.pos, 3);
+        assert_eq!(proof1.path, vec![
+            block.cross_section[3].merkle_node_with(1),
+            block.cross_section[0].merkle_node_with(2),
+            block.cross_section[1].merkle_node_with(3)
+        ]);
+
+        proof1.verify(*first.0, *first.1, tree.consensus_commit());
     }
 }
