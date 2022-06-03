@@ -646,34 +646,54 @@ impl MerkleBlock {
         }
 
         loop {
-            assert!(!self.cross_section.is_empty());
+            debug_assert!(!self.cross_section.is_empty());
             let prev_count = count;
-            for pos in 0..self.cross_section.len() - 1 {
+            let mut offset = 0u16;
+            let mut pos = 0usize;
+            let mut len = self.cross_section.len();
+            while pos < len {
                 let (n1, n2) =
-                    (self.cross_section[pos], self.cross_section[pos + 1]);
+                    (self.cross_section[pos], self.cross_section.get(pos + 1));
                 match (n1, n2) {
                     (
                         TreeNode::ConcealedNode {
                             depth: depth1,
                             hash: hash1,
                         },
-                        TreeNode::ConcealedNode {
+                        Some(TreeNode::ConcealedNode {
                             depth: depth2,
                             hash: hash2,
-                        },
-                    ) if depth1 == depth2 => {
-                        count += 1;
+                        }),
+                    ) if depth1 == *depth2 => {
+                        let depth = depth1 - 1;
+                        let offset_at_depth =
+                            offset / 2u16.pow(self.depth as u32 - depth as u32);
                         self.cross_section[pos] = TreeNode::with(
-                            hash1, hash2, self.depth, depth1, pos as u16,
+                            hash1,
+                            *hash2,
+                            self.depth,
+                            depth,
+                            offset_at_depth,
                         );
                         self.cross_section.remove(pos + 1);
+                        count += 1;
+                        offset +=
+                            2u16.pow(self.depth as u32 - depth1 as u32 + 1);
+                        len -= 1;
                     }
-                    _ => {}
+                    (TreeNode::CommitmentLeaf { .. }, _) => {
+                        offset += 1;
+                    }
+                    (TreeNode::ConcealedNode { depth, .. }, _) => {
+                        offset += 2u16.pow(self.depth as u32 - depth as u32);
+                    }
                 }
+                pos += 1;
             }
             if count == prev_count {
                 break;
             }
+            debug_assert_eq!(offset, self.width() as u16);
         }
 
         Ok(count)
@@ -923,8 +943,7 @@ mod test {
         assert_eq!(tree.width(), block.width());
         assert_eq!(Some(tree.entropy), block.entropy);
 
-        eprintln!("{:#?}", tree.messages);
-        eprintln!("{:#?}", block.cross_section);
+        assert_eq!(tree.consensus_commit(), block.consensus_commit());
 
         let mut iter = src.messages.iter();
         let first = iter.next().unwrap();
@@ -954,5 +973,32 @@ mod test {
                 hash: MerkleNode::with_entropy(tree.entropy, pos as u16)
             });
         }
+    }
+
+    #[test]
+    fn test_block_conceal() {
+        let src = gen_source();
+        let tree = MerkleTree::try_commit(&src).unwrap();
+        let orig_block = MerkleBlock::from(&tree);
+
+        let mut iter = src.messages.iter();
+        let first = iter.next().unwrap();
+
+        let mut block = orig_block.clone();
+        assert_eq!(block.conceal_except(*first.0).unwrap(), 6);
+
+        assert_eq!(block.entropy, None);
+
+        assert_eq!(block.cross_section[0].depth().unwrap(), 2);
+        assert_eq!(block.cross_section[1].depth().unwrap(), 3);
+        assert_eq!(block.cross_section[3].depth().unwrap(), 1);
+        assert_eq!(block.cross_section[2], TreeNode::CommitmentLeaf {
+            protocol_id: *first.0,
+            message: *first.1
+        });
+
+        assert_eq!(block.consensus_commit(), orig_block.consensus_commit());
+
+        eprintln!("{:#?}", block);
     }
 }
