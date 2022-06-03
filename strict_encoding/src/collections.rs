@@ -206,6 +206,11 @@ where
 /// Wrapper for vectors which may have up to `u32::MAX` elements in strict
 /// encoding representation.
 #[derive(Wrapper, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(transparent)
+)]
 pub struct LargeVec<T>(Vec<T>)
 where
     T: Clone + StrictEncode + StrictDecode;

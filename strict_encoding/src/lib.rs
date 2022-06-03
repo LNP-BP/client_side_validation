@@ -62,6 +62,9 @@ extern crate amplify;
 #[cfg(test)]
 #[macro_use]
 extern crate strict_encoding_test;
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
 
 #[macro_use]
 mod macros;
