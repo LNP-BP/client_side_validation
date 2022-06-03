@@ -62,6 +62,9 @@ extern crate amplify;
 #[cfg(test)]
 #[macro_use]
 extern crate strict_encoding_test;
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
 
 #[macro_use]
 mod macros;
@@ -95,6 +98,7 @@ use std::{fmt, io};
 #[cfg(feature = "bitcoin")]
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::IoError;
+pub use collections::LargeVec;
 pub use strategies::Strategy;
 
 /// Binary encoding according to the strict rules that usually apply to
