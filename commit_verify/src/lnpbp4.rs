@@ -747,17 +747,19 @@ impl MerkleBlock {
     /// Merges information from the given `proof` to the merkle block, revealing
     /// path related to te `commitment` to the message under the given
     /// `protocol_id`.
-    pub fn merge_reveal(
+    pub fn merge_reveal_path(
         &mut self,
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
     ) -> Result<u16, UnrelatedProof> {
         let block = MerkleBlock::with(proof, protocol_id, message)?;
-        self.merge_reveal_other(block)
+        self.merge_reveal(block)
     }
 
-    fn merge_reveal_other(
+    /// Merges two merkle blocks together, joining revealed information from
+    /// each one of them.
+    pub fn merge_reveal(
         &mut self,
         other: MerkleBlock,
     ) -> Result<u16, UnrelatedProof> {
@@ -1139,9 +1141,11 @@ mod test {
         let proof3 = orig_block.to_merkle_proof(*third.0).unwrap();
 
         new_block
-            .merge_reveal(&proof2, *second.0, *second.1)
+            .merge_reveal_path(&proof2, *second.0, *second.1)
             .unwrap();
-        new_block.merge_reveal(&proof3, *third.0, *third.1).unwrap();
+        new_block
+            .merge_reveal_path(&proof3, *third.0, *third.1)
+            .unwrap();
 
         orig_block
             .conceal_except_any(src.messages.into_keys().collect::<Vec<_>>())
