@@ -57,7 +57,7 @@ use crate::tagged_hash::TaggedHash;
 #[cfg(doc)]
 use crate::TryCommitVerify;
 use crate::{
-    CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
+    commit_encode, CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
     PrehashedProtocol,
 };
 
@@ -139,6 +139,10 @@ impl sha256t::Tag for Lnpbp4Tag {
     serde(crate = "serde_crate", transparent)
 )]
 pub struct CommitmentHash(sha256t::Hash<Lnpbp4Tag>);
+
+impl commit_encode::Strategy for CommitmentHash {
+    type Strategy = commit_encode::strategies::UsingStrict;
+}
 
 impl<M> CommitVerify<M, PrehashedProtocol> for CommitmentHash
 where
