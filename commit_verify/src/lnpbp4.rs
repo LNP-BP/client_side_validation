@@ -28,13 +28,13 @@
 //!
 //! [`MerkleTree`] can than be either converted into [`MerkleBlock`] and than
 //! a separate instances of [`MerkleProof`]s can be extracted from it for each
-//! specific protocol using [`PartialTree::conceal_except`] operation.
+//! specific protocol using [`MerkleBlock::conceal_except`] operation.
 //! [`MerkleBlock`] can conceal sme data and can also be constructed from
 //! (multiple) [`MerkleProof`] and/or other [`MerkleBlock`].
 //!
 //! Summary of the operations with LNPBP-4 data structures:
 //!
-//! - [`TryCommit::try_commit`]: [`MultiSource`] -> [`MerkleTree`]
+//! - [`TryCommitVerify::try_commit`]: [`MultiSource`] -> [`MerkleTree`]
 //! - [`MerkleBlock::from`]: [`MerkleTree`] -> `Self`
 //! - [`MerkleBlock::conceal_except`]: `Self`, [`ProtocolId`] -> [`MerkleProof`]
 //! - [`MerkleBlock::from`]: [`MerkleProof`] -> `Self`
@@ -52,9 +52,11 @@ use strict_encoding::StrictEncode;
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
+#[cfg(feature = "rand")]
+use crate::TryCommitVerify;
 use crate::{
     CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
-    PrehashedProtocol, TryCommitVerify,
+    PrehashedProtocol,
 };
 
 /// Maximal depth of LNPBP-4 commitment tree.
@@ -116,8 +118,8 @@ impl sha256t::Tag for Lnpbp4Tag {
 
 /// Final [LNPBP-4] commitment value.
 ///
-/// Represents tagged hash (with [`Lnpbp4Tag`]) of the sequentially serialized
-/// [`MultiCommitBlock::commitments`].
+/// Represents tagged hash (with [`Lnpbp4Tag`]) of the merkle root of
+/// [`MerkleTree`] and [`MerkleBlock`].
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(
