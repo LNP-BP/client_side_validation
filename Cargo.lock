@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.7.0-beta.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.7.0-beta.5"
+version = "0.7.0-rc.1"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -871,7 +871,7 @@ checksum = "f054c6c1a6e95179d6f23ed974060dcefb2d9388bb7256900badad682c499de4"
 
 [[package]]
 name = "single_use_seals"
-version = "0.7.0-beta.2"
+version = "0.7.0-rc.1"
 dependencies = [
  "amplify_derive",
  "async-trait",
