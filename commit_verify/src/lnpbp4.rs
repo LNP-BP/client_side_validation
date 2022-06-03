@@ -44,12 +44,13 @@
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
 use std::io::Write;
 
 use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
-use strict_encoding::StrictEncode;
+use strict_encoding::{StrictDecode, StrictEncode};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
@@ -103,6 +104,10 @@ const MIDSTATE_LNPBP4: [u8; 32] = [
     0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
     0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
 ];
+
+/// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the
+/// amount of concealed information.
+pub trait Proof: StrictEncode + StrictDecode + Clone + Eq + Debug {}
 
 /// Tag used for [`CommitmentHash`] hash type
 pub struct Lnpbp4Tag;
@@ -203,6 +208,8 @@ pub struct MerkleTree {
     /// Map of the messages by their respective protocol ids
     messages: MessageMap,
 }
+
+impl Proof for MerkleTree {}
 
 impl CommitConceal for MerkleTree {
     type ConcealedCommitment = MerkleNode;
@@ -460,6 +467,8 @@ pub struct MerkleBlock {
     #[getter(as_copy)]
     entropy: Option<u64>,
 }
+
+impl Proof for MerkleBlock {}
 
 impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
@@ -863,6 +872,8 @@ pub struct MerkleProof {
     #[getter(skip)]
     path: Vec<MerkleNode>,
 }
+
+impl Proof for MerkleProof {}
 
 impl MerkleProof {
     /// Computes the depth of the merkle tree.

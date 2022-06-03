@@ -295,7 +295,7 @@ mod test {
     use amplify::{bmap, s};
     use bitcoin_hashes::hex::ToHex;
     use bitcoin_hashes::{sha256d, Hash};
-    use strict_encoding::StrictEncode;
+    use strict_encoding::{StrictDecode, StrictEncode};
 
     use super::*;
     use crate::commit_encode::{strategies, Strategy};
