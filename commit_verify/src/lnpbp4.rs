@@ -44,19 +44,20 @@
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
 use std::io::Write;
 
 use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
-use strict_encoding::StrictEncode;
+use strict_encoding::{StrictDecode, StrictEncode};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
 #[cfg(doc)]
 use crate::TryCommitVerify;
 use crate::{
-    CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
+    commit_encode, CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
     PrehashedProtocol,
 };
 
@@ -104,7 +105,11 @@ const MIDSTATE_LNPBP4: [u8; 32] = [
     0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
 ];
 
-/// Tag used for [`MultiCommitment`] hash type
+/// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the
+/// amount of concealed information.
+pub trait Proof: StrictEncode + StrictDecode + Clone + Eq + Debug {}
+
+/// Tag used for [`CommitmentHash`] hash type
 pub struct Lnpbp4Tag;
 
 impl sha256t::Tag for Lnpbp4Tag {
@@ -133,14 +138,18 @@ impl sha256t::Tag for Lnpbp4Tag {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct MultiCommitment(sha256t::Hash<Lnpbp4Tag>);
+pub struct CommitmentHash(sha256t::Hash<Lnpbp4Tag>);
 
-impl<M> CommitVerify<M, PrehashedProtocol> for MultiCommitment
+impl commit_encode::Strategy for CommitmentHash {
+    type Strategy = commit_encode::strategies::UsingStrict;
+}
+
+impl<M> CommitVerify<M, PrehashedProtocol> for CommitmentHash
 where
     M: AsRef<[u8]>,
 {
     #[inline]
-    fn commit(msg: &M) -> MultiCommitment { MultiCommitment::hash(msg) }
+    fn commit(msg: &M) -> CommitmentHash { CommitmentHash::hash(msg) }
 }
 
 /// Structured source multi-message data for commitment creation
@@ -204,6 +213,8 @@ pub struct MerkleTree {
     messages: MessageMap,
 }
 
+impl Proof for MerkleTree {}
+
 impl CommitConceal for MerkleTree {
     type ConcealedCommitment = MerkleNode;
 
@@ -258,7 +269,7 @@ impl CommitEncode for MerkleTree {
 }
 
 impl ConsensusCommit for MerkleTree {
-    type Commitment = MultiCommitment;
+    type Commitment = CommitmentHash;
 }
 
 #[cfg(feature = "rand")]
@@ -304,9 +315,9 @@ mod commit {
     }
 }
 
-fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
-    let rem =
-        u256::from_le_bytes(protocol_id.into_inner()) % u256::from(len as u64);
+fn protocol_id_pos(protocol_id: ProtocolId, width: usize) -> u16 {
+    let rem = u256::from_le_bytes(protocol_id.into_inner())
+        % u256::from(width as u64);
     rem.low_u64() as u16
 }
 
@@ -461,6 +472,8 @@ pub struct MerkleBlock {
     entropy: Option<u64>,
 }
 
+impl Proof for MerkleBlock {}
+
 impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
         let map = tree
@@ -504,7 +517,7 @@ impl CommitConceal for MerkleBlock {
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
         let mut concealed = self.clone();
         concealed
-            .conceal_except_any(&[])
+            .conceal_except(&[])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
         concealed.cross_section[0].merkle_node_with(0)
@@ -519,7 +532,7 @@ impl CommitEncode for MerkleBlock {
 }
 
 impl ConsensusCommit for MerkleBlock {
-    type Commitment = MultiCommitment;
+    type Commitment = CommitmentHash;
 }
 
 /// commitment under protocol id {0} is absent from the known part of a given
@@ -542,10 +555,14 @@ impl MerkleBlock {
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
-    ) -> Self {
+    ) -> Result<Self, UnrelatedProof> {
         let path = proof.as_path();
         let mut pos = proof.pos;
         let mut width = proof.width() as u16;
+
+        if protocol_id_pos(protocol_id, width as usize) != pos {
+            return Err(UnrelatedProof);
+        }
 
         let mut dir = Vec::with_capacity(path.len());
         let mut rev = Vec::with_capacity(path.len());
@@ -571,11 +588,11 @@ impl MerkleBlock {
         });
         cross_section.extend(rev.into_iter().rev());
 
-        MerkleBlock {
+        Ok(MerkleBlock {
             depth: path.len() as u8,
             cross_section,
             entropy: None,
-        }
+        })
     }
 
     /// Conceals all commitments in the block except for the commitment under
@@ -588,31 +605,9 @@ impl MerkleBlock {
     ///
     /// # Error
     ///
-    /// If leaf with any of the given `protocol_id` is not found (absent or
-    /// already concealed), errors with [`LeafNotKnown`] error.
-    pub fn conceal_except(
-        &mut self,
-        protocol_id: ProtocolId,
-    ) -> Result<usize, LeafNotKnown> {
-        self.conceal_except_any([protocol_id])
-    }
-
-    /// Conceals all commitments in the block except for the commitment under
-    /// given `protocol_id`. Also removes information about the entropy value
-    /// used.
-    ///
-    /// # Returns
-    ///
-    /// Number of concealed nodes.
-    ///
-    /// # Error
-    ///
     /// If leaf with the given `protocol_id` is not found (absent or already
     /// concealed), errors with [`LeafNotKnown`] error.
-    // This API is not public in order to prevent from creating degenerate
-    // Merkle blocks with no leaf nodes, which will be equal to the
-    // MultiCommitment object.
-    fn conceal_except_any(
+    pub fn conceal_except(
         &mut self,
         protocols: impl AsRef<[ProtocolId]>,
     ) -> Result<usize, LeafNotKnown> {
@@ -730,17 +725,19 @@ impl MerkleBlock {
     /// Merges information from the given `proof` to the merkle block, revealing
     /// path related to te `commitment` to the message under the given
     /// `protocol_id`.
-    pub fn merge_reveal(
+    pub fn merge_reveal_path(
         &mut self,
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
     ) -> Result<u16, UnrelatedProof> {
-        let block = MerkleBlock::with(proof, protocol_id, message);
-        self.merge_reveal_other(block)
+        let block = MerkleBlock::with(proof, protocol_id, message)?;
+        self.merge_reveal(block)
     }
 
-    fn merge_reveal_other(
+    /// Merges two merkle blocks together, joining revealed information from
+    /// each one of them.
+    pub fn merge_reveal(
         &mut self,
         other: MerkleBlock,
     ) -> Result<u16, UnrelatedProof> {
@@ -801,7 +798,7 @@ impl MerkleBlock {
         mut self,
         protocol_id: ProtocolId,
     ) -> Result<MerkleProof, LeafNotKnown> {
-        self.conceal_except(protocol_id)?;
+        self.conceal_except([protocol_id])?;
         let mut map = BTreeMap::<u8, MerkleNode>::new();
         for node in &self.cross_section {
             match node {
@@ -864,6 +861,8 @@ pub struct MerkleProof {
     path: Vec<MerkleNode>,
 }
 
+impl Proof for MerkleProof {}
+
 impl MerkleProof {
     /// Computes the depth of the merkle tree.
     pub fn depth(&self) -> u8 { self.path.len() as u8 }
@@ -880,16 +879,15 @@ impl MerkleProof {
     /// Returns inner merkle path representation
     pub fn as_path(&self) -> &[MerkleNode] { &self.path }
 
-    /// Verifies that the given proof is a valid proof for the `commitment` to
-    /// the `message` under the given `protocol_id`.
-    pub fn verify(
+    /// Convolves the proof with the `message` under the given `protocol_id`,
+    /// producing [`CommitmentHash`].
+    pub fn convolve(
         &self,
         protocol_id: ProtocolId,
         message: Message,
-        commitment: MultiCommitment,
-    ) -> bool {
-        let block = MerkleBlock::with(self, protocol_id, message);
-        commitment == block.consensus_commit()
+    ) -> Result<CommitmentHash, UnrelatedProof> {
+        let block = MerkleBlock::with(self, protocol_id, message)?;
+        Ok(block.consensus_commit())
     }
 }
 
@@ -968,7 +966,7 @@ mod test {
 
         assert_ne!(tree.commit_conceal()[..], tree.consensus_commit()[..]);
         assert_eq!(
-            MultiCommitment::hash(tree.commit_conceal()),
+            CommitmentHash::hash(tree.commit_conceal()),
             tree.consensus_commit()
         );
 
@@ -1032,7 +1030,7 @@ mod test {
         let first = iter.next().unwrap();
 
         let mut block = orig_block.clone();
-        assert_eq!(block.conceal_except(*first.0).unwrap(), 6);
+        assert_eq!(block.conceal_except([*first.0]).unwrap(), 6);
 
         assert_eq!(block.entropy, None);
 
@@ -1055,7 +1053,7 @@ mod test {
 
         for ((proto, msg), pos) in src.messages.into_iter().zip([3, 6, 0]) {
             let mut block = orig_block.clone();
-            block.conceal_except(proto).unwrap();
+            block.conceal_except([proto]).unwrap();
 
             let proof1 = block.to_merkle_proof(proto).unwrap();
             let proof2 = orig_block.to_merkle_proof(proto).unwrap();
@@ -1071,7 +1069,10 @@ mod test {
                 ]);
             }
 
-            proof1.verify(proto, msg, tree.consensus_commit());
+            assert_eq!(
+                proof1.convolve(proto, msg).unwrap(),
+                tree.consensus_commit()
+            );
         }
     }
 
@@ -1083,11 +1084,11 @@ mod test {
 
         for (proto, msg) in src.messages {
             let mut block = orig_block.clone();
-            block.conceal_except(proto).unwrap();
+            block.conceal_except([proto]).unwrap();
             assert_eq!(block.consensus_commit(), tree.consensus_commit());
 
             let proof = block.to_merkle_proof(proto).unwrap();
-            let new_block = MerkleBlock::with(&proof, proto, msg);
+            let new_block = MerkleBlock::with(&proof, proto, msg).unwrap();
             assert_eq!(block, new_block);
             assert_eq!(block.consensus_commit(), new_block.consensus_commit());
         }
@@ -1103,11 +1104,12 @@ mod test {
         let first = iter.next().unwrap();
 
         let mut block = orig_block.clone();
-        block.conceal_except(*first.0).unwrap();
+        block.conceal_except([*first.0]).unwrap();
 
         let proof1 = block.to_merkle_proof(*first.0).unwrap();
 
-        let mut new_block = MerkleBlock::with(&proof1, *first.0, *first.1);
+        let mut new_block =
+            MerkleBlock::with(&proof1, *first.0, *first.1).unwrap();
         assert_eq!(block, new_block);
 
         let second = iter.next().unwrap();
@@ -1117,12 +1119,14 @@ mod test {
         let proof3 = orig_block.to_merkle_proof(*third.0).unwrap();
 
         new_block
-            .merge_reveal(&proof2, *second.0, *second.1)
+            .merge_reveal_path(&proof2, *second.0, *second.1)
             .unwrap();
-        new_block.merge_reveal(&proof3, *third.0, *third.1).unwrap();
+        new_block
+            .merge_reveal_path(&proof3, *third.0, *third.1)
+            .unwrap();
 
         orig_block
-            .conceal_except_any(src.messages.into_keys().collect::<Vec<_>>())
+            .conceal_except(src.messages.into_keys().collect::<Vec<_>>())
             .unwrap();
         assert_eq!(orig_block, new_block);
     }
