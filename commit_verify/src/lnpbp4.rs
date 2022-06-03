@@ -311,9 +311,9 @@ mod commit {
     }
 }
 
-fn protocol_id_pos(protocol_id: ProtocolId, len: usize) -> u16 {
-    let rem =
-        u256::from_le_bytes(protocol_id.into_inner()) % u256::from(len as u64);
+fn protocol_id_pos(protocol_id: ProtocolId, width: usize) -> u16 {
+    let rem = u256::from_le_bytes(protocol_id.into_inner())
+        % u256::from(width as u64);
     rem.low_u64() as u16
 }
 
@@ -551,10 +551,14 @@ impl MerkleBlock {
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
-    ) -> Self {
+    ) -> Result<Self, UnrelatedProof> {
         let path = proof.as_path();
         let mut pos = proof.pos;
         let mut width = proof.width() as u16;
+
+        if protocol_id_pos(protocol_id, width as usize) != pos {
+            return Err(UnrelatedProof);
+        }
 
         let mut dir = Vec::with_capacity(path.len());
         let mut rev = Vec::with_capacity(path.len());
@@ -580,11 +584,11 @@ impl MerkleBlock {
         });
         cross_section.extend(rev.into_iter().rev());
 
-        MerkleBlock {
+        Ok(MerkleBlock {
             depth: path.len() as u8,
             cross_section,
             entropy: None,
-        }
+        })
     }
 
     /// Conceals all commitments in the block except for the commitment under
@@ -745,7 +749,7 @@ impl MerkleBlock {
         protocol_id: ProtocolId,
         message: Message,
     ) -> Result<u16, UnrelatedProof> {
-        let block = MerkleBlock::with(proof, protocol_id, message);
+        let block = MerkleBlock::with(proof, protocol_id, message)?;
         self.merge_reveal_other(block)
     }
 
@@ -891,16 +895,15 @@ impl MerkleProof {
     /// Returns inner merkle path representation
     pub fn as_path(&self) -> &[MerkleNode] { &self.path }
 
-    /// Verifies that the given proof is a valid proof for the `commitment` to
-    /// the `message` under the given `protocol_id`.
-    pub fn verify(
+    /// Convolves the proof with the `message` under the given `protocol_id`,
+    /// producing [`CommitmentHash`].
+    pub fn convolve(
         &self,
         protocol_id: ProtocolId,
         message: Message,
-        commitment: CommitmentHash,
-    ) -> bool {
-        let block = MerkleBlock::with(self, protocol_id, message);
-        commitment == block.consensus_commit()
+    ) -> Result<CommitmentHash, UnrelatedProof> {
+        let block = MerkleBlock::with(self, protocol_id, message)?;
+        Ok(block.consensus_commit())
     }
 }
 
@@ -1082,7 +1085,10 @@ mod test {
                 ]);
             }
 
-            proof1.verify(proto, msg, tree.consensus_commit());
+            assert_eq!(
+                proof1.convolve(proto, msg).unwrap(),
+                tree.consensus_commit()
+            );
         }
     }
 
@@ -1098,7 +1104,7 @@ mod test {
             assert_eq!(block.consensus_commit(), tree.consensus_commit());
 
             let proof = block.to_merkle_proof(proto).unwrap();
-            let new_block = MerkleBlock::with(&proof, proto, msg);
+            let new_block = MerkleBlock::with(&proof, proto, msg).unwrap();
             assert_eq!(block, new_block);
             assert_eq!(block.consensus_commit(), new_block.consensus_commit());
         }
@@ -1118,7 +1124,8 @@ mod test {
 
         let proof1 = block.to_merkle_proof(*first.0).unwrap();
 
-        let mut new_block = MerkleBlock::with(&proof1, *first.0, *first.1);
+        let mut new_block =
+            MerkleBlock::with(&proof1, *first.0, *first.1).unwrap();
         assert_eq!(block, new_block);
 
         let second = iter.next().unwrap();
