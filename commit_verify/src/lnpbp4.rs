@@ -82,20 +82,18 @@ const MIDSTATE_ENTROPY: [u8; 32] = [
     0x52, 0x0D, 0xD4, 0xD1, 0xD8, 0x88, 0x1E, 0x61,
 ];
 
-// TODO: Fix value
 // SHA256("LNPBP4:leaf")
 const MIDSTATE_LEAF: [u8; 32] = [
-    0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
-    0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
-    0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
+    0x82, 0x41, 0x89, 0x6d, 0xab, 0x0b, 0x37, 0x0c, 0x4a, 0x8d, 0x47, 0x65,
+    0xcb, 0x19, 0x42, 0x68, 0xaa, 0x75, 0x7c, 0xa0, 0xbf, 0xd1, 0x95, 0x61,
+    0x32, 0x9b, 0xa6, 0x3a, 0x46, 0x61, 0x31, 0xb8,
 ];
 
-// TODO: Fix value
 // SHA256("LNPBP4:node")
 const MIDSTATE_NODE: [u8; 32] = [
-    0x23, 0x4B, 0x4D, 0xBA, 0x22, 0x2A, 0x64, 0x1C, 0x7F, 0x74, 0xD5, 0xC9,
-    0x80, 0x17, 0x36, 0x1A, 0x90, 0x76, 0x4F, 0xB3, 0xC2, 0xB1, 0xA1, 0x6F,
-    0xDE, 0x28, 0x66, 0x89, 0xF1, 0xCC, 0x99, 0x3F,
+    0x24, 0xdd, 0x37, 0xf7, 0x3f, 0x87, 0x8e, 0xbc, 0x86, 0x51, 0x5e, 0x58,
+    0x19, 0x3d, 0x8a, 0x14, 0xf6, 0xc8, 0x0f, 0xb3, 0x9d, 0x94, 0xd0, 0x61,
+    0xb8, 0xd6, 0x43, 0x04, 0x34, 0x9a, 0x7b, 0xb5,
 ];
 
 // SHA256("LNPBP4")
@@ -832,5 +830,51 @@ impl MerkleProof {
     ) -> bool {
         let block = MerkleBlock::with(self, protocol_id, message);
         commitment == block.commit_conceal()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_lnpbp4_tag() {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_LNPBP4);
+        let tag_hash = sha256::Hash::hash(b"LNPBP4");
+        let mut engine = Message::engine();
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        assert_eq!(midstate, engine.midstate());
+    }
+
+    #[test]
+    fn test_entropy_tag() {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_ENTROPY);
+        let tag_hash = sha256::Hash::hash(b"LNPBP4:entropy");
+        let mut engine = Message::engine();
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        assert_eq!(midstate, engine.midstate());
+    }
+
+    #[test]
+    fn test_leaf_tag() {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_LEAF);
+        let tag_hash = sha256::Hash::hash(b"LNPBP4:leaf");
+        let mut engine = Message::engine();
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        println!("{:#04x?}", engine.midstate().0);
+        assert_eq!(midstate, engine.midstate());
+    }
+    #[test]
+    fn test_node_tag() {
+        let midstate = sha256::Midstate::from_inner(MIDSTATE_NODE);
+        let tag_hash = sha256::Hash::hash(b"LNPBP4:node");
+        let mut engine = Message::engine();
+        engine.input(&tag_hash[..]);
+        engine.input(&tag_hash[..]);
+        println!("{:#04x?}", engine.midstate().0);
+        assert_eq!(midstate, engine.midstate());
     }
 }
