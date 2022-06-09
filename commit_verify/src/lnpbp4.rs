@@ -38,7 +38,8 @@
 //! - [`MerkleBlock::from`]: [`MerkleTree`] -> `Self`
 //! - [`MerkleBlock::into_merkle_proof`]: `Self`, [`ProtocolId`] ->
 //!   [`MerkleProof`]
-//! - [`MerkleBlock::from`]: [`MerkleProof`] -> `Self`
+//! - [`MerkleBlock::with`]: [`MerkleProof`], [`ProtocolId`], [`Message`] ->
+//!   `Self`
 //! - [`MerkleBlock::merge_reveal`]: `Self`, [`MerkleProof`] -> `Self`
 //!
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
@@ -551,7 +552,8 @@ pub struct LeafNotKnown(ProtocolId);
 pub struct UnrelatedProof;
 
 impl MerkleBlock {
-    fn with(
+    /// Constructs merkle block from a merkle proof
+    pub fn with(
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
