@@ -193,6 +193,15 @@ pub enum Error {
     CantFitInMaxSlots,
 }
 
+/// Iterator over messages in [`MerkleTree`] and [`MerkleBlock`].
+pub struct MessageIter(std::vec::IntoIter<Message>);
+
+impl Iterator for MessageIter {
+    type Item = Message;
+
+    fn next(&mut self) -> Option<Self::Item> { self.0.next() }
+}
+
 /// Complete information about LNPBP-4 merkle tree.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictEncode, StrictDecode)]
@@ -313,6 +322,17 @@ mod commit {
                 depth += 1;
             }
         }
+    }
+}
+
+impl IntoIterator for MerkleTree {
+    type Item = Message;
+    type IntoIter = MessageIter;
+
+    #[allow(clippy::needless_collect)]
+    fn into_iter(self) -> Self::IntoIter {
+        let messages = self.messages.values().copied().collect::<Vec<_>>();
+        MessageIter(messages.into_iter())
     }
 }
 
@@ -534,6 +554,24 @@ impl CommitEncode for MerkleBlock {
 
 impl ConsensusCommit for MerkleBlock {
     type Commitment = CommitmentHash;
+}
+
+impl IntoIterator for &MerkleBlock {
+    type Item = Message;
+    type IntoIter = MessageIter;
+
+    #[allow(clippy::needless_collect)]
+    fn into_iter(self) -> Self::IntoIter {
+        let messages = self
+            .cross_section
+            .iter()
+            .filter_map(|node| match node {
+                TreeNode::ConcealedNode { .. } => None,
+                TreeNode::CommitmentLeaf { message, .. } => Some(*message),
+            })
+            .collect::<Vec<_>>();
+        MessageIter(messages.into_iter())
+    }
 }
 
 /// commitment under protocol id {0} is absent from the known part of a given
