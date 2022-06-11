@@ -15,7 +15,11 @@
 use std::io;
 
 use amplify::flags::FlagVec;
+#[cfg(feature = "float")]
+use amplify::num::apfloat::{ieee, Float};
 use amplify::num::{i1024, i256, i512, u1024, u256, u512};
+#[cfg(feature = "float")]
+use half::bf16;
 
 use crate::{Error, StrictDecode, StrictEncode};
 
@@ -118,6 +122,68 @@ impl StrictDecode for i1024 {
         let mut bytes = [0u8; 128];
         d.read_exact(&mut bytes)?;
         Ok(i1024::from_le_bytes(bytes))
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictEncode for bf16 {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().strict_encode(e)
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictDecode for bf16 {
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(bf16::from_bits(u16::strict_decode(d)?))
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictEncode for ieee::Half {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes()[..2].strict_encode(e)
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictDecode for ieee::Half {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf[..2])?;
+        Ok(ieee::Half::from_bits(u256::from_le_bytes(buf)))
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictEncode for ieee::Quad {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes()[..16].strict_encode(e)
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictDecode for ieee::Quad {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf[..16])?;
+        Ok(ieee::Quad::from_bits(u256::from_le_bytes(buf)))
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictEncode for ieee::X87DoubleExtended {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes()[..10].strict_encode(e)
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictDecode for ieee::X87DoubleExtended {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf[..10])?;
+        Ok(ieee::X87DoubleExtended::from_bits(u256::from_le_bytes(buf)))
     }
 }
 
