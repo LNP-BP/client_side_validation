@@ -17,6 +17,7 @@ version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47cfa6a69eeb140125a63e4f5ae1156a530f8744ea1d35aa1b8b5613e4d8b41d"
 dependencies = [
+ "amplify_apfloat",
  "amplify_derive",
  "amplify_num",
  "amplify_syn",
@@ -25,6 +26,16 @@ dependencies = [
  "serde_yaml",
  "stringly_conversions",
  "toml",
+]
+
+[[package]]
+name = "amplify_apfloat"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f9171a65ce2184812e9a63c084ae313fa6264a92575c1e205579b0d1f171b85"
+dependencies = [
+ "amplify_num",
+ "bitflags",
 ]
 
 [[package]]
@@ -424,6 +435,12 @@ dependencies = [
  "serde_json",
  "zeroize",
 ]
+
+[[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "hashbrown"
@@ -879,7 +896,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.8.3"
+version = "1.8.4"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -887,6 +904,7 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "grin_secp256k1zkp",
+ "half",
  "miniscript",
  "rand 0.7.3",
  "serde",
