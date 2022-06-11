@@ -15,7 +15,7 @@
 use std::io;
 
 use amplify::flags::FlagVec;
-use amplify::num::{u1024, u256, u512};
+use amplify::num::{i1024, i256, i512, u1024, u256, u512};
 
 use crate::{Error, StrictDecode, StrictEncode};
 
@@ -74,6 +74,50 @@ impl StrictDecode for u1024 {
         let mut bytes = [0u8; 128];
         d.read_exact(&mut bytes)?;
         Ok(u1024::from_le_bytes(bytes))
+    }
+}
+
+impl StrictEncode for i256 {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_le_bytes().strict_encode(e)
+    }
+}
+
+impl StrictDecode for i256 {
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(i256::from_le_bytes(<[u8; 32]>::strict_decode(d)?))
+    }
+}
+
+impl StrictEncode for i512 {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let bytes = self.to_le_bytes();
+        e.write_all(&bytes)?;
+        Ok(bytes.len())
+    }
+}
+
+impl StrictDecode for i512 {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut bytes = [0u8; 64];
+        d.read_exact(&mut bytes)?;
+        Ok(i512::from_le_bytes(bytes))
+    }
+}
+
+impl StrictEncode for i1024 {
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let bytes = self.to_le_bytes();
+        e.write_all(&bytes)?;
+        Ok(bytes.len())
+    }
+}
+
+impl StrictDecode for i1024 {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut bytes = [0u8; 128];
+        d.read_exact(&mut bytes)?;
+        Ok(i1024::from_le_bytes(bytes))
     }
 }
 
