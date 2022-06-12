@@ -13,11 +13,14 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io;
 use std::io::{Read, Write};
 use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+
+use amplify::num::u24;
 
 use crate::{Error, StrictDecode, StrictEncode};
 
@@ -239,6 +242,51 @@ where
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let len = u32::strict_decode(&mut d)?;
         let mut data = Vec::<T>::with_capacity(len as usize);
+        for _ in 0..len {
+            data.push(T::strict_decode(&mut d)?);
+        }
+        Ok(data.into())
+    }
+}
+
+/// Wrapper for vectors which may have up to `u32::MAX` elements in strict
+/// encoding representation.
+#[derive(Wrapper, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(transparent)
+)]
+pub struct MediumVec<T>(Vec<T>)
+where
+    T: Clone + StrictEncode + StrictDecode;
+
+impl<T> StrictEncode for MediumVec<T>
+where
+    T: Clone + StrictEncode + StrictDecode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let mut len = self.0.len();
+        if len > u24::MAX.as_u32() as usize {
+            return Err(Error::ExceedMaxItems(len));
+        }
+        u24::try_from(len as u32)
+            .expect("u32 Cmp is broken")
+            .strict_encode(&mut e)?;
+        for el in &self.0 {
+            len += el.strict_encode(&mut e)?;
+        }
+        Ok(len)
+    }
+}
+
+impl<T> StrictDecode for MediumVec<T>
+where
+    T: Clone + StrictDecode + StrictEncode,
+{
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u24::strict_decode(&mut d)?.as_u32() as usize;
+        let mut data = Vec::<T>::with_capacity(len);
         for _ in 0..len {
             data.push(T::strict_decode(&mut d)?);
         }
