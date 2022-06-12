@@ -163,6 +163,22 @@ impl StrictEncode for ieee::Quad {
 }
 
 #[cfg(feature = "float")]
+impl StrictDecode for ieee::Oct {
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf[..])?;
+        Ok(ieee::Oct::from_bits(u256::from_le_bytes(buf)))
+    }
+}
+
+#[cfg(feature = "float")]
+impl StrictEncode for ieee::Oct {
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes().strict_encode(e)
+    }
+}
+
+#[cfg(feature = "float")]
 impl StrictDecode for ieee::Quad {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
