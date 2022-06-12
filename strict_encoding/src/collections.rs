@@ -320,7 +320,7 @@ where
     pub fn remove(&mut self, index: usize) -> T { self.0.remove(index) }
 }
 
-/// Wrapper for vectors which may have up to `u32::MAX` elements in strict
+/// Wrapper for vectors which may have up to `u24::MAX` elements in strict
 /// encoding representation.
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
 #[cfg_attr(
@@ -330,30 +330,64 @@ where
 )]
 pub struct MediumVec<T>(Vec<T>)
 where
-    T: Clone + StrictEncode + StrictDecode;
+    T: StrictEncode + StrictDecode;
+
+impl<T> Deref for MediumVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl<T> TryFrom<Vec<T>> for MediumVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Error = Error;
+
+    fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
+        let len = value.len();
+        if len > u32::MAX as usize {
+            return Err(Error::ExceedMaxItems(len));
+        }
+        Ok(Self(value))
+    }
+}
+
+impl<'me, T> IntoIterator for &'me MediumVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Item = &'me T;
+    type IntoIter = std::slice::Iter<'me, T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.0.iter() }
+}
 
 impl<T> StrictEncode for MediumVec<T>
 where
-    T: Clone + StrictEncode + StrictDecode,
+    T: StrictEncode + StrictDecode,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.0.len();
+        let len = self.0.len();
         if len > u24::MAX.as_u32() as usize {
             return Err(Error::ExceedMaxItems(len));
         }
-        u24::try_from(len as u32)
+        let mut count = u24::try_from(len as u32)
             .expect("u32 Cmp is broken")
             .strict_encode(&mut e)?;
         for el in &self.0 {
-            len += el.strict_encode(&mut e)?;
+            count += el.strict_encode(&mut e)?;
         }
-        Ok(len)
+        Ok(count)
     }
 }
 
 impl<T> StrictDecode for MediumVec<T>
 where
-    T: Clone + StrictDecode + StrictEncode,
+    T: StrictDecode + StrictEncode,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let len = u24::strict_decode(&mut d)?.as_u32() as usize;
@@ -363,6 +397,44 @@ where
         }
         Ok(Self(data))
     }
+}
+
+impl<T> MediumVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    /// Constructs empty [`LargeVec`].
+    pub fn new() -> Self { Self(vec![]) }
+
+    /// Returns the number of elements in the vector, also referred to as its
+    /// 'length'.
+    pub fn len_u24(&self) -> u24 {
+        u24::try_from(self.0.len() as u32)
+            .expect("MediumVec inner size guarantees are broken")
+    }
+
+    /// Appends an element to the back of a collection.
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::ExceedMaxItems`] if the new capacity exceeds
+    /// `u32::MAX` bytes.
+    pub fn push(&mut self, item: T) -> Result<usize, Error> {
+        let len = self.0.len();
+        if len > u24::MAX.as_u32() as usize {
+            return Err(Error::ExceedMaxItems(len));
+        }
+        self.0.push(item);
+        Ok(len)
+    }
+
+    /// Removes and returns the element at position `index` within the vector,
+    /// shifting all elements after it to the left.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    pub fn remove(&mut self, index: usize) -> T { self.0.remove(index) }
 }
 
 /// In terms of strict encoding, `Vec` is stored in form of
