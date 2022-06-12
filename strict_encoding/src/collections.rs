@@ -296,6 +296,9 @@ where
     /// 'length'.
     pub fn len_u32(&self) -> u32 { self.0.len() as u32 }
 
+    /// Returns iterator over mutable elements of the collection.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<T> { self.0.iter_mut() }
+
     /// Appends an element to the back of a collection.
     ///
     /// # Errors
@@ -412,6 +415,9 @@ where
         u24::try_from(self.0.len() as u32)
             .expect("MediumVec inner size guarantees are broken")
     }
+
+    /// Returns iterator over mutable elements of the collection.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<T> { self.0.iter_mut() }
 
     /// Appends an element to the back of a collection.
     ///
