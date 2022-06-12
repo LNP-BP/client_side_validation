@@ -18,7 +18,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::io;
 use std::io::{Read, Write};
-use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+use std::ops::{
+    Deref, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive,
+};
 
 use amplify::num::u24;
 
@@ -208,7 +210,7 @@ where
 
 /// Wrapper for vectors which may have up to `u32::MAX` elements in strict
 /// encoding representation.
-#[derive(Wrapper, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -216,28 +218,62 @@ where
 )]
 pub struct LargeVec<T>(Vec<T>)
 where
-    T: Clone + StrictEncode + StrictDecode;
+    T: StrictEncode + StrictDecode;
 
-impl<T> StrictEncode for LargeVec<T>
+impl<T> Deref for LargeVec<T>
 where
-    T: Clone + StrictEncode + StrictDecode,
+    T: StrictEncode + StrictDecode,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.0.len();
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl<T> TryFrom<Vec<T>> for LargeVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Error = Error;
+
+    fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
+        let len = value.len();
         if len > u32::MAX as usize {
             return Err(Error::ExceedMaxItems(len));
         }
-        (len as u32).strict_encode(&mut e)?;
-        for el in &self.0 {
-            len += el.strict_encode(&mut e)?;
+        Ok(Self(value))
+    }
+}
+
+impl<'me, T> IntoIterator for &'me LargeVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Item = &'me T;
+    type IntoIter = std::slice::Iter<'me, T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.0.iter() }
+}
+
+impl<T> StrictEncode for LargeVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let len = self.0.len();
+        if len > u32::MAX as usize {
+            return Err(Error::ExceedMaxItems(len));
         }
-        Ok(len)
+        let mut count = (len as u32).strict_encode(&mut e)?;
+        for el in &self.0 {
+            count += el.strict_encode(&mut e)?;
+        }
+        Ok(count)
     }
 }
 
 impl<T> StrictDecode for LargeVec<T>
 where
-    T: Clone + StrictDecode + StrictEncode,
+    T: StrictDecode + StrictEncode,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let len = u32::strict_decode(&mut d)?;
@@ -245,13 +281,48 @@ where
         for _ in 0..len {
             data.push(T::strict_decode(&mut d)?);
         }
-        Ok(data.into())
+        Ok(Self(data))
     }
+}
+
+impl<T> LargeVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    /// Constructs empty [`LargeVec`].
+    pub fn new() -> Self { Self(vec![]) }
+
+    /// Returns the number of elements in the vector, also referred to as its
+    /// 'length'.
+    pub fn len_u32(&self) -> u32 { self.0.len() as u32 }
+
+    /// Appends an element to the back of a collection.
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::ExceedMaxItems`] if the new capacity exceeds
+    /// `u32::MAX` bytes.
+    pub fn push(&mut self, item: T) -> Result<usize, Error> {
+        let len = self.0.len();
+        if len > u32::MAX as usize {
+            return Err(Error::ExceedMaxItems(len));
+        }
+        self.0.push(item);
+        Ok(len)
+    }
+
+    /// Removes and returns the element at position `index` within the vector,
+    /// shifting all elements after it to the left.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    pub fn remove(&mut self, index: usize) -> T { self.0.remove(index) }
 }
 
 /// Wrapper for vectors which may have up to `u32::MAX` elements in strict
 /// encoding representation.
-#[derive(Wrapper, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -290,7 +361,7 @@ where
         for _ in 0..len {
             data.push(T::strict_decode(&mut d)?);
         }
-        Ok(data.into())
+        Ok(Self(data))
     }
 }
 
