@@ -210,7 +210,7 @@ where
 
 /// Wrapper for vectors which may have up to `u32::MAX` elements in strict
 /// encoding representation.
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -219,6 +219,13 @@ where
 pub struct LargeVec<T>(Vec<T>)
 where
     T: StrictEncode + StrictDecode;
+
+impl<T> Default for LargeVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    fn default() -> Self { Self(vec![]) }
+}
 
 impl<T> Deref for LargeVec<T>
 where
@@ -325,7 +332,7 @@ where
 
 /// Wrapper for vectors which may have up to `u24::MAX` elements in strict
 /// encoding representation.
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -334,6 +341,13 @@ where
 pub struct MediumVec<T>(Vec<T>)
 where
     T: StrictEncode + StrictDecode;
+
+impl<T> Default for MediumVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    fn default() -> Self { Self(vec![]) }
+}
 
 impl<T> Deref for MediumVec<T>
 where
