@@ -261,6 +261,16 @@ where
     fn into_iter(self) -> Self::IntoIter { self.0.iter() }
 }
 
+impl<T> IntoIterator for LargeVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
+}
+
 impl<T> StrictEncode for LargeVec<T>
 where
     T: StrictEncode + StrictDecode,
@@ -381,6 +391,16 @@ where
     type IntoIter = std::slice::Iter<'me, T>;
 
     fn into_iter(self) -> Self::IntoIter { self.0.iter() }
+}
+
+impl<T> IntoIterator for MediumVec<T>
+where
+    T: StrictEncode + StrictDecode,
+{
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
 }
 
 impl<T> StrictEncode for MediumVec<T>
