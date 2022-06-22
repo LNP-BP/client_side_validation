@@ -148,7 +148,10 @@ pub trait StrictDecode: Sized {
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error>;
 
     /// Tries to deserialize byte array into the current type using
-    /// [`StrictDecode::strict_decode`]
+    /// [`StrictDecode::strict_decode`]. If there are some data remains in the
+    /// buffer once deserialization is completed, fails with
+    /// [`Error::DataNotEntirelyConsumed`]. Use `io::Cursor` over the buffer and
+    /// [`StrictDecode::strict_decode`] to avoid such failures.
     fn strict_deserialize(data: impl AsRef<[u8]>) -> Result<Self, Error> {
         Self::strict_decode(data.as_ref())
     }
