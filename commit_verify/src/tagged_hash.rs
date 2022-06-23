@@ -55,59 +55,66 @@ impl Midstate {
 
 /// Trait with convenience functions, which is auto-implemented for all types
 /// wrapping [`sha256t::Hash`], i.e. BIP-340-like hash types.
-pub trait TaggedHash<'a, T>
+pub trait TaggedHash<Tag>
 where
-    Self: Wrapper<Inner = sha256t::Hash<T>>,
-    T: 'a + sha256t::Tag,
+    Self: Sized + Wrapper<Inner = sha256t::Hash<Tag>>,
+    Tag: sha256t::Tag + 'static,
 {
     /// Constructs tagged hash out of a given message data
-    fn hash(msg: impl AsRef<[u8]>) -> Self
-    where
-        Self: Sized,
-    {
+    fn hash(msg: impl AsRef<[u8]>) -> Self {
         Self::from_inner(sha256t::Hash::hash(msg.as_ref()))
     }
 
     /// Constructs tagged hash out of other hash type.
     ///
     /// Danger: this does not guarantees that the hash is tagged
-    fn from_hash<X>(hash: X) -> Self
-    where
-        Self: Sized,
-        X: Hash<Inner = [u8; 32]>,
-    {
+    fn from_hash(hash: impl Hash<Inner = [u8; 32]>) -> Self {
         Self::from_inner(sha256t::Hash::from_inner(hash.into_inner()))
+    }
+
+    /// Constructs tagged hash from a given hexadecimal string
+    fn from_hex(hex: &str) -> Result<Self, hex::Error> {
+        Ok(Self::from_inner(sha256t::Hash::from_hex(hex)?))
     }
 
     /// Constructs tagged hash from byte slice. If slice length is not equal to
     /// 32 bytes, fails with [`Error::InvalidLength`] (this is just a
     /// wrapper for [`sha256t::Hash::from_slice`]).
-    fn from_slice(slice: &[u8]) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        sha256t::Hash::from_slice(slice).map(Self::from_inner)
+    fn from_bytes(slice: impl AsRef<[u8]>) -> Result<Self, Error> {
+        sha256t::Hash::from_slice(slice.as_ref()).map(Self::from_inner)
     }
 
-    /// Returns a reference to 32-byte slice array representing internal hash
-    /// data
-    fn as_slice(&'a self) -> &'a [u8; 32] { self.as_inner().as_inner() }
+    /// Constructs tagged hash type from a fixed-size array of 32 bytes.
+    fn from_array(array: [u8; 32]) -> Self {
+        Self::from_inner(sha256t::Hash::from_inner(array))
+    }
+
+    /// Constructs tagged hash type from a hash engine.
+    fn from_engine(engine: sha256::HashEngine) -> Self {
+        Self::from_inner(sha256t::Hash::from_engine(engine))
+    }
+
+    /// Returns a reference to a slice representing internal hash data
+    fn as_slice(&self) -> &[u8] { self.as_inner().as_inner() }
 
     /// Converts to a 32-byte slice array representing internal hash data
-    fn to_bytes(&'a self) -> [u8; 32] { *self.as_slice() }
+    fn into_array(self) -> [u8; 32] { self.into_inner().into_inner() }
 
-    /// Constructs tagged hash from a given hexadecimal string
-    fn from_hex(hex: &str) -> Result<Self, hex::Error>
-    where
-        Self: Sized,
-    {
-        Ok(Self::from_inner(sha256t::Hash::from_hex(hex)?))
+    /// Converts current tagged hash type into a base [`sha256t::Hash`] type
+    fn into_sha356t(self) -> sha256t::Hash<Tag> { self.into_inner() }
+
+    /// Converts tagged hash type into basic SHA256 hash
+    fn into_sha256(self) -> sha256::Hash {
+        sha256::Hash::from_inner(self.into_inner().into_inner())
     }
+
+    /// Constructs vector representation of the data in tagged hash
+    fn to_vec(self) -> Vec<u8> { self.into_array().to_vec() }
 }
 
-impl<'a, U, T> TaggedHash<'a, T> for U
+impl<H, Tag> TaggedHash<Tag> for H
 where
-    U: Wrapper<Inner = sha256t::Hash<T>>,
-    T: 'a + sha256t::Tag,
+    H: Wrapper<Inner = sha256t::Hash<Tag>>,
+    Tag: sha256t::Tag + 'static,
 {
 }
