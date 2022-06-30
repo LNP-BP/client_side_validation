@@ -1091,8 +1091,8 @@ mod test {
         .map(Result::unwrap);
 
         for ip in ips {
-            for port in vec![None, Some(32), Some(6432), Some(50001)] {
-                for transport in vec![
+            for port in [None, Some(32), Some(6432), Some(50001)] {
+                for transport in [
                     None,
                     Some(Transport::Tcp),
                     Some(Transport::Udp),

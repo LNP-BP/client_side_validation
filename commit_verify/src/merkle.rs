@@ -358,35 +358,35 @@ mod test {
         }
 
         let large = vec![Item(s!("none")); 3];
-        let vec: MerkleSource<Item> = large.clone().into();
+        let vec: MerkleSource<Item> = large.into();
         assert_eq!(
             vec.commit_serialize().to_hex(),
             "71ea45868fbd924061c4deb84f37ed82b0ac808de12aa7659afda7d9303e7a71"
         );
 
         let large = vec![Item(s!("none")); 5];
-        let vec: MerkleSource<Item> = large.clone().into();
+        let vec: MerkleSource<Item> = large.into();
         assert_eq!(
             vec.commit_serialize().to_hex(),
             "e255e0124efe0555fde0d932a0bc0042614129e1a02f7b8c0bf608b81af3eb94"
         );
 
         let large = vec![Item(s!("none")); 9];
-        let vec: MerkleSource<Item> = large.clone().into();
+        let vec: MerkleSource<Item> = large.into();
         assert_eq!(
             vec.commit_serialize().to_hex(),
             "6cd2d5345a654af4720bdcc637183ded8e432dc88f778b7d27c8d5a0e342c65f"
         );
 
         let large = vec![Item(s!("none")); 13];
-        let vec: MerkleSource<Item> = large.clone().into();
+        let vec: MerkleSource<Item> = large.into();
         assert_eq!(
             vec.commit_serialize().to_hex(),
             "3714c08c7c94a4ef769ad2cb7df9aaca1e1252d6599a02aff281c37e7242797d"
         );
 
         let large = vec![Item(s!("none")); 17];
-        let vec: MerkleSource<Item> = large.clone().into();
+        let vec: MerkleSource<Item> = large.into();
         assert_eq!(
             vec.commit_serialize().to_hex(),
             "6093dec47e5bdd706da01e4479cb65632eac426eb59c8c28c4e6c199438c8b6f"

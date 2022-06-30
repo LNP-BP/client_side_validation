@@ -54,7 +54,7 @@ fn unit_struct() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictEncode, StrictDecode)]
     struct Strict(u16);
-    test_encoding_roundtrip(&Strict(0xcafe), [0xFe, 0xCA])?;
+    test_encoding_roundtrip(&Strict(0xcafe), [0xFE, 0xCA])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(NetworkEncode, NetworkDecode)]
