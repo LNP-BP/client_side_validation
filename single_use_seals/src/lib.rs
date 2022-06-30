@@ -178,7 +178,7 @@ pub trait SealProtocol<Seal> {
 }
 
 /// Adds support for the seal close operation to [`SealProtocol`].
-pub trait SealClose<Seal>: SealProtocol<Seal> {
+pub trait CloseSeal<Seal>: SealProtocol<Seal> {
     /// Closes seal over a message, producing *witness*.
     ///
     /// NB: Closing of the seal MUST not change the internal state of the
@@ -186,7 +186,7 @@ pub trait SealClose<Seal>: SealProtocol<Seal> {
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    fn seal_close(
+    fn close_seal(
         &mut self,
         seal: &Seal,
         over: &Self::Message,
@@ -200,7 +200,7 @@ pub trait SealClose<Seal>: SealProtocol<Seal> {
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    fn seal_close_all<'seal>(
+    fn close_all_seals<'seal>(
         &mut self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         over: &Self::Message,
@@ -211,7 +211,7 @@ pub trait SealClose<Seal>: SealProtocol<Seal> {
 
 /// Adds support to [`SealProtocol`] for merging seal close operation into an
 /// existing witness data (closing some other seals).
-pub trait SealCloseMerge<Seal>: SealProtocol<Seal> {
+pub trait MergeCloseSeal<Seal>: SealProtocol<Seal> {
     /// Closes seal over a message, adding witness to some existing *witness*
     /// container.
     ///
@@ -220,7 +220,7 @@ pub trait SealCloseMerge<Seal>: SealProtocol<Seal> {
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    fn seal_close_merge(
+    fn merge_close_seal(
         &mut self,
         seal: &Seal,
         over: &Self::Message,
@@ -235,7 +235,7 @@ pub trait SealCloseMerge<Seal>: SealProtocol<Seal> {
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    fn seal_close_merge_all<'seal>(
+    fn merge_close_all_seals<'seal>(
         &mut self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         over: &Self::Message,
@@ -245,13 +245,13 @@ pub trait SealCloseMerge<Seal>: SealProtocol<Seal> {
 }
 
 /// Adds support for the seal verify operation to [`SealProtocol`].
-pub trait SealVerify<'seal, Seal>: SealProtocol<Seal>
+pub trait VerifySeal<'seal, Seal>: SealProtocol<Seal>
 where
     Seal: 'seal,
 {
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
-    fn verify(
+    fn verify_seal(
         &self,
         seal: &'seal Seal,
         msg: &Self::Message,
@@ -259,16 +259,17 @@ where
     ) -> Result<bool, Self::Error>;
 
     /// Performs batch verification of the seals. Default implementation
-    /// iterates through the seals and calls [`Self::verify`] for each of them,
-    /// returning `false` on first failure (not verifying the rest of seals).
-    fn verify_batch(
+    /// iterates through the seals and calls [`Self::verify_seal`] for each of
+    /// them, returning `false` on first failure (not verifying the rest of
+    /// seals).
+    fn verify_seal_all(
         &self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         msg: &Self::Message,
         witness: &Self::Witness,
     ) -> Result<bool, Self::Error> {
         for seal in seals {
-            if !self.verify(seal, msg, witness)? {
+            if !self.verify_seal(seal, msg, witness)? {
                 return Ok(false);
             }
         }
@@ -341,7 +342,7 @@ where
 /// Adds support for the seal close operation to [`SealProtocolAsync`].
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait SealCloseAsync<Seal>: SealProtocolAsync<Seal>
+pub trait CloseSealAsync<Seal>: SealProtocolAsync<Seal>
 where
     Seal: Sync + Send,
 {
@@ -352,7 +353,7 @@ where
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    async fn seal_close_async(
+    async fn close_seal_async(
         &mut self,
         seal: &Seal,
         over: &Self::Message,
@@ -379,7 +380,7 @@ where
 /// an existing witness data (closing some other seals).
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait SealCloseMergeAsync<Seal>: SealProtocolAsync<Seal>
+pub trait MergeCloseSealAsync<Seal>: SealProtocolAsync<Seal>
 where
     Seal: Sync + Send,
 {
@@ -391,7 +392,7 @@ where
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    async fn seal_close_merge_async(
+    async fn merge_close_seal_async(
         &mut self,
         seal: &Seal,
         over: &Self::Message,
@@ -406,7 +407,7 @@ where
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    async fn seal_close_merge_all_async<'seal>(
+    async fn merge_close_all_seals_async<'seal>(
         &mut self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         over: &Self::Message,
@@ -418,13 +419,13 @@ where
 /// Adds support for the seal verify operation to [`SealProtocolAsync`].
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait SealVerifyAsync<'seal, Seal>: SealProtocol<Seal>
+pub trait VerifySealAsync<'seal, Seal>: SealProtocol<Seal>
 where
     Seal: 'seal + Sync + Send,
 {
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
-    async fn verify_async(
+    async fn verify_seal_async(
         &self,
         seal: &'seal Seal,
         msg: &Self::Message,
@@ -432,10 +433,10 @@ where
     ) -> Result<bool, Self::Error>;
 
     /// Performs batch verification of the seals. Default implementation
-    /// iterates through the seals and calls [`Self::verify_async`] for each of
-    /// them, returning `false` on first failure (not verifying the rest of
-    /// seals).
-    async fn verify_async_batch<I>(
+    /// iterates through the seals and calls [`Self::verify_seal_async`] for
+    /// each of them, returning `false` on first failure (not verifying the
+    /// rest of seals).
+    async fn verify_all_seals_async<I>(
         &self,
         seals: I,
         msg: &Self::Message,
@@ -448,7 +449,7 @@ where
         I::IntoIter: Send,
     {
         for seal in seals {
-            if !self.verify_async(seal, msg, witness).await? {
+            if !self.verify_seal_async(seal, msg, witness).await? {
                 return Ok(false);
             }
         }
