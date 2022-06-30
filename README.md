@@ -116,7 +116,7 @@ libraries:
   [Pandora Core](https://pandoracore.com) – a very early prototypes and proofs 
   of concept applying client-side-validation to mimblewimble-types of 
   blockchains.
-- [Pandora timechain](https://github.com/pandora-network/timechain), an 
+- [Pandora sealchain](https://github.com/pandora-network/sealchain-rs), an 
   experimental blockchain of [Pandora Network](https://pandora.network), 
   playing with client-side-validation using modified bitcoin consensus rules, 
   extended with eltoo- and covenants-related functionality and with removed 
