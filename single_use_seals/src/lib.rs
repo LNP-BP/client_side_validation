@@ -191,6 +191,22 @@ pub trait SealClose<Seal>: SealProtocol<Seal> {
         seal: &Seal,
         over: &Self::Message,
     ) -> Result<Self::Witness, Self::Error>;
+
+    /// Closes number of related seals over the same message, producing a single
+    /// *witness*.
+    ///
+    /// NB: Closing of the seal MUST not change the internal state of the
+    /// seal itself; all the data produced by the process must be placed
+    /// into the returned Witness type.
+    ///
+    /// The witness _is not_ published by this method to the seal medium.
+    fn seal_close_all<'seal>(
+        &mut self,
+        seals: impl IntoIterator<Item = &'seal Seal>,
+        over: &Self::Message,
+    ) -> Result<Self::Witness, Self::Error>
+    where
+        Seal: 'seal;
 }
 
 /// Adds support for the seal verify operation to [`SealProtocol`].
@@ -306,6 +322,22 @@ where
         seal: &Seal,
         over: &Self::Message,
     ) -> Result<Self::Witness, Self::Error>;
+
+    /// Closes number of related seals over the same message, producing a single
+    /// *witness*.
+    ///
+    /// NB: Closing of the seal MUST not change the internal state of the
+    /// seal itself; all the data produced by the process must be placed
+    /// into the returned Witness type.
+    ///
+    /// The witness _is not_ published by this method to the seal medium.
+    async fn seal_close_all_async<'seal>(
+        &mut self,
+        seals: impl IntoIterator<Item = &'seal Seal>,
+        over: &Self::Message,
+    ) -> Result<Self::Witness, Self::Error>
+    where
+        Seal: 'seal;
 }
 
 /// Adds support for the seal verify operation to [`SealProtocolAsync`].
