@@ -186,7 +186,7 @@ pub trait SealClose<Seal>: SealProtocol<Seal> {
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    fn close(
+    fn seal_close(
         &mut self,
         seal: &Seal,
         over: &Self::Message,
@@ -301,7 +301,7 @@ where
     /// into the returned Witness type.
     ///
     /// The witness _is not_ published by this method to the seal medium.
-    async fn close_async(
+    async fn seal_close_async(
         &mut self,
         seal: &Seal,
         over: &Self::Message,
