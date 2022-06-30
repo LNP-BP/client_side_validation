@@ -14,7 +14,6 @@
 
 use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
-use std::iter::FromIterator;
 use std::ops::AddAssign;
 
 use strict_encoding::{StrictDecode, StrictEncode};

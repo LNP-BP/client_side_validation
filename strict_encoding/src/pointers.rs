@@ -179,7 +179,7 @@ pub mod test {
     fn test_error_propagation() {
         gen_strings().into_iter().for_each(|s| {
             let r = strict_serialize(&s).unwrap();
-            let p: Result<String, _> = strict_deserialize(&r[..1].to_vec());
+            let p: Result<String, _> = strict_deserialize(&r[..1]);
             assert!(p.is_err());
         })
     }

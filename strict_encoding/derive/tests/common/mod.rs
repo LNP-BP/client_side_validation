@@ -22,13 +22,13 @@ use strict_encoding_test::DataEncodingTestFailure;
 
 #[allow(dead_code)]
 pub fn compile_test(mode: &'static str) {
-    let mut config = compiletest::Config::default();
-
-    config.mode = mode.parse().expect("Invalid mode");
-    config.src_base = PathBuf::from(format!("tests/{}", mode));
-    config.link_deps(); // Populate config.target_rustcflags with dependencies on the path
-    config.clean_rmeta(); // If your tests import the parent crate, this helps with E0464
-
+    let mut config = compiletest::Config {
+        mode: mode.parse().expect("Invalid mode"),
+        src_base: PathBuf::from(format!("tests/{}", mode)),
+        ..default!()
+    };
+    config.link_deps();
+    config.clean_rmeta();
     compiletest::run_tests(&config);
 }
 

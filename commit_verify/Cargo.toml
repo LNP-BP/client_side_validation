@@ -9,7 +9,8 @@ homepage = "https://github.com/LNP-BP"
 keywords = ["lnp-bp", "cryptography", "smart-contracts", "commit-verify"]
 categories = ["cryptography", "encoding"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.59.0"
 
 [lib]
 name = "commit_verify"

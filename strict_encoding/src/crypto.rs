@@ -226,7 +226,7 @@ mod test {
             0x79833565,
             blind.clone(),
             blind.clone(),
-            blind.clone(),
+            blind,
             None,
             None,
         );

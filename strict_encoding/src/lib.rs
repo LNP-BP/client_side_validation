@@ -84,10 +84,6 @@ mod primitives;
 mod slice32;
 pub mod strategies;
 
-#[deprecated(since = "1.6.1", note = "use strict_encoding_test crate instead")]
-#[macro_use]
-pub mod test_helpers;
-
 use std::io::Seek;
 use std::ops::Range;
 use std::path::Path;

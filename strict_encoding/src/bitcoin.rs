@@ -1243,6 +1243,7 @@ pub(crate) mod test {
 
     #[test]
     fn test_amount() {
+        #[allow(clippy::inconsistent_digit_grouping)]
         let value = 19_356_465_2435_5767__u64;
         let amount = Amount::from_sat(value);
         let data = value.to_le_bytes();

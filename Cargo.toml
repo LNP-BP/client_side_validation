@@ -9,7 +9,8 @@ homepage = "https://github.com/LNP-BP"
 keywords = ["lnp-bp", "cryptocurrency", "smart-contracts", "blockchain"]
 categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.59.0"
 exclude = [".github", "commit_verify", "strict_encoding", "single_use_seals"]
 
 [lib]

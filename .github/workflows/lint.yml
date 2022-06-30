@@ -39,15 +39,15 @@ jobs:
         name: Clippy
         with:
           command: clippy
-          args: --workspace --all-features
+          args: --workspace --all-features --all-targets
   doc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install rustc stable
+      - name: Install rustc nightly
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
           components: rust-docs
       - uses: actions-rs/cargo@v1
