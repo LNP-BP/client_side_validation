@@ -140,7 +140,7 @@ fn decode_struct_impl(
 
     Ok(quote! {
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
-            #[inline]
+            #[allow(clippy::init_numbered_fields)]
             fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
                 #inner_impl
@@ -246,6 +246,7 @@ fn decode_enum_impl(
 
     Ok(quote! {
         impl #impl_generics #import::#trait_name for #ident_name #ty_generics #where_clause {
+            #[allow(clippy::init_numbered_fields)]
             fn #decode_name<D: ::std::io::Read>(mut d: D) -> ::core::result::Result<Self, #import::Error> {
                 use #import::#trait_name;
                 Ok(match #repr::#decode_name(&mut d)? {
