@@ -18,7 +18,6 @@
 //! [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
 
 use std::io;
-use std::iter::FromIterator;
 
 use bitcoin_hashes::{sha256, Hash, HashEngine};
 

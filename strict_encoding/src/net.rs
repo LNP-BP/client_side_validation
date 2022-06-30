@@ -33,7 +33,6 @@
 //! - QUIC (more efficient UDP version)
 //! This list may be extended with future LNPBP-42 revisions
 
-use std::convert::TryFrom;
 use std::net::{
     IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
 };
@@ -660,8 +659,6 @@ impl Strategy for SocketAddrV6 {
 
 #[cfg(test)]
 mod test {
-    use std::convert::TryInto;
-
     use super::*;
     use crate::strict_deserialize;
 

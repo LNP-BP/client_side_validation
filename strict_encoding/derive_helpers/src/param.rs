@@ -13,7 +13,6 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use std::collections::BTreeMap;
-use std::convert::{TryFrom, TryInto};
 
 use amplify::proc_attr::{
     ArgValue, ArgValueReq, AttrReq, LiteralClass, ParametrizedAttr, ValueClass,
