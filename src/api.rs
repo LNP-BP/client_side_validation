@@ -249,9 +249,9 @@ where
 /// represented or accessed through a single structure; and MUST be able to
 /// deterministically validate this set giving an external validation function,
 /// that is able to provide validator with
-pub trait ClientSideValidate<'a>: ClientData
+pub trait ClientSideValidate<'client_data>: ClientData<'client_data>
 where
-    Self::ValidationItem: 'a,
+    Self::ValidationItem: 'client_data,
 {
     /// Data type for data sub-entries contained withing the current
     /// client-side-validated data item.
@@ -260,13 +260,16 @@ where
     /// entries, this may be a special enum type with a per-data-type variant.
     ///
     /// If the data do not contain internal data, set this type to `()`.
-    type ValidationItem: ClientData<ValidationReport = Self::ValidationReport>;
+    type ValidationItem: ClientData<
+        'client_data,
+        ValidationReport = Self::ValidationReport,
+    >;
 
     /// Iterator over the list of specific validation items.
     ///
     /// If the client-side-validated data contain different types of internal
     /// entries, this may be a special enum type with a per-data-type variant.
-    type ValidationIter: Iterator<Item = &'a Self::ValidationItem>;
+    type ValidationIter: Iterator<Item = &'client_data Self::ValidationItem>;
 
     /// The mein method performing client-side-validation for the whole block of
     /// client-side-validated data.
@@ -285,20 +288,20 @@ where
     /// reported issues withing [`Status`] object, returned by the function at
     /// the end.
     fn client_side_validate<Resolver>(
-        &'a self,
-        resolver: &'a mut Resolver,
+        &'client_data self,
+        resolver: &'client_data mut Resolver,
     ) -> Status<Self::ValidationReport>
     where
         Resolver: SealResolver<
-            <<<Self as ClientData>::ValidationReport as ValidationReport>::SealIssue as SealIssue>::Seal,
-            Error = <<Self as ClientData>::ValidationReport as ValidationReport>::SealIssue,
+            <<<Self as ClientData<'client_data>>::ValidationReport as ValidationReport>::SealIssue as SealIssue>::Seal,
+            Error = <<Self as ClientData<'client_data>>::ValidationReport as ValidationReport>::SealIssue,
         >,
     {
         let mut status = Status::new();
 
         status += self.validate_internal_consistency();
         for item in self.validation_iter() {
-            if let Some(seal) = item.single_use_seal() {
+            for seal in item.single_use_seals() {
                 let _ = resolver
                     .resolve_trust(seal)
                     .map_err(|issue| status.add_seal_issue(issue));
@@ -311,11 +314,14 @@ where
 
     /// Returns iterator over hierarchy of individual data items inside
     /// client-side-validation data.
-    fn validation_iter(&'a self) -> Self::ValidationIter;
+    fn validation_iter(&'client_data self) -> Self::ValidationIter;
 }
 
 /// Marker trait for client-side-validation data at any level of data hierarchy.
-pub trait ClientData {
+pub trait ClientData<'client_data>
+where
+    Self: 'client_data,
+{
     /// Data type that stores validation report configuration for the validation
     /// [`Status`] object.
     ///
@@ -323,15 +329,12 @@ pub trait ClientData {
     /// [`ValidationReport::SealIssue`]`<Seal>`.
     type ValidationReport: ValidationReport;
 
-    /// Method returning single-use-seal reference which corresponds to the
-    /// current piece of client-side-validated data. Should return `None` if the
-    /// client-side-validation data does not associated with any single-use-seal
-    /// at this level of data hierarchy.
-    fn single_use_seal(
-        &self,
-    ) -> Option<
-        &<<Self::ValidationReport as ValidationReport>::SealIssue as SealIssue>::Seal,
-    >;
+    /// Iterator over single-use-seals belonging to a specific validation item.
+    type SealIterator: Iterator<Item = &'client_data <<Self::ValidationReport as ValidationReport>::SealIssue as SealIssue>::Seal>;
+
+    /// Method returning iterator over single-use-seal references corresponding
+    /// to the current piece of client-side-validated data.
+    fn single_use_seals(&'client_data self) -> Self::SealIterator;
 
     /// Validates internal consistency of the current client-side-validated data
     /// item. Must not validate any single-use-seals or commitments against
@@ -342,7 +345,9 @@ pub trait ClientData {
     /// single current item. The iteration is performed at higher levels,
     /// normally as a part of [`ClientSideValidate::client_side_validate`]
     /// method logic.
-    fn validate_internal_consistency(&self) -> Status<Self::ValidationReport>;
+    fn validate_internal_consistency(
+        &'client_data self,
+    ) -> Status<Self::ValidationReport>;
 }
 
 /// Seal resolver validates seal to have `closed` status, or reports
@@ -460,13 +465,19 @@ mod test {
 
         #[derive(Default)]
         struct Data {
-            seal: Seal,
+            seals: Vec<Seal>,
         }
 
-        impl ClientData for Data {
+        impl<'a> ClientData<'a> for Data
+        where
+            Data: 'a,
+        {
             type ValidationReport = Report;
+            type SealIterator = std::slice::Iter<'a, Seal>;
 
-            fn single_use_seal(&self) -> Option<&Seal> { Some(&self.seal) }
+            fn single_use_seals(&'a self) -> Self::SealIterator {
+                self.seals.iter()
+            }
 
             fn validate_internal_consistency(
                 &self,
@@ -479,10 +490,11 @@ mod test {
             pub data: Vec<Data>,
         }
 
-        impl ClientData for State {
+        impl<'a> ClientData<'a> for State {
             type ValidationReport = Report;
+            type SealIterator = std::slice::Iter<'a, Seal>;
 
-            fn single_use_seal(&self) -> Option<&Seal> { None }
+            fn single_use_seals(&self) -> Self::SealIterator { [].iter() }
 
             fn validate_internal_consistency(
                 &self,
