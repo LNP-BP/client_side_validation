@@ -209,6 +209,41 @@ pub trait SealClose<Seal>: SealProtocol<Seal> {
         Seal: 'seal;
 }
 
+/// Adds support to [`SealProtocol`] for merging seal close operation into an
+/// existing witness data (closing some other seals).
+pub trait SealCloseMerge<Seal>: SealProtocol<Seal> {
+    /// Closes seal over a message, adding witness to some existing *witness*
+    /// container.
+    ///
+    /// NB: Closing of the seal MUST not change the internal state of the
+    /// seal itself; all the data produced by the process must be placed
+    /// into the returned Witness type.
+    ///
+    /// The witness _is not_ published by this method to the seal medium.
+    fn seal_close_merge(
+        &mut self,
+        seal: &Seal,
+        over: &Self::Message,
+        witness_proto: Self::Witness,
+    ) -> Result<Self::Witness, Self::Error>;
+
+    /// Closes number of related seals over the same message, adding witness to
+    /// some existing *witness* container.
+    ///
+    /// NB: Closing of the seal MUST not change the internal state of the
+    /// seal itself; all the data produced by the process must be placed
+    /// into the returned Witness type.
+    ///
+    /// The witness _is not_ published by this method to the seal medium.
+    fn seal_close_merge_all<'seal>(
+        &mut self,
+        seals: impl IntoIterator<Item = &'seal Seal>,
+        over: &Self::Message,
+    ) -> Result<Self::Witness, Self::Error>
+    where
+        Seal: 'seal;
+}
+
 /// Adds support for the seal verify operation to [`SealProtocol`].
 pub trait SealVerify<'seal, Seal>: SealProtocol<Seal>
 where
@@ -332,6 +367,46 @@ where
     ///
     /// The witness _is not_ published by this method to the seal medium.
     async fn seal_close_all_async<'seal>(
+        &mut self,
+        seals: impl IntoIterator<Item = &'seal Seal>,
+        over: &Self::Message,
+    ) -> Result<Self::Witness, Self::Error>
+    where
+        Seal: 'seal;
+}
+
+/// Adds support to [`SealProtocolAsync`] for merging seal close operation into
+/// an existing witness data (closing some other seals).
+#[cfg(feature = "async")]
+#[async_trait]
+pub trait SealCloseMergeAsync<Seal>: SealProtocolAsync<Seal>
+where
+    Seal: Sync + Send,
+{
+    /// Closes seal over a message, adding witness to some existing *witness*
+    /// container.
+    ///
+    /// NB: Closing of the seal MUST not change the internal state of the
+    /// seal itself; all the data produced by the process must be placed
+    /// into the returned Witness type.
+    ///
+    /// The witness _is not_ published by this method to the seal medium.
+    async fn seal_close_merge_async(
+        &mut self,
+        seal: &Seal,
+        over: &Self::Message,
+        witness_proto: Self::Witness,
+    ) -> Result<Self::Witness, Self::Error>;
+
+    /// Closes number of related seals over the same message, adding witness to
+    /// some existing *witness* container.
+    ///
+    /// NB: Closing of the seal MUST not change the internal state of the
+    /// seal itself; all the data produced by the process must be placed
+    /// into the returned Witness type.
+    ///
+    /// The witness _is not_ published by this method to the seal medium.
+    async fn seal_close_merge_all_async<'seal>(
         &mut self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         over: &Self::Message,
