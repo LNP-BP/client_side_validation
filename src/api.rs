@@ -241,20 +241,6 @@ where
             Validity::Valid
         }
     }
-
-    /// Method used to check whether seal resolution issues are resolved, for
-    /// instance allowing to try a different resolver, re-check after restored
-    /// network connectivity or after some time allowing unmined transactions to
-    /// be mined.
-    pub fn resolve_seal_issues<Resolver>(&mut self, _resolver: &mut Resolver)
-    where
-        Resolver: SealResolver<
-            <R::SealIssue as SealIssue>::Seal,
-            Error = R::SealIssue,
-        >,
-    {
-        todo!("#34 resolve_seal_issues")
-    }
 }
 
 /// This simple trait MUST be used by all top-level data structures implementing
