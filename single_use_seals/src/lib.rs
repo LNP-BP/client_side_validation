@@ -90,7 +90,8 @@
 //!
 //! ## Sample implementation
 //!
-//! Examples of implementations can be found in `bp::seals`.
+//! Examples of implementations can be found in `bp::seals` module of `bp-core`
+//! crate.
 //!
 //! ## Further reading
 //!
