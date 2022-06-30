@@ -25,9 +25,8 @@ possible applications designed by Giacomo Zucco. It was shaped into a protocol-
 level design by Dr Maxim Orlovsky with a big input from the community and
 implemented by him as this set of libraries.
 
-Minimum supported rust version for the library (MSRV) is 1.51 (if used without
-`crypto` feature because of `dalek` dependency requiring rust edition 2021),
-or 1.56 otherwise.
+Minimum supported rust version for the library (MSRV) is 1.59 and 2021 rust 
+edition.
 
 
 ## Documentation
