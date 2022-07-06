@@ -31,6 +31,11 @@ pub struct HashFixedBytes;
 #[cfg(feature = "bitcoin")]
 pub struct BitcoinConsensus;
 
+/// Encodes/decodes data in the same way as they are encoded/decoded according
+/// to monero consensus rules from monero-project/monero
+#[cfg(feature = "monero")]
+pub struct MoneroConsensus;
+
 /// Encodes/decodes data as a wrapped type, i.e. according to the rules of
 /// encoding for its inner representation. Applicable only for types
 /// implementing [`amplify::Wrapper`]
@@ -143,6 +148,30 @@ where
     }
 }
 
+#[cfg(feature = "monero")]
+impl<B> StrictEncode for amplify::Holder<B, MoneroConsensus>
+where
+    B: monero::consensus::Encodable,
+{
+    #[inline]
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.as_inner()
+            .consensus_encode(&mut e)
+            .map_err(Error::from)
+    }
+}
+
+#[cfg(feature = "monero")]
+impl<B> StrictDecode for amplify::Holder<B, MoneroConsensus>
+where
+    B: monero::consensus::Decodable,
+{
+    #[inline]
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(Self::new(B::consensus_decode(&mut d).map_err(Error::from)?))
+    }
+}
+
 impl<A> StrictEncode for amplify::Holder<A, UsingUniformAddr>
 where
     A: net::Uniform,
@@ -179,6 +208,18 @@ impl From<bitcoin::consensus::encode::Error> for Error {
     #[inline]
     fn from(e: bitcoin::consensus::encode::Error) -> Self {
         if let bitcoin::consensus::encode::Error::Io(err) = e {
+            err.into()
+        } else {
+            Error::DataIntegrityError(e.to_string())
+        }
+    }
+}
+
+#[cfg(feature = "monero")]
+impl From<monero::consensus::encode::Error> for Error {
+    #[inline]
+    fn from(e: monero::consensus::encode::Error) -> Self {
+        if let monero::consensus::encode::Error::Io(err) = e {
             err.into()
         } else {
             Error::DataIntegrityError(e.to_string())
