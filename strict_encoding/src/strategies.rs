@@ -53,6 +53,7 @@ pub trait Strategy {
     /// - [`BitcoinConsensus`]
     /// - [`Wrapped`]
     /// - [`UsingUniformAddr`]
+    /// - [`MoneroConsensus`]
     type Strategy;
 }
 
