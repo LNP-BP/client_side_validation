@@ -29,6 +29,7 @@ grin_secp256k1zkp = { version = "0.7", optional = true }
 chrono = { version = "0.4", optional = true }
 half = { version = "1.8", optional = true }
 serde = { version = "1", optional = true }
+monero = { version = "0.17", optional = true }
 
 [dev-dependencies]
 rand = "0.7"
@@ -37,7 +38,7 @@ strict_encoding_test = { version = "0.8.0", path = "./test_helpers" }
 
 [features]
 default = ["chrono", "derive", "bitcoin"]
-all = ["float", "miniscript", "crypto", "chrono", "derive", "bitcoin", "serde"]
+all = ["float", "miniscript", "crypto", "chrono", "derive", "bitcoin", "serde", "monero"]
 crypto = ["ed25519-dalek", "grin_secp256k1zkp", "bitcoin"]
 derive = ["strict_encoding_derive"]
 float = ["amplify/apfloat", "half"]

@@ -1225,9 +1225,9 @@ pub(crate) mod test {
 
         // test random and null outpoints
         let outpoint = OutPoint::new(txid, vout);
-        let _ = test_encoding_roundtrip(&outpoint, &OUTPOINT).unwrap();
+        test_encoding_roundtrip(&outpoint, &OUTPOINT).unwrap();
         let null = OutPoint::null();
-        let _ = test_encoding_roundtrip(&null, &OUTPOINT_NULL).unwrap();
+        test_encoding_roundtrip(&null, &OUTPOINT_NULL).unwrap();
     }
 
     #[test]
