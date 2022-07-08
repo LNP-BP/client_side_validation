@@ -182,67 +182,56 @@ impl StrictDecode for SignedAmount {
 
 impl StrictEncode for PaymentId {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.to_fixed_bytes())?)
+    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_fixed_bytes().strict_encode(e)
     }
 }
 
 impl StrictDecode for PaymentId {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut bytes = [0u8; 8];
-        d.read_exact(&mut bytes)?;
-        Ok(Self::from(bytes))
+    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        <[u8; 8]>::strict_decode(d).map(Self::from)
     }
 }
 
 impl StrictEncode for Index {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.major.strict_encode(&mut e)?;
-        self.minor.strict_encode(e)
+        Ok(strict_encode_list!(e; self.major, self.minor))
     }
 }
 
 impl StrictDecode for Index {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let major = u32::strict_decode(&mut d)?;
-        let minor = u32::strict_decode(d)?;
-        Ok(Self { major, minor })
+        Ok(strict_decode_self!(d; major, minor; crate))
     }
 }
 
 impl StrictEncode for KeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.view.strict_encode(&mut e)?;
-        self.spend.strict_encode(e)
+        Ok(strict_encode_list!(e; self.view, self.spend))
     }
 }
 
 impl StrictDecode for KeyPair {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let view = PrivateKey::strict_decode(&mut d)?;
-        let spend = PrivateKey::strict_decode(d)?;
-        Ok(Self { view, spend })
+        Ok(strict_decode_self!(d; view, spend; crate))
     }
 }
 
 impl StrictEncode for ViewPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.view.strict_encode(&mut e)?;
-        self.spend.strict_encode(e)
+        Ok(strict_encode_list!(e; self.view, self.spend))
     }
 }
 
 impl StrictDecode for ViewPair {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let view = PrivateKey::strict_decode(&mut d)?;
-        let spend = PublicKey::strict_decode(d)?;
-        Ok(Self { view, spend })
+        Ok(strict_decode_self!(d; view, spend; crate))
     }
 }
