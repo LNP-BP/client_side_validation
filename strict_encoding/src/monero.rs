@@ -15,30 +15,21 @@
 
 use std::io;
 
-use monero::{
-    blockdata::{
-        block::{Block, BlockHeader},
-        transaction::{
-            ExtraField, KeyImage, SubField, Transaction, TransactionPrefix,
-            TxIn, TxOut, TxOutTarget,
-        },
-    },
-    cryptonote::{
-        hash::{Hash, Hash8},
-        subaddress::Index,
-    },
-    util::{
-        address::{Address, PaymentId},
-        amount::{Amount, SignedAmount},
-        key::{KeyPair, PrivateKey, PublicKey, ViewPair},
-        ringct::{
-            BoroSig, Bulletproof, Clsag, CtKey, EcdhInfo, Key, Key64, MgSig,
-            MultisigKlrki, MultisigOut, RangeSig, RctSigBase, RctType,
-            Signature,
-        },
-    },
-    VarInt,
+use monero::blockdata::block::{Block, BlockHeader};
+use monero::blockdata::transaction::{
+    ExtraField, KeyImage, SubField, Transaction, TransactionPrefix, TxIn,
+    TxOut, TxOutTarget,
 };
+use monero::cryptonote::hash::{Hash, Hash8};
+use monero::cryptonote::subaddress::Index;
+use monero::util::address::{Address, PaymentId};
+use monero::util::amount::{Amount, SignedAmount};
+use monero::util::key::{KeyPair, PrivateKey, PublicKey, ViewPair};
+use monero::util::ringct::{
+    BoroSig, Bulletproof, Clsag, CtKey, EcdhInfo, Key, Key64, MgSig,
+    MultisigKlrki, MultisigOut, RangeSig, RctSigBase, RctType, Signature,
+};
+use monero::VarInt;
 
 use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
 
