@@ -256,6 +256,7 @@ fn encode_enum_impl(
         };
 
         inner_impl.append_all(quote_spanned! { variant.span() =>
+            #[allow(clippy::unnecessary_cast)]
             Self::#ident #bra_captures_ket => {
                 len += (#value as #repr).#encode_name(&mut e)?;
                 #captures
