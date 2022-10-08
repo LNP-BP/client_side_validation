@@ -574,7 +574,7 @@ impl IntoIterator for &MerkleBlock {
     }
 }
 
-/// commitment under protocol id {0} is absent from the known part of a given
+/// commitment under protocol id {_0} is absent from the known part of a given
 /// LNPBP-4 Merkle block.
 #[derive(
     Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error
