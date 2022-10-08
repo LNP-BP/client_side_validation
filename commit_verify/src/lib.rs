@@ -29,9 +29,9 @@ extern crate amplify;
 #[macro_use]
 extern crate bitcoin_hashes;
 #[cfg(feature = "serde")]
+#[macro_use]
 extern crate serde_crate as serde;
 #[cfg(feature = "serde")]
-#[macro_use]
 extern crate serde_with;
 
 pub mod commit_encode;

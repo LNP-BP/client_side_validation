@@ -17,19 +17,18 @@ use std::io::{Read, Write};
 use std::sync::Arc;
 
 use bitcoin::consensus::ReadExt;
-use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d};
 use bitcoin::XOnlyPublicKey;
 use miniscript::descriptor::{
-    self, Descriptor, DescriptorPublicKey, DescriptorSinglePub, DescriptorXKey,
-    InnerXKey, SinglePubKey, TapTree, Wildcard,
+    self, Descriptor, DescriptorPublicKey, DescriptorXKey, InnerXKey,
+    SinglePub, SinglePubKey, TapTree, Wildcard,
 };
 use miniscript::policy::concrete::Policy;
 use miniscript::{
-    BareCtx, Legacy, Miniscript, MiniscriptKey, ScriptContext, Segwitv0, Tap,
+    hash256, BareCtx, Legacy, Miniscript, MiniscriptKey, Segwitv0, Tap,
     Terminal,
 };
 
-use crate::{Error, StrictDecode, StrictEncode};
+use crate::{strategies, Error, Strategy, StrictDecode, StrictEncode};
 
 /// Maximum level of nested miniscript and miniscript concrete policy levels
 /// supported by strict encoding process.
@@ -46,7 +45,8 @@ const MS_FALSE: u8 = 0;
 const MS_TRUE: u8 = 1;
 
 const MS_KEY: u8 = 0x02;
-const MS_KEY_HASH: u8 = 0x03;
+const MS_KEY_HASH: u8 = 0x0a;
+const MS_HASHED_KEY: u8 = 0x03;
 const MS_THRESH: u8 = 0x20;
 const MS_MULTI: u8 = 0x21;
 const MS_MULTI_A: u8 = 0x2c;
@@ -151,10 +151,17 @@ impl StrictDecode for Tap {
     }
 }
 
+impl Strategy for hash256::Hash {
+    type Strategy = strategies::HashFixedBytes;
+}
+
 impl<Pk> StrictEncode for TapTree<Pk>
 where
     Pk: MiniscriptKey + StrictEncode,
-    Pk::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
@@ -174,7 +181,10 @@ where
 impl<Pk> StrictDecode for TapTree<Pk>
 where
     Pk: MiniscriptKey + StrictDecode,
-    Pk::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         match u8::strict_decode(&mut d)? {
@@ -195,7 +205,10 @@ where
 impl<Pk> StrictEncode for Policy<Pk>
 where
     Pk: MiniscriptKey + StrictEncode,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         // We need this because of the need to control maximum number of nested
@@ -207,7 +220,10 @@ where
         ) -> Result<usize, Error>
         where
             Pk: MiniscriptKey + StrictEncode,
-            <Pk as MiniscriptKey>::Hash: StrictEncode,
+            <Pk as MiniscriptKey>::Hash160: StrictEncode,
+            <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+            <Pk as MiniscriptKey>::Hash256: StrictEncode,
+            <Pk as MiniscriptKey>::Sha256: StrictEncode,
         {
             if depth > MINISCRIPT_DEPTH_LIMIT {
                 return Err(Error::ExceedMaxItems(
@@ -273,7 +289,10 @@ where
 impl<Pk> StrictDecode for Policy<Pk>
 where
     Pk: MiniscriptKey + StrictDecode,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         // We need this first because of the need to control maximum number of
@@ -285,7 +304,10 @@ where
         ) -> Result<Policy<Pk>, Error>
         where
             Pk: MiniscriptKey + StrictDecode,
-            <Pk as MiniscriptKey>::Hash: StrictDecode,
+            <Pk as MiniscriptKey>::Hash160: StrictDecode,
+            <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+            <Pk as MiniscriptKey>::Hash256: StrictDecode,
+            <Pk as MiniscriptKey>::Sha256: StrictDecode,
         {
             if depth > MINISCRIPT_DEPTH_LIMIT {
                 return Err(Error::ExceedMaxItems(
@@ -299,14 +321,14 @@ where
                 MS_TRUE => Policy::Trivial,
                 MS_FALSE => Policy::Unsatisfiable,
                 MS_KEY => Policy::Key(Pk::strict_decode(d)?),
-                MS_AFTER => Policy::After(u32::strict_decode(d)?),
-                MS_OLDER => Policy::Older(u32::strict_decode(d)?),
-                MS_SHA256 => Policy::Sha256(sha256::Hash::strict_decode(d)?),
-                MS_HASH256 => Policy::Hash256(sha256d::Hash::strict_decode(d)?),
+                MS_AFTER => Policy::After(StrictDecode::strict_decode(d)?),
+                MS_OLDER => Policy::Older(StrictDecode::strict_decode(d)?),
+                MS_SHA256 => Policy::Sha256(StrictDecode::strict_decode(d)?),
+                MS_HASH256 => Policy::Hash256(StrictDecode::strict_decode(d)?),
                 MS_RIPEMD160 => {
-                    Policy::Ripemd160(ripemd160::Hash::strict_decode(d)?)
+                    Policy::Ripemd160(StrictDecode::strict_decode(d)?)
                 }
-                MS_HASH160 => Policy::Hash160(hash160::Hash::strict_decode(d)?),
+                MS_HASH160 => Policy::Hash160(StrictDecode::strict_decode(d)?),
                 MS_AND_B => {
                     let len = d.read_u16()?;
                     let mut vec = Vec::with_capacity(len as usize);
@@ -336,9 +358,10 @@ where
                     Policy::Threshold(thresh, vec)
                 }
 
-                MS_KEY_HASH | MS_ALT | MS_SWAP | MS_CHECK | MS_DUP_IF
-                | MS_VERIFY | MS_NON_ZERO | MS_ZERO_NE | MS_AND_V
-                | MS_AND_OR | MS_OR_D | MS_OR_C | MS_OR_I | MS_MULTI => {
+                MS_KEY_HASH | MS_HASHED_KEY | MS_ALT | MS_SWAP | MS_CHECK
+                | MS_DUP_IF | MS_VERIFY | MS_NON_ZERO | MS_ZERO_NE
+                | MS_AND_V | MS_AND_OR | MS_OR_D | MS_OR_C | MS_OR_I
+                | MS_MULTI => {
                     return Err(Error::DataIntegrityError(format!(
                         "byte {:#04X} is a valid miniscript instruction, but \
                          does  not belong to a set of concrete policy \
@@ -365,7 +388,10 @@ where
 impl<Pk, Ctx> StrictEncode for Miniscript<Pk, Ctx>
 where
     Pk: MiniscriptKey + StrictEncode,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
     Ctx: miniscript::ScriptContext,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -389,8 +415,11 @@ where
         ) -> Result<usize, Error>
         where
             Pk: MiniscriptKey + StrictEncode,
-            <Pk as MiniscriptKey>::Hash: StrictEncode,
             Ctx: miniscript::ScriptContext,
+            <Pk as MiniscriptKey>::Hash160: StrictEncode,
+            <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+            <Pk as MiniscriptKey>::Hash256: StrictEncode,
+            <Pk as MiniscriptKey>::Sha256: StrictEncode,
         {
             if depth > MINISCRIPT_DEPTH_LIMIT {
                 return Err(Error::ExceedMaxItems(
@@ -403,7 +432,10 @@ where
                 Terminal::False => MS_FALSE.strict_encode(e)?,
                 Terminal::True => MS_TRUE.strict_encode(e)?,
                 Terminal::PkK(pk) => strict_encode_tuple!(e; MS_KEY, pk),
-                Terminal::PkH(hash) => {
+                Terminal::PkH(pk) => {
+                    strict_encode_tuple!(e; MS_HASHED_KEY, pk)
+                }
+                Terminal::RawPkH(hash) => {
                     strict_encode_tuple!(e; MS_KEY_HASH, hash)
                 }
                 Terminal::After(tl) => strict_encode_tuple!(e; MS_AFTER, tl),
@@ -500,7 +532,10 @@ where
 impl<Pk, Ctx> StrictDecode for Miniscript<Pk, Ctx>
 where
     Pk: MiniscriptKey + StrictDecode,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
     Ctx: miniscript::ScriptContext,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
@@ -513,8 +548,11 @@ where
         ) -> Result<Miniscript<Pk, Ctx>, Error>
         where
             Pk: MiniscriptKey + StrictDecode,
-            <Pk as MiniscriptKey>::Hash: StrictDecode,
             Ctx: miniscript::ScriptContext,
+            <Pk as MiniscriptKey>::Hash160: StrictDecode,
+            <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+            <Pk as MiniscriptKey>::Hash256: StrictDecode,
+            <Pk as MiniscriptKey>::Sha256: StrictDecode,
         {
             if depth > MINISCRIPT_DEPTH_LIMIT {
                 return Err(Error::ExceedMaxItems(
@@ -526,19 +564,22 @@ where
                 MS_TRUE => Terminal::True,
                 MS_FALSE => Terminal::False,
                 MS_KEY => Terminal::PkK(Pk::strict_decode(d)?),
-                MS_KEY_HASH => Terminal::PkH(Pk::Hash::strict_decode(d)?),
+                MS_HASHED_KEY => Terminal::PkH(Pk::strict_decode(d)?),
+                MS_KEY_HASH => {
+                    Terminal::RawPkH(StrictDecode::strict_decode(d)?)
+                }
 
-                MS_AFTER => Terminal::After(u32::strict_decode(d)?),
-                MS_OLDER => Terminal::Older(u32::strict_decode(d)?),
-                MS_SHA256 => Terminal::Sha256(sha256::Hash::strict_decode(d)?),
+                MS_AFTER => Terminal::After(StrictDecode::strict_decode(d)?),
+                MS_OLDER => Terminal::Older(StrictDecode::strict_decode(d)?),
+                MS_SHA256 => Terminal::Sha256(StrictDecode::strict_decode(d)?),
                 MS_HASH256 => {
-                    Terminal::Hash256(sha256d::Hash::strict_decode(d)?)
+                    Terminal::Hash256(StrictDecode::strict_decode(d)?)
                 }
                 MS_RIPEMD160 => {
-                    Terminal::Ripemd160(ripemd160::Hash::strict_decode(d)?)
+                    Terminal::Ripemd160(StrictDecode::strict_decode(d)?)
                 }
                 MS_HASH160 => {
-                    Terminal::Hash160(hash160::Hash::strict_decode(d)?)
+                    Terminal::Hash160(StrictDecode::strict_decode(d)?)
                 }
 
                 MS_ALT => {
@@ -672,7 +713,7 @@ impl StrictDecode for SinglePubKey {
 impl StrictEncode for DescriptorPublicKey {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
-            DescriptorPublicKey::SinglePub(pk) => {
+            DescriptorPublicKey::Single(pk) => {
                 strict_encode_list!(e; 0x01u8, pk)
             }
             DescriptorPublicKey::XPub(xpub) => {
@@ -685,9 +726,9 @@ impl StrictEncode for DescriptorPublicKey {
 impl StrictDecode for DescriptorPublicKey {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         Ok(match u8::strict_decode(&mut d)? {
-            0x01 => DescriptorPublicKey::SinglePub(
-                DescriptorSinglePub::strict_decode(&mut d)?,
-            ),
+            0x01 => {
+                DescriptorPublicKey::Single(SinglePub::strict_decode(&mut d)?)
+            }
             0x02 => DescriptorPublicKey::XPub(DescriptorXKey::strict_decode(
                 &mut d,
             )?),
@@ -701,13 +742,13 @@ impl StrictDecode for DescriptorPublicKey {
     }
 }
 
-impl StrictEncode for DescriptorSinglePub {
+impl StrictEncode for SinglePub {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(strict_encode_list!(e; self.origin, self.key))
     }
 }
 
-impl StrictDecode for DescriptorSinglePub {
+impl StrictDecode for SinglePub {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         Ok(strict_decode_self!(d; origin, key; crate))
     }
@@ -765,7 +806,10 @@ impl StrictDecode for Wildcard {
 impl<Pk> StrictEncode for Descriptor<Pk>
 where
     Pk: MiniscriptKey + StrictEncode,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
@@ -794,7 +838,10 @@ where
 impl<Pk> StrictDecode for Descriptor<Pk>
 where
     Pk: MiniscriptKey + StrictDecode,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         Ok(match u8::strict_decode(&mut d)? {
@@ -829,7 +876,10 @@ where
 impl<Pk> StrictEncode for descriptor::Bare<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
@@ -840,7 +890,10 @@ where
 impl<Pk> StrictDecode for descriptor::Bare<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
@@ -851,7 +904,10 @@ where
 impl<Pk> StrictEncode for descriptor::Pkh<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
@@ -862,7 +918,10 @@ where
 impl<Pk> StrictDecode for descriptor::Pkh<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
@@ -873,7 +932,10 @@ where
 impl<Pk> StrictEncode for descriptor::Wpkh<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
@@ -884,7 +946,10 @@ where
 impl<Pk> StrictDecode for descriptor::Wpkh<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
@@ -895,7 +960,10 @@ where
 impl<Pk> StrictEncode for descriptor::Sh<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
@@ -906,7 +974,10 @@ where
 impl<Pk> StrictDecode for descriptor::Sh<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
@@ -926,7 +997,10 @@ where
 impl<Pk> StrictEncode for descriptor::Wsh<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     #[inline]
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
@@ -937,7 +1011,10 @@ where
 impl<Pk> StrictDecode for descriptor::Wsh<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
@@ -954,7 +1031,10 @@ where
 impl<Pk> StrictEncode for descriptor::Tr<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(strict_encode_list!(e; self.internal_key(), self.taptree()))
@@ -964,7 +1044,10 @@ where
 impl<Pk> StrictDecode for descriptor::Tr<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         descriptor::Tr::new(
@@ -978,8 +1061,11 @@ where
 impl<Pk, Ctx> StrictEncode for descriptor::SortedMultiVec<Pk, Ctx>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
-    Ctx: ScriptContext,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
+    Ctx: miniscript::ScriptContext,
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(strict_encode_list!(e; self.k, self.pks))
@@ -989,8 +1075,11 @@ where
 impl<Pk, Ctx> StrictDecode for descriptor::SortedMultiVec<Pk, Ctx>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
-    Ctx: ScriptContext,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
+    Ctx: miniscript::ScriptContext,
 {
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         descriptor::SortedMultiVec::new(
@@ -1004,7 +1093,10 @@ where
 impl<Pk> StrictEncode for descriptor::ShInner<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
@@ -1027,7 +1119,10 @@ where
 impl<Pk> StrictDecode for descriptor::ShInner<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(match u8::strict_decode(&mut d)? {
@@ -1056,7 +1151,10 @@ where
 impl<Pk> StrictEncode for descriptor::WshInner<Pk>
 where
     Pk: StrictEncode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictEncode,
+    <Pk as MiniscriptKey>::Hash160: StrictEncode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictEncode,
+    <Pk as MiniscriptKey>::Hash256: StrictEncode,
+    <Pk as MiniscriptKey>::Sha256: StrictEncode,
 {
     fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
@@ -1073,7 +1171,10 @@ where
 impl<Pk> StrictDecode for descriptor::WshInner<Pk>
 where
     Pk: StrictDecode + MiniscriptKey,
-    <Pk as MiniscriptKey>::Hash: StrictDecode,
+    <Pk as MiniscriptKey>::Hash160: StrictDecode,
+    <Pk as MiniscriptKey>::Ripemd160: StrictDecode,
+    <Pk as MiniscriptKey>::Hash256: StrictDecode,
+    <Pk as MiniscriptKey>::Sha256: StrictDecode,
 {
     fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(match u8::strict_decode(&mut d)? {
@@ -1141,7 +1242,7 @@ mod test {
 
     #[test]
     fn test_miniscript() {
-        const SET: [&str; 27] = [
+        const SET: [&str; 28] = [
             "lltvln:after(1231488000)",
             "uuj:and_v(v:multi(2,03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a,025601570cb47f238d2b0286db4a990fa0f3ba28d1a319f5e7cf55c2a2444da7cc),after(1231488000))",
             "or_b(un:multi(2,03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729,024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),al:older(16))",
@@ -1162,16 +1263,18 @@ mod test {
             "and_v(andor(hash256(8a35d9ca92a48eaade6f53a64985e9e2afeb74dcf8acb4c3721e0dc7e4294b25),v:hash256(939894f70e6c3a25da75da0cc2071b4076d9b006563cf635986ada2e93c0d735),v:older(50000)),after(499999999))",
             "andor(hash256(5f8d30e655a7ba0d7596bb3ddfb1d2d20390d23b1845000e1e118b3be1b3f040),j:and_v(v:hash160(3a2bff0da9d96868e66abc4427bea4691cf61ccd),older(4194305)),ripemd160(44d90e2d3714c8663b632fcf0f9d5f22192cc4c8))",
             "or_i(c:and_v(v:after(500000),pk_k(02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5)),sha256(d9147961436944f43cd99d28b2bbddbf452ef872b30c8279e255e7daafc7f946))",
-            "thresh(2,c:pk_h(5dedfbf9ea599dd4e3ca6a80b333c472fd0b3f69),s:sha256(e38990d0c7fc009880a9c07c23842e886c6bbdc964ce6bdd5817ad357335ee6f),a:hash160(dd69735817e0e3f6f826a9238dc2e291184f0131))",
+            "thresh(2,c:pk_h(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729),s:sha256(e38990d0c7fc009880a9c07c23842e886c6bbdc964ce6bdd5817ad357335ee6f),a:hash160(dd69735817e0e3f6f826a9238dc2e291184f0131))",
             "and_n(sha256(9267d3dbed802941483f1afa2a6bc68de5f653128aca9bf1461c5d0a3ad36ed2),uc:and_v(v:older(144),pk_k(03fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce)))",
             "and_n(c:pk_k(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729),and_b(l:older(4252898),a:older(16)))",
-            "c:or_i(and_v(v:older(16),pk_h(9fc5dbe5efdce10374a4dd4053c93af540211718)),pk_h(2fbd32c8dd59ee7c17e66cb6ebea7e9846c3040f))",
-            "or_d(c:pk_h(c42e7ef92fdb603af844d064faad95db9bcdfd3d),andor(c:pk_k(024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),older(2016),after(1567547623)))",
-            "c:andor(ripemd160(6ad07d21fd5dfc646f0b30577045ce201616b9ba),pk_h(9fc5dbe5efdce10374a4dd4053c93af540211718),and_v(v:hash256(8a35d9ca92a48eaade6f53a64985e9e2afeb74dcf8acb4c3721e0dc7e4294b25),pk_h(dd100be7d9aea5721158ebde6d6a1fd8fff93bb1)))",
-            "c:or_i(andor(c:pk_h(fcd35ddacad9f2d5be5e464639441c6065e6955d),pk_h(9652d86bedf43ad264362e6e6eba6eb764508127),pk_h(06afd46bcdfd22ef94ac122aa11f241244a37ecc)),pk_k(02d7924d4f7d43ea965a465ae3095ff41131e5946f3c85f79e44adbcf8e27e080e))"
+            "c:or_i(and_v(v:older(16),pk_h(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729)),pk_h(02352bbf4a4cdd12564f93fa332ce333301d9ad40271f8107181340aef25be59d5))",
+            "or_d(c:pk_h(02352bbf4a4cdd12564f93fa332ce333301d9ad40271f8107181340aef25be59d5),andor(c:pk_k(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729),older(2016),after(1567547623)))",
+            "c:andor(ripemd160(6ad07d21fd5dfc646f0b30577045ce201616b9ba),pk_h(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729),and_v(v:hash256(8a35d9ca92a48eaade6f53a64985e9e2afeb74dcf8acb4c3721e0dc7e4294b25),pk_h(02352bbf4a4cdd12564f93fa332ce333301d9ad40271f8107181340aef25be59d5)))",
+            "c:andor(u:ripemd160(6ad07d21fd5dfc646f0b30577045ce201616b9ba),pk_h(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729),or_i(pk_h(024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),pk_h(02352bbf4a4cdd12564f93fa332ce333301d9ad40271f8107181340aef25be59d5)))",
+            "c:or_i(andor(c:pk_h(02352bbf4a4cdd12564f93fa332ce333301d9ad40271f8107181340aef25be59d5),pk_h(024ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97),pk_h(03daed4f2be3a8bf278e70132fb0beb7522f570e144bf615c07e996d443dee8729)),pk_k(03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556))",
         ];
 
         for s in &SET {
+            println!("{}", s);
             let ms =
                 Miniscript::<bitcoin::PublicKey, Segwitv0>::from_str_insane(s)
                     .unwrap();

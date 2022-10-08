@@ -26,10 +26,10 @@ use bitcoin::util::taproot::{
 };
 use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
-    EcdsaSighashType, KeyPair, OutPoint, PubkeyHash, SchnorrSig,
-    SchnorrSighashType, Script, ScriptHash, Sighash, Transaction, TxIn, TxOut,
-    Txid, WPubkeyHash, WScriptHash, Witness, Wtxid, XOnlyPublicKey,
-    XpubIdentifier,
+    EcdsaSighashType, KeyPair, LockTime, OutPoint, PackedLockTime, PubkeyHash,
+    SchnorrSig, SchnorrSighashType, Script, ScriptHash, Sequence, Sighash,
+    Transaction, TxIn, TxOut, Txid, WPubkeyHash, WScriptHash, Witness, Wtxid,
+    XOnlyPublicKey, XpubIdentifier,
 };
 use bitcoin_hashes::sha256;
 
@@ -121,7 +121,7 @@ impl StrictEncode for TaprootMerkleBranch {
 impl StrictDecode for TaprootMerkleBranch {
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
         let data = Vec::<sha256::Hash>::strict_decode(d)?;
-        TaprootMerkleBranch::from_inner(data).map_err(|_| {
+        TaprootMerkleBranch::try_from(data).map_err(|_| {
             Error::DataIntegrityError(s!(
                 "taproot merkle branch length exceeds 128 consensus limit"
             ))
@@ -150,7 +150,7 @@ impl StrictDecode for secp256k1::SecretKey {
 impl StrictEncode for bip340::TweakedKeyPair {
     #[inline]
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.into_inner().strict_encode(e)
+        self.to_inner().strict_encode(e)
     }
 }
 
@@ -332,9 +332,13 @@ impl StrictEncode for SchnorrSighashType {
 impl StrictDecode for SchnorrSighashType {
     #[inline]
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
-        SchnorrSighashType::from_u8(u8::strict_decode(d)?).map_err(|_| {
-            Error::DataIntegrityError(s!("invalid BIP431 SighashType value"))
-        })
+        SchnorrSighashType::from_consensus_u8(u8::strict_decode(d)?).map_err(
+            |_| {
+                Error::DataIntegrityError(
+                    s!("invalid BIP431 SighashType value"),
+                )
+            },
+        )
     }
 }
 
@@ -436,6 +440,15 @@ impl Strategy for OutPoint {
 impl Strategy for Witness {
     type Strategy = strategies::BitcoinConsensus;
 }
+impl Strategy for LockTime {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for PackedLockTime {
+    type Strategy = strategies::BitcoinConsensus;
+}
+impl Strategy for Sequence {
+    type Strategy = strategies::BitcoinConsensus;
+}
 impl Strategy for TxOut {
     type Strategy = strategies::BitcoinConsensus;
 }
@@ -456,7 +469,7 @@ impl StrictEncode for address::Payload {
                 33u8.strict_encode(&mut e)? + sh.strict_encode(&mut e)?
             }
             address::Payload::WitnessProgram { version, program } => {
-                version.into_num().strict_encode(&mut e)?
+                version.to_num().strict_encode(&mut e)?
                     + program.strict_encode(&mut e)?
             }
         })
@@ -473,7 +486,7 @@ impl StrictDecode for address::Payload {
                 address::Payload::ScriptHash(ScriptHash::strict_decode(&mut d)?)
             }
             version if version <= 16 => address::Payload::WitnessProgram {
-                version: WitnessVersion::from_num(version)
+                version: WitnessVersion::try_from(version)
                     .expect("bech32::u8 decider is broken"),
                 program: StrictDecode::strict_decode(&mut d)?,
             },
@@ -502,7 +515,7 @@ impl StrictDecode for Address {
 
 impl StrictEncode for Amount {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_sat().strict_encode(e)
+        self.to_sat().strict_encode(e)
     }
 }
 
@@ -749,7 +762,7 @@ impl StrictDecode for TapTree {
                 builder.add_leaf(depth, script)
             })
             .map_err(|err| Error::DataIntegrityError(err.to_string()))?;
-        TapTree::from_builder(builder)
+        TapTree::try_from(builder)
             .map_err(|_| Error::DataIntegrityError(s!("incomplete tree")))
     }
 }
@@ -1023,7 +1036,7 @@ pub(crate) mod test {
             secp256k1::KeyPair::from_seckey_slice(&secp, &KEY).unwrap();
 
         let pk_ecdsa = secp256k1::PublicKey::from_secret_key(&secp, &sk_ecdsa);
-        let pk_schnorr = XOnlyPublicKey::from_keypair(&sk_schnorr);
+        let (pk_schnorr, _parity) = XOnlyPublicKey::from_keypair(&sk_schnorr);
         let msg = Message::from_slice(&[1u8; 32]).unwrap();
 
         let ecdsa = secp.sign_ecdsa(&msg, &sk_ecdsa);
