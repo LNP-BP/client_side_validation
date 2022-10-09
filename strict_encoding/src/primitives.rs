@@ -16,10 +16,19 @@
 
 use core::time::Duration;
 use std::io;
+use std::io::{Read, Write};
 
 use amplify::num::u24;
 
 use super::{Error, StrictDecode, StrictEncode};
+
+impl StrictEncode for () {
+    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+}
+
+impl StrictDecode for () {
+    fn strict_decode<D: Read>(_: D) -> Result<Self, Error> { Ok(()) }
+}
 
 impl StrictEncode for bool {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {

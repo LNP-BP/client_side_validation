@@ -83,7 +83,7 @@ use strict_encoding::{Error, StrictDecode, StrictEncode};
 ///
 /// NB: These errors are specific for testing configuration and should not be
 /// used in non-test environment.
-#[derive(Clone, PartialEq, Debug, Display, Error)]
+#[derive(Clone, PartialEq, Eq, Debug, Display, Error)]
 pub enum EnumEncodingTestFailure<T>
 where
     T: Clone + PartialEq + Debug,
@@ -461,7 +461,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
 ///
 /// NB: These errors are specific for testing configuration and should not be
 /// used in non-test environment.
-#[derive(Clone, PartialEq, Debug, Display, Error)]
+#[derive(Clone, PartialEq, Eq, Debug, Display, Error)]
 pub enum DataEncodingTestFailure<T>
 where
     T: StrictEncode + StrictDecode + PartialEq + Debug + Clone,
