@@ -133,8 +133,10 @@ where
     B: bitcoin::consensus::Encodable,
 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_inner().consensus_encode(e).map_err(Error::from)
+    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.as_inner()
+            .consensus_encode(&mut e)
+            .map_err(Error::from)
     }
 }
 
@@ -144,8 +146,8 @@ where
     B: bitcoin::consensus::Decodable,
 {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(Self::new(B::consensus_decode(d).map_err(Error::from)?))
+    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(Self::new(B::consensus_decode(&mut d).map_err(Error::from)?))
     }
 }
 
