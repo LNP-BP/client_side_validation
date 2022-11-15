@@ -250,39 +250,3 @@ pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     .unwrap_or_else(|e| e.to_compile_error())
     .into()
 }
-
-/// Derives [`StrictEncode`] implementation for the type, also providing TLV
-/// extension support.
-#[proc_macro_derive(NetworkEncode, attributes(network_encoding))]
-pub fn derive_network_encode(input: TokenStream) -> TokenStream {
-    let derive_input = parse_macro_input!(input as DeriveInput);
-    encode_derive(
-        "network_encoding",
-        ident!(confined_encoding),
-        ident!(StrictEncode),
-        ident!(strict_encode),
-        ident!(strict_serialize),
-        derive_input,
-        true,
-    )
-    .unwrap_or_else(|e| e.to_compile_error())
-    .into()
-}
-
-/// Derives [`StrictDecode`] implementation for the type, also providing TLV
-/// extension support.
-#[proc_macro_derive(NetworkDecode, attributes(network_encoding))]
-pub fn derive_network_decode(input: TokenStream) -> TokenStream {
-    let derive_input = parse_macro_input!(input as DeriveInput);
-    decode_derive(
-        "network_encoding",
-        ident!(confined_encoding),
-        ident!(StrictDecode),
-        ident!(strict_decode),
-        ident!(strict_deserialize),
-        derive_input,
-        true,
-    )
-    .unwrap_or_else(|e| e.to_compile_error())
-    .into()
-}

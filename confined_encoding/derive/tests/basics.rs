@@ -56,11 +56,6 @@ fn unit_struct() -> Result {
     struct Strict(u16);
     test_encoding_roundtrip(&Strict(0xcafe), [0xFE, 0xCA])?;
 
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(NetworkEncode, NetworkDecode)]
-    struct Network(u16);
-    test_encoding_roundtrip(&Network(0xcafe), [0xFE, 0xCA])?;
-
     Ok(())
 }
 
@@ -138,26 +133,12 @@ fn custom_crate() {
     struct One {
         a: Vec<u8>,
     }
-
-    #[derive(NetworkEncode, NetworkDecode)]
-    #[network_encoding(crate = custom_crate)]
-    struct Two {
-        a: Vec<u8>,
-    }
 }
 
 #[test]
 fn generics() {
     #[derive(StrictEncode, StrictDecode)]
     enum CustomErr1<Err>
-    where
-        Err: std::error::Error + StrictEncode + StrictDecode,
-    {
-        Other(Err),
-    }
-
-    #[derive(NetworkEncode, NetworkDecode)]
-    enum CustomErr2<Err>
     where
         Err: std::error::Error + StrictEncode + StrictDecode,
     {
