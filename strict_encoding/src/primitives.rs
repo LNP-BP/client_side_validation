@@ -308,7 +308,10 @@ mod _chrono {
     impl StrictDecode for NaiveDateTime {
         #[inline]
         fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-            Ok(Self::from_timestamp(i64::strict_decode(d)?, 0))
+            let secs = i64::strict_decode(d)?;
+            Self::from_timestamp_opt(secs, 0).ok_or(Error::DataIntegrityError(
+                s!("number of seconds in timestamp exceeds UNIX limit"),
+            ))
         }
     }
 
@@ -474,7 +477,8 @@ pub mod test {
         assert_eq!(ser.len(), 8);
 
         let naive = utc.naive_utc();
-        let naive = NaiveDateTime::from_timestamp(naive.timestamp(), 0);
+        let naive =
+            NaiveDateTime::from_timestamp_opt(naive.timestamp(), 0).unwrap();
         assert_eq!(strict_deserialize(&ser), Ok(naive));
 
         let ser = naive.strict_serialize().unwrap();
