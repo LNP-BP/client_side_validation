@@ -44,9 +44,8 @@ and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwAr
 This library consists of the following main three components, which define
 independent parts constituting together client-side-validation API and its core
 functionality. These are:
-- [Strict encoding](confined_encoding/README.md) ([LNPBP-7] and [LNPBP-42] 
-  standards): binary standard of encoding client-side-validated data and network 
-  addresses.
+- [Confined encoding](confined_encoding/README.md) ([LNPBP-7] standard): binary  
+  standard of encoding client-side-validated data.
 - [Commit-verify](commit_verify/README.md) client-side-validation-specific APIs:
   * consensus commitments (part of [LNPBP-8] standard)
   * multi-commitments ([LNPBP-4] standard)
@@ -68,7 +67,7 @@ To use libraries, you just need latest version of libraries, published to
 
 ```toml
 client_side_validation = "1" # "Umbrella" library including all of the tree libraries below
-confined_encoding = "1" # Strict encoding API and derivation macros
+confined_encoding = "1" # Confined encoding API and derivation macros
 commit_verify = "1" # Consensus and multi-message commitments
 single_use_seals = "1" # Generic (non-bitcoin-specific) API
 ```
