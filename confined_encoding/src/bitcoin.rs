@@ -158,8 +158,18 @@ impl ConfinedDecode for bip340::TweakedPublicKey {
     }
 }
 
-impl Strategy for OutPoint {
-    type Strategy = strategies::BitcoinConsensus;
+impl ConfinedEncode for OutPoint {
+    #[inline]
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(confined_encode_list!(e; self.txid, self.vout))
+    }
+}
+
+impl ConfinedDecode for OutPoint {
+    #[inline]
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        Ok(confined_decode_self!(d; txid, vout))
+    }
 }
 
 impl ConfinedEncode for Script {
@@ -402,6 +412,9 @@ pub(crate) mod test {
         test_encoding_roundtrip(&outpoint, OUTPOINT).unwrap();
         let null = OutPoint::null();
         test_encoding_roundtrip(&null, OUTPOINT_NULL).unwrap();
+
+        assert_eq!(&OUTPOINT[..], bitcoin::consensus::serialize(&outpoint));
+        assert_eq!(&OUTPOINT_NULL[..], bitcoin::consensus::serialize(&null));
     }
 
     #[test]

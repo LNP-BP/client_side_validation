@@ -42,7 +42,7 @@ macro_rules! confined_decode_self {
         {
             Self {
             $(
-                $item: ::confined_encoding::ConfinedDecode::confined_decode(&mut $decoder)?,
+                $item: $crate::ConfinedDecode::confined_decode(&mut $decoder)?,
             )+
             }
         }

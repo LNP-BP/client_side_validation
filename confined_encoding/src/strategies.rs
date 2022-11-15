@@ -26,10 +26,6 @@ use super::{ConfinedDecode, ConfinedEncode, Error};
 /// i.e. as a fixed-size byte string of [`bitcoin_hashes::Hash::LEN`] length.
 pub struct HashFixedBytes;
 
-/// Encodes/decodes data in the same way as they are encoded/decoded according
-/// to bitcoin consensus rules from Bitcoin Core
-pub struct BitcoinConsensus;
-
 /// Encodes/decodes data as a wrapped type, i.e. according to the rules of
 /// encoding for its inner representation. Applicable only for types
 /// implementing [`amplify::Wrapper`]
@@ -40,7 +36,6 @@ pub struct Wrapped;
 pub trait Strategy {
     /// Specific strategy. List of supported strategies:
     /// - [`HashFixedBytes`]
-    /// - [`BitcoinConsensus`]
     /// - [`Wrapped`]
     type Strategy;
 }
@@ -110,30 +105,8 @@ where
         d.read_exact(&mut buf)?;
         Ok(Self::new(H::from_slice(&buf).expect(
             "internal hash data representation length mismatch between \
-             `from_slice` requirements and `LEN` constant balue",
+             `from_slice` requirements and `LEN` constant value",
         )))
-    }
-}
-
-impl<B> ConfinedEncode for amplify::Holder<B, BitcoinConsensus>
-where
-    B: bitcoin::consensus::Encodable,
-{
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.as_inner()
-            .consensus_encode(&mut e)
-            .map_err(Error::from)
-    }
-}
-
-impl<B> ConfinedDecode for amplify::Holder<B, BitcoinConsensus>
-where
-    B: bitcoin::consensus::Decodable,
-{
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        Ok(Self::new(B::consensus_decode(&mut d).map_err(Error::from)?))
     }
 }
 
