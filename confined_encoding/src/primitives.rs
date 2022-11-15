@@ -292,7 +292,6 @@ impl StrictDecode for Duration {
     }
 }
 
-#[cfg(feature = "chrono")]
 mod _chrono {
     use chrono::{DateTime, NaiveDateTime, Utc};
 
@@ -469,7 +468,6 @@ pub mod test {
     }
 
     #[test]
-    #[cfg(feature = "chrono")]
     fn test_chrono_encoding() {
         let utc = Utc::now();
 

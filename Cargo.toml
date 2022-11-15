@@ -27,14 +27,11 @@ async-trait = "0.1.51"
 
 [features]
 default = []
-all = ["serde", "rand", "bitcoin", "crypto", "async", "bulletproofs", "float"]
+all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 serde = ["commit_verify/serde"]
-bitcoin = ["confined_encoding/bitcoin"]
-crypto = ["confined_encoding/crypto"]
 bulletproofs = ["commit_verify/bulletproofs"]
-float = ["confined_encoding/float"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]

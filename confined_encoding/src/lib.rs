@@ -70,13 +70,10 @@ extern crate serde;
 mod macros;
 
 mod amplify_types;
-#[cfg(feature = "bitcoin")]
 mod bitcoin;
 mod bitcoin_hashes;
+mod bulletproofs;
 mod collections;
-#[cfg(feature = "crypto")]
-mod crypto;
-pub mod net;
 mod pointers;
 mod primitives;
 mod slice32;
@@ -91,7 +88,6 @@ use std::{fmt, fs, io};
 /// Re-exporting extended read and write functions from bitcoin consensus
 /// module so others may use semantic convenience
 /// `strict_encode::ReadExt`
-#[cfg(feature = "bitcoin")]
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::IoError;
 pub use collections::{LargeVec, MediumVec};

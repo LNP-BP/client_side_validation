@@ -19,13 +19,13 @@ path = "src/lib.rs"
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-amplify = { version = "3.13.0", features = ["proc_attr"] }
+amplify = { version = "3.13.0", features = ["proc_attr", "apfloat"] }
 confined_encoding_derive = { version = "0.8.0", path = "./derive", optional = true }
 bitcoin_hashes = "0.11.0" # We need this separately since bitcoin is an optional dependency
-bitcoin = { version = "0.29.2", optional = true }
-grin_secp256k1zkp = { version = "0.7", optional = true }
-chrono = { version = "0.4", optional = true }
-half = { version = "2.1", optional = true }
+bitcoin = "0.29.2"
+grin_secp256k1zkp = "0.7.11"
+chrono = "0.4.23"
+half = "2.1.0"
 serde = { version = "1.0", optional = true }
 
 [dev-dependencies]
@@ -34,11 +34,9 @@ amplify = { version = "3.13.0", features = ["proc_attr", "hex"] }
 confined_encoding_test = { version = "0.9.0-alpha.1", path = "./test_helpers" }
 
 [features]
-default = ["chrono", "derive", "bitcoin"]
-all = ["float", "crypto", "chrono", "derive", "bitcoin", "serde"]
-crypto = ["grin_secp256k1zkp", "bitcoin"]
+default = ["derive"]
+all = ["derive", "serde"]
 derive = ["confined_encoding_derive"]
-float = ["amplify/apfloat", "half"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]

@@ -15,10 +15,8 @@
 use std::io;
 
 use amplify::flags::FlagVec;
-#[cfg(feature = "float")]
 use amplify::num::apfloat::{ieee, Float};
 use amplify::num::{i1024, i256, i512, u1024, u256, u512};
-#[cfg(feature = "float")]
 use half::bf16;
 
 use crate::{Error, StrictDecode, StrictEncode};
@@ -125,28 +123,24 @@ impl StrictDecode for i1024 {
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictEncode for bf16 {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
         self.to_bits().strict_encode(e)
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictDecode for bf16 {
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
         Ok(bf16::from_bits(u16::strict_decode(d)?))
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictEncode for ieee::Half {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
         self.to_bits().to_le_bytes()[..2].strict_encode(e)
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictDecode for ieee::Half {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
@@ -155,14 +149,12 @@ impl StrictDecode for ieee::Half {
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictEncode for ieee::Quad {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
         self.to_bits().to_le_bytes()[..16].strict_encode(e)
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictDecode for ieee::Oct {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
@@ -171,14 +163,12 @@ impl StrictDecode for ieee::Oct {
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictEncode for ieee::Oct {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
         self.to_bits().to_le_bytes().strict_encode(e)
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictDecode for ieee::Quad {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
@@ -187,14 +177,12 @@ impl StrictDecode for ieee::Quad {
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictEncode for ieee::X87DoubleExtended {
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
         self.to_bits().to_le_bytes()[..10].strict_encode(e)
     }
 }
 
-#[cfg(feature = "float")]
 impl StrictDecode for ieee::X87DoubleExtended {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];

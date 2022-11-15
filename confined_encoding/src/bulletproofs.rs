@@ -16,7 +16,6 @@ use std::io;
 
 use crate::{Error, StrictDecode, StrictEncode};
 
-#[cfg(feature = "grin_secp256k1zkp")]
 impl StrictEncode for secp256k1zkp::Error {
     #[inline]
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
@@ -37,7 +36,6 @@ impl StrictEncode for secp256k1zkp::Error {
     }
 }
 
-#[cfg(feature = "grin_secp256k1zkp")]
 impl StrictDecode for secp256k1zkp::Error {
     #[inline]
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
@@ -63,7 +61,6 @@ impl StrictDecode for secp256k1zkp::Error {
     }
 }
 
-#[cfg(feature = "grin_secp256k1zkp")]
 impl StrictEncode for secp256k1zkp::pedersen::Commitment {
     #[inline]
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -71,7 +68,6 @@ impl StrictEncode for secp256k1zkp::pedersen::Commitment {
     }
 }
 
-#[cfg(feature = "grin_secp256k1zkp")]
 impl StrictDecode for secp256k1zkp::pedersen::Commitment {
     #[inline]
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
@@ -81,7 +77,6 @@ impl StrictDecode for secp256k1zkp::pedersen::Commitment {
     }
 }
 
-#[cfg(feature = "grin_secp256k1zkp")]
 impl StrictEncode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
     fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
@@ -89,7 +84,6 @@ impl StrictEncode for secp256k1zkp::pedersen::RangeProof {
     }
 }
 
-#[cfg(feature = "grin_secp256k1zkp")]
 impl StrictDecode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
     fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
@@ -117,7 +111,6 @@ mod test {
     use super::*;
 
     #[test]
-    #[cfg(all(feature = "grin_secp256k1zkp", feature = "bitcoin"))]
     fn pedersen() {
         use std::str::FromStr;
 
@@ -142,7 +135,6 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "grin_secp256k1zkp")]
     fn bulletproof() {
         let secp = secp256k1zkp::Secp256k1::new();
         let blind = secp256k1zkp::SecretKey::new(
@@ -169,7 +161,6 @@ mod test {
 
     /* TODO: #25 Uncomment this test once `grin_secp256k1zkp::Error` impl `Ord`
     #[test]
-    #[cfg(feature = "grin_secp256k1zkp")]
     fn error_encoding() {
         test_encoding_enum_u8_exhaustive!(crate => secp256k1zkp::Error;
             secp256k1zkp::Error::IncapableContext => 0u8,
