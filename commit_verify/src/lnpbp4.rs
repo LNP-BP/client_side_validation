@@ -51,7 +51,7 @@ use std::io::Write;
 use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
-use strict_encoding::{StrictDecode, StrictEncode};
+use confined_encoding::{StrictDecode, StrictEncode};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;

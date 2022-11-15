@@ -214,8 +214,8 @@ version = "0.9.0-alpha.1"
 dependencies = [
  "async-trait",
  "commit_verify",
+ "confined_encoding",
  "single_use_seals",
- "strict_encoding",
 ]
 
 [[package]]
@@ -243,11 +243,11 @@ version = "0.9.0-alpha.1"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
+ "confined_encoding",
  "grin_secp256k1zkp",
  "rand 0.8.5",
  "serde",
  "serde_with",
- "strict_encoding",
 ]
 
 [[package]]
@@ -270,6 +270,47 @@ dependencies = [
  "serde_json",
  "tester",
  "winapi",
+]
+
+[[package]]
+name = "confined_encoding"
+version = "0.9.0-alpha.1"
+dependencies = [
+ "amplify",
+ "bitcoin",
+ "bitcoin_hashes",
+ "chrono",
+ "confined_encoding_derive",
+ "confined_encoding_test",
+ "ed25519-dalek",
+ "grin_secp256k1zkp",
+ "half",
+ "miniscript",
+ "monero",
+ "rand 0.7.3",
+ "serde",
+]
+
+[[package]]
+name = "confined_encoding_derive"
+version = "0.8.0"
+dependencies = [
+ "amplify",
+ "amplify_syn",
+ "compiletest_rs",
+ "confined_encoding",
+ "confined_encoding_test",
+ "encoding_derive_helpers",
+ "proc-macro2",
+ "syn",
+]
+
+[[package]]
+name = "confined_encoding_test"
+version = "0.9.0-alpha.1"
+dependencies = [
+ "amplify",
+ "confined_encoding",
 ]
 
 [[package]]
@@ -1129,47 +1170,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "strict_encoding"
-version = "0.9.0-alpha.1"
-dependencies = [
- "amplify",
- "bitcoin",
- "bitcoin_hashes",
- "chrono",
- "ed25519-dalek",
- "grin_secp256k1zkp",
- "half",
- "miniscript",
- "monero",
- "rand 0.7.3",
- "serde",
- "strict_encoding_derive",
- "strict_encoding_test",
-]
-
-[[package]]
-name = "strict_encoding_derive"
-version = "0.8.0"
-dependencies = [
- "amplify",
- "amplify_syn",
- "compiletest_rs",
- "encoding_derive_helpers",
- "proc-macro2",
- "strict_encoding",
- "strict_encoding_test",
- "syn",
-]
-
-[[package]]
-name = "strict_encoding_test"
-version = "0.9.0-alpha.1"
-dependencies = [
- "amplify",
- "strict_encoding",
-]
 
 [[package]]
 name = "stringly_conversions"

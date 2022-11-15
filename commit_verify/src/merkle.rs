@@ -45,8 +45,8 @@ hash_newtype!(
     false // We do not reverse displaying MerkleNodes in hexadecimal
 );
 
-impl strict_encoding::Strategy for MerkleNode {
-    type Strategy = strict_encoding::strategies::HashFixedBytes;
+impl confined_encoding::Strategy for MerkleNode {
+    type Strategy = confined_encoding::strategies::HashFixedBytes;
 }
 
 impl commit_encode::Strategy for MerkleNode {
@@ -294,7 +294,7 @@ mod test {
     use amplify::{bmap, s};
     use bitcoin_hashes::hex::ToHex;
     use bitcoin_hashes::{sha256d, Hash};
-    use strict_encoding::{StrictDecode, StrictEncode};
+    use confined_encoding::{StrictDecode, StrictEncode};
 
     use super::*;
     use crate::commit_encode::{strategies, Strategy};

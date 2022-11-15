@@ -16,7 +16,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
 use std::ops::AddAssign;
 
-use strict_encoding::{StrictDecode, StrictEncode};
+use confined_encoding::{StrictDecode, StrictEncode};
 
 /// Result of client-side validation operation
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

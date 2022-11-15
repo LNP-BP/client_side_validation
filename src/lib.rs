@@ -32,8 +32,8 @@
 //! will be nearly impossible to use in a wrong way.
 
 pub extern crate commit_verify;
+pub extern crate confined_encoding;
 pub extern crate single_use_seals;
-pub extern crate strict_encoding;
 
 mod api;
 
@@ -42,4 +42,4 @@ pub use api::{
     ValidationFailure, ValidationLog, ValidationReport, Validity,
 };
 pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};
-pub use strict_encoding::derive::{StrictDecode, StrictEncode};
+pub use confined_encoding::derive::{StrictDecode, StrictEncode};

@@ -16,7 +16,7 @@
 //! client-side-validation as defined by [LNPBP-9] standard.
 //!
 //! Client-side-validation commitment process requires special encoding of
-//! the data. While [`strict_encoding`] is the main standard for atomic data
+//! the data. While [`confined_encoding`] is the main standard for atomic data
 //! types in client-side-validation world and should be used during internal
 //! protocol-specific data validation, commitments may require processes of
 //! merklization arrays of data items, or hiding confidential parts of the
@@ -108,11 +108,11 @@ pub mod strategies {
     /// and then returning its result serialized with strict encoding rules.
     pub struct UsingHash<H>(std::marker::PhantomData<H>)
     where
-        H: Hash + strict_encoding::StrictEncode;
+        H: Hash + confined_encoding::StrictEncode;
 
     impl<T> CommitEncode for amplify::Holder<T, UsingStrict>
     where
-        T: strict_encoding::StrictEncode,
+        T: confined_encoding::StrictEncode,
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             self.as_inner().strict_encode(e).expect(
@@ -134,13 +134,13 @@ pub mod strategies {
 
     impl<T, H> CommitEncode for amplify::Holder<T, UsingHash<H>>
     where
-        H: Hash + strict_encoding::StrictEncode,
-        T: strict_encoding::StrictEncode,
+        H: Hash + confined_encoding::StrictEncode,
+        T: confined_encoding::StrictEncode,
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             let mut engine = H::engine();
             engine.input(
-                &strict_encoding::strict_serialize(self.as_inner()).expect(
+                &confined_encoding::strict_serialize(self.as_inner()).expect(
                     "Strict encoding of hash strategy-based commitment data \
                      must not fail",
                 ),
