@@ -76,10 +76,6 @@ mod bitcoin_hashes;
 mod collections;
 #[cfg(feature = "crypto")]
 mod crypto;
-#[cfg(feature = "miniscript")]
-mod miniscript;
-#[cfg(feature = "monero")]
-mod monero;
 pub mod net;
 mod pointers;
 mod primitives;
