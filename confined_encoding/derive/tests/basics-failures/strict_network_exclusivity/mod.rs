@@ -15,7 +15,7 @@
 #[macro_use]
 extern crate confined_encoding_derive;
 
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 #[derive(NetworkEncode, NetworkDecode)]
 struct One {
     a: Vec<u8>,

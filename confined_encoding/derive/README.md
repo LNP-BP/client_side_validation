@@ -38,7 +38,7 @@ If you are using other client-side-validation libraries, consider importing
 just a single [`client_side_validation`] library which re-exports all of them,
 including the current one.
 
-Library exports derivation macros `#[derive(StrictEncode, StrictDecode)]`, which
+Library exports derivation macros `#[derive(ConfinedEncode, ConfinedDecode)]`, which
 can be added on top of any structure you'd like to support string encoding
 
 

@@ -294,7 +294,7 @@ fn decode_fields_impl<'a>(
     let import = parent_attr.use_crate;
 
     let mut skipped_fields = vec![];
-    let mut strict_fields = vec![];
+    let mut confined_fields = vec![];
     let mut tlv_fields = bmap! {};
     let mut tlv_aggregator = None;
 
@@ -333,13 +333,13 @@ fn decode_fields_impl<'a>(
         encoding.tlv.unwrap_or(TlvDerive::None).process(
             field,
             name,
-            &mut strict_fields,
+            &mut confined_fields,
             &mut tlv_fields,
             &mut tlv_aggregator,
         )?;
     }
 
-    for name in strict_fields {
+    for name in confined_fields {
         stream.append_all(quote_spanned! { Span::call_site() =>
             #name: #import::#trait_name::#decode_name(&mut d)?,
         });

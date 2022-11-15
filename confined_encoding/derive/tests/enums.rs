@@ -25,11 +25,11 @@ use confined_encoding_test::test_encoding_roundtrip;
 #[test]
 fn enum_associated_types() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct Heap(Box<[u8]>);
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     enum Hi {
         /// Docstring
         First(u8),
@@ -59,7 +59,7 @@ fn enum_associated_types() -> Result {
 #[test]
 fn enum_default_values() -> Result {
     #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[repr(u16)]
     #[display(Debug)]
     enum ContractType {
@@ -80,7 +80,7 @@ fn enum_default_values() -> Result {
 #[test]
 fn enum_repr() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(by_order, repr = u16)]
     #[repr(u16)]
     enum U16 {
@@ -96,7 +96,7 @@ fn enum_repr() -> Result {
     test_encoding_roundtrip(&U16::Bit64, [0x03, 0x00])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(by_order, repr = u8)]
     #[repr(u16)]
     enum ByOrder {
@@ -112,7 +112,7 @@ fn enum_repr() -> Result {
     test_encoding_roundtrip(&ByOrder::Bit64, [0x03])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(by_value)]
     #[repr(u8)]
     enum ByValue {
@@ -128,7 +128,7 @@ fn enum_repr() -> Result {
     test_encoding_roundtrip(&ByValue::Bit64, [0x08])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(by_value)]
     #[repr(u16)]
     enum ByValue16 {
@@ -149,7 +149,7 @@ fn enum_repr() -> Result {
 #[test]
 fn enum_custom_values() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(by_value)]
     #[repr(u8)]
     enum CustomValues {

@@ -17,7 +17,7 @@ extern crate compiletest_rs as compiletest;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 
-use confined_encoding::{StrictDecode, StrictEncode};
+use confined_encoding::{ConfinedDecode, ConfinedEncode};
 use confined_encoding_test::DataEncodingTestFailure;
 
 #[allow(dead_code)]
@@ -50,7 +50,7 @@ impl std::error::Error for Error {
 
 impl<T> From<confined_encoding_test::DataEncodingTestFailure<T>> for Error
 where
-    T: StrictEncode + StrictDecode + PartialEq + Debug + Clone + 'static,
+    T: ConfinedEncode + ConfinedDecode + PartialEq + Debug + Clone + 'static,
 {
     fn from(err: DataEncodingTestFailure<T>) -> Self { Self(Box::new(err)) }
 }

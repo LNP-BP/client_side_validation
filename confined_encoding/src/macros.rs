@@ -14,12 +14,12 @@
 
 /// Macro simplifying encoding for a given list of items
 #[macro_export]
-macro_rules! strict_encode_list {
+macro_rules! confined_encode_list {
     ( $encoder:ident; $($item:expr),+ ) => {
         {
             let mut len = 0usize;
             $(
-                len += $item.strict_encode(&mut $encoder)?;
+                len += $item.confined_encode(&mut $encoder)?;
             )+
             len
         }
@@ -28,7 +28,7 @@ macro_rules! strict_encode_list {
     ( $encoder:ident; $len:ident; $($item:expr),+ ) => {
         {
             $(
-                $len += $item.strict_encode(&mut $encoder)?;
+                $len += $item.confined_encode(&mut $encoder)?;
             )+
             $len
         }
@@ -37,12 +37,12 @@ macro_rules! strict_encode_list {
 
 /// Macro simplifying decoding of a structure with a given list of fields
 #[macro_export]
-macro_rules! strict_decode_self {
+macro_rules! confined_decode_self {
     ( $decoder:ident; $($item:ident),+ ) => {
         {
             Self {
             $(
-                $item: ::confined_encoding::StrictDecode::strict_decode(&mut $decoder)?,
+                $item: ::confined_encoding::ConfinedDecode::confined_decode(&mut $decoder)?,
             )+
             }
         }
@@ -51,7 +51,7 @@ macro_rules! strict_decode_self {
         {
             Self {
             $(
-                $item: $crate::StrictDecode::strict_decode(&mut $decoder)?,
+                $item: $crate::ConfinedDecode::confined_decode(&mut $decoder)?,
             )+
             }
         }

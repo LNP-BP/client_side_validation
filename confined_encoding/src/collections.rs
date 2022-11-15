@@ -23,131 +23,131 @@ use std::ops::{
 
 use amplify::num::u24;
 
-use crate::{Error, StrictDecode, StrictEncode};
+use crate::{ConfinedDecode, ConfinedEncode, Error};
 
 /// In terms of strict encoding, ranges are encoded as a tuples of two values:
 /// start and end.
-impl<T> StrictEncode for Range<T>
+impl<T> ConfinedEncode for Range<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
-    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.start.strict_encode(&mut e)?
-            + self.end.strict_encode(&mut e)?)
+    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.start.confined_encode(&mut e)?
+            + self.end.confined_encode(&mut e)?)
     }
 }
 
 /// In terms of strict decoding, ranges are represented as a tuples of two
 /// values: start and end.
-impl<T> StrictDecode for Range<T>
+impl<T> ConfinedDecode for Range<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
-    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(Range {
-            start: T::strict_decode(&mut d)?,
-            end: T::strict_decode(&mut d)?,
+            start: T::confined_decode(&mut d)?,
+            end: T::confined_decode(&mut d)?,
         })
     }
 }
 
 /// In terms of strict encoding, inclusive ranges are encoded as a tuples of two
 /// values: start and end.
-impl<T> StrictEncode for RangeInclusive<T>
+impl<T> ConfinedEncode for RangeInclusive<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
-    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.start().strict_encode(&mut e)?
-            + self.end().strict_encode(&mut e)?)
+    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.start().confined_encode(&mut e)?
+            + self.end().confined_encode(&mut e)?)
     }
 }
 
 /// In terms of strict decoding, inclusive ranges are represented as a tuples of
 /// two values: start and end.
-impl<T> StrictDecode for RangeInclusive<T>
+impl<T> ConfinedDecode for RangeInclusive<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
-    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(RangeInclusive::new(
-            T::strict_decode(&mut d)?,
-            T::strict_decode(&mut d)?,
+            T::confined_decode(&mut d)?,
+            T::confined_decode(&mut d)?,
         ))
     }
 }
 
 /// In terms of strict encoding, partial ranges are encoded as a single value.
-impl<T> StrictEncode for RangeFrom<T>
+impl<T> ConfinedEncode for RangeFrom<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
     #[inline]
-    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.start.strict_encode(&mut e)
+    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.start.confined_encode(&mut e)
     }
 }
 
 /// In terms of strict decoding, partial ranges are represented as a single
 /// value.
-impl<T> StrictDecode for RangeFrom<T>
+impl<T> ConfinedDecode for RangeFrom<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
     #[inline]
-    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(RangeFrom {
-            start: T::strict_decode(&mut d)?,
+            start: T::confined_decode(&mut d)?,
         })
     }
 }
 
 /// In terms of strict encoding, partial ranges are encoded as a single value.
-impl<T> StrictEncode for RangeTo<T>
+impl<T> ConfinedEncode for RangeTo<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
     #[inline]
-    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.end.strict_encode(&mut e)
+    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.end.confined_encode(&mut e)
     }
 }
 
 /// In terms of strict decoding, partial ranges are represented as a single
 /// value.
-impl<T> StrictDecode for RangeTo<T>
+impl<T> ConfinedDecode for RangeTo<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
     #[inline]
-    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(RangeTo {
-            end: T::strict_decode(&mut d)?,
+            end: T::confined_decode(&mut d)?,
         })
     }
 }
 
 /// In terms of strict encoding, partial ranges are encoded as a single value.
-impl<T> StrictEncode for RangeToInclusive<T>
+impl<T> ConfinedEncode for RangeToInclusive<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
     #[inline]
-    fn strict_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.end.strict_encode(&mut e)
+    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        self.end.confined_encode(&mut e)
     }
 }
 
 /// In terms of strict decoding, partial ranges are represented as a single
 /// value.
-impl<T> StrictDecode for RangeToInclusive<T>
+impl<T> ConfinedDecode for RangeToInclusive<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
     #[inline]
-    fn strict_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
         Ok(RangeToInclusive {
-            end: T::strict_decode(&mut d)?,
+            end: T::confined_decode(&mut d)?,
         })
     }
 }
@@ -155,14 +155,14 @@ where
 /// In terms of strict encoding, `Option` (optional values) are  
 /// represented by a *significator byte*, which MUST be either `0` (for no
 /// value present) or `1`, followed by the value strict encoding.
-impl<T> StrictEncode for Option<T>
+impl<T> ConfinedEncode for Option<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(match self {
-            None => strict_encode_list!(e; 0u8),
-            Some(val) => strict_encode_list!(e; 1u8, val),
+            None => confined_encode_list!(e; 0u8),
+            Some(val) => confined_encode_list!(e; 1u8, val),
         })
     }
 }
@@ -172,36 +172,36 @@ where
 /// value present) or `1`, followed by the value strict encoding.
 /// For decoding an attempt to read `Option` from a encoded non-0
 /// or non-1 length Vec will result in `Error::WrongOptionalEncoding`.
-impl<T> StrictDecode for Option<T>
+impl<T> ConfinedDecode for Option<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u8::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u8::confined_decode(&mut d)?;
         match len {
             0 => Ok(None),
-            1 => Ok(Some(T::strict_decode(&mut d)?)),
+            1 => Ok(Some(T::confined_decode(&mut d)?)),
             invalid => Err(Error::WrongOptionalEncoding(invalid)),
         }
     }
 }
 
 /// In terms of strict encoding, a slice is stored in form of
-/// usize-encoded length (see `StrictEncode` implementation for `usize`
+/// usize-encoded length (see `ConfinedEncode` implementation for `usize`
 /// type for encoding platform-independent constant-length
 /// encoding rules) followed by a consequently-encoded vec items,
 /// according to their type.
-impl<T> StrictEncode for [T]
+impl<T> ConfinedEncode for [T]
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let len = self.len() as usize;
         // We handle oversize problems at the level of `usize` value
         // serializaton
-        let mut encoded = len.strict_encode(&mut e)?;
+        let mut encoded = len.confined_encode(&mut e)?;
         for item in self {
-            encoded += item.strict_encode(&mut e)?;
+            encoded += item.confined_encode(&mut e)?;
         }
         Ok(encoded)
     }
@@ -217,18 +217,18 @@ where
 )]
 pub struct LargeVec<T>(Vec<T>)
 where
-    T: StrictEncode + StrictDecode;
+    T: ConfinedEncode + ConfinedDecode;
 
 impl<T> Default for LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     fn default() -> Self { Self(vec![]) }
 }
 
 impl<T> Deref for LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Target = Vec<T>;
 
@@ -237,7 +237,7 @@ where
 
 impl<T> TryFrom<Vec<T>> for LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Error = Error;
 
@@ -252,7 +252,7 @@ where
 
 impl<'me, T> IntoIterator for &'me LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Item = &'me T;
     type IntoIter = std::slice::Iter<'me, T>;
@@ -262,7 +262,7 @@ where
 
 impl<T> IntoIterator for LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Item = T;
     type IntoIter = std::vec::IntoIter<T>;
@@ -270,32 +270,32 @@ where
     fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
 }
 
-impl<T> StrictEncode for LargeVec<T>
+impl<T> ConfinedEncode for LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let len = self.0.len();
         if len > u32::MAX as usize {
             return Err(Error::ExceedMaxItems(len));
         }
-        let mut count = (len as u32).strict_encode(&mut e)?;
+        let mut count = (len as u32).confined_encode(&mut e)?;
         for el in &self.0 {
-            count += el.strict_encode(&mut e)?;
+            count += el.confined_encode(&mut e)?;
         }
         Ok(count)
     }
 }
 
-impl<T> StrictDecode for LargeVec<T>
+impl<T> ConfinedDecode for LargeVec<T>
 where
-    T: StrictDecode + StrictEncode,
+    T: ConfinedDecode + ConfinedEncode,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u32::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u32::confined_decode(&mut d)?;
         let mut data = Vec::<T>::with_capacity(len as usize);
         for _ in 0..len {
-            data.push(T::strict_decode(&mut d)?);
+            data.push(T::confined_decode(&mut d)?);
         }
         Ok(Self(data))
     }
@@ -303,7 +303,7 @@ where
 
 impl<T> LargeVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     /// Constructs empty [`LargeVec`].
     pub fn new() -> Self { Self(vec![]) }
@@ -349,18 +349,18 @@ where
 )]
 pub struct MediumVec<T>(Vec<T>)
 where
-    T: StrictEncode + StrictDecode;
+    T: ConfinedEncode + ConfinedDecode;
 
 impl<T> Default for MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     fn default() -> Self { Self(vec![]) }
 }
 
 impl<T> Deref for MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Target = Vec<T>;
 
@@ -369,7 +369,7 @@ where
 
 impl<T> TryFrom<Vec<T>> for MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Error = Error;
 
@@ -384,7 +384,7 @@ where
 
 impl<'me, T> IntoIterator for &'me MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Item = &'me T;
     type IntoIter = std::slice::Iter<'me, T>;
@@ -394,7 +394,7 @@ where
 
 impl<T> IntoIterator for MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     type Item = T;
     type IntoIter = std::vec::IntoIter<T>;
@@ -402,34 +402,34 @@ where
     fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
 }
 
-impl<T> StrictEncode for MediumVec<T>
+impl<T> ConfinedEncode for MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let len = self.0.len();
         if len > u24::MAX.as_u32() as usize {
             return Err(Error::ExceedMaxItems(len));
         }
         let mut count = u24::try_from(len as u32)
             .expect("u32 Cmp is broken")
-            .strict_encode(&mut e)?;
+            .confined_encode(&mut e)?;
         for el in &self.0 {
-            count += el.strict_encode(&mut e)?;
+            count += el.confined_encode(&mut e)?;
         }
         Ok(count)
     }
 }
 
-impl<T> StrictDecode for MediumVec<T>
+impl<T> ConfinedDecode for MediumVec<T>
 where
-    T: StrictDecode + StrictEncode,
+    T: ConfinedDecode + ConfinedEncode,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u24::strict_decode(&mut d)?.as_u32() as usize;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u24::confined_decode(&mut d)?.as_u32() as usize;
         let mut data = Vec::<T>::with_capacity(len);
         for _ in 0..len {
-            data.push(T::strict_decode(&mut d)?);
+            data.push(T::confined_decode(&mut d)?);
         }
         Ok(Self(data))
     }
@@ -437,7 +437,7 @@ where
 
 impl<T> MediumVec<T>
 where
-    T: StrictEncode + StrictDecode,
+    T: ConfinedEncode + ConfinedDecode,
 {
     /// Constructs empty [`LargeVec`].
     pub fn new() -> Self { Self(vec![]) }
@@ -477,36 +477,36 @@ where
 }
 
 /// In terms of strict encoding, `Vec` is stored in form of
-/// usize-encoded length (see `StrictEncode` implementation for `usize`
+/// usize-encoded length (see `ConfinedEncode` implementation for `usize`
 /// type for encoding platform-independent constant-length
 /// encoding rules) followed by a consequently-encoded vec items,
 /// according to their type.
-impl<T> StrictEncode for Vec<T>
+impl<T> ConfinedEncode for Vec<T>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_slice().strict_encode(e)
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_slice().confined_encode(e)
     }
 }
 
 /// In terms of strict encoding, `Vec` is stored in form of
-/// usize-encoded length (see `StrictEncode` implementation for `usize`
+/// usize-encoded length (see `ConfinedEncode` implementation for `usize`
 /// type for encoding platform-independent constant-length
 /// encoding rules) followed by a consequently-encoded vec items,
 /// according to their type.
 ///
 /// An attempt to encode `Vec` with more items than can fit in `usize`
 /// encoding rules will result in `Error::ExceedMaxItems`.
-impl<T> StrictDecode for Vec<T>
+impl<T> ConfinedDecode for Vec<T>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = usize::confined_decode(&mut d)?;
         let mut data = Vec::<T>::with_capacity(len as usize);
         for _ in 0..len {
-            data.push(T::strict_decode(&mut d)?);
+            data.push(T::confined_decode(&mut d)?);
         }
         Ok(data)
     }
@@ -517,17 +517,17 @@ where
 /// NB: Array members must are ordered with the sort operation, so type
 /// `T` must implement `Ord` trait in such a way that it produces
 /// deterministically-sorted result
-impl<T> StrictEncode for HashSet<T>
+impl<T> ConfinedEncode for HashSet<T>
 where
-    T: StrictEncode + Eq + Ord + Hash + Debug,
+    T: ConfinedEncode + Eq + Ord + Hash + Debug,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let len = self.len() as usize;
-        let mut encoded = len.strict_encode(&mut e)?;
+        let mut encoded = len.confined_encode(&mut e)?;
         let mut vec: Vec<&T> = self.iter().collect();
         vec.sort();
         for item in vec {
-            encoded += item.strict_encode(&mut e)?;
+            encoded += item.confined_encode(&mut e)?;
         }
         Ok(encoded)
     }
@@ -537,15 +537,15 @@ where
 /// `HashSet` type is performed alike `Vec` decoding with the only
 /// exception: if the repeated value met a [Error::RepeatedValue] is
 /// returned.
-impl<T> StrictDecode for HashSet<T>
+impl<T> ConfinedDecode for HashSet<T>
 where
-    T: StrictDecode + Eq + Ord + Hash + Debug,
+    T: ConfinedDecode + Eq + Ord + Hash + Debug,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = usize::confined_decode(&mut d)?;
         let mut data = HashSet::<T>::with_capacity(len as usize);
         for _ in 0..len {
-            let val = T::strict_decode(&mut d)?;
+            let val = T::confined_decode(&mut d)?;
             if data.contains(&val) {
                 return Err(Error::RepeatedValue(format!("{:?}", val)));
             } else {
@@ -561,17 +561,17 @@ where
 /// NB: Array members must are ordered with the sort operation, so type
 /// `T` must implement `Ord` trait in such a way that it produces
 /// deterministically-sorted result
-impl<T> StrictEncode for BTreeSet<T>
+impl<T> ConfinedEncode for BTreeSet<T>
 where
-    T: StrictEncode + Eq + Ord + Debug,
+    T: ConfinedEncode + Eq + Ord + Debug,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let len = self.len() as usize;
-        let mut encoded = len.strict_encode(&mut e)?;
+        let mut encoded = len.confined_encode(&mut e)?;
         let mut vec: Vec<&T> = self.iter().collect();
         vec.sort();
         for item in vec {
-            encoded += item.strict_encode(&mut e)?;
+            encoded += item.confined_encode(&mut e)?;
         }
         Ok(encoded)
     }
@@ -581,15 +581,15 @@ where
 /// `BTreeSet` type is performed alike `Vec` decoding with the only
 /// exception: if the repeated value met a [Error::RepeatedValue] is
 /// returned.
-impl<T> StrictDecode for BTreeSet<T>
+impl<T> ConfinedDecode for BTreeSet<T>
 where
-    T: StrictDecode + Eq + Ord + Debug,
+    T: ConfinedDecode + Eq + Ord + Debug,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = usize::confined_decode(&mut d)?;
         let mut data = BTreeSet::<T>::new();
         for _ in 0..len {
-            let val = T::strict_decode(&mut d)?;
+            let val = T::confined_decode(&mut d)?;
             if let Some(max) = data.iter().max() {
                 if max > &val {
                     // TODO: Introduce new error type on 2.0 release
@@ -609,7 +609,7 @@ where
     }
 }
 
-/// LNP/BP library uses `HashMap<usize, T: StrictEncode>`s to encode
+/// LNP/BP library uses `HashMap<usize, T: ConfinedEncode>`s to encode
 /// ordered lists, where the position of the list item must be fixed, since
 /// the item is referenced from elsewhere by its index. Thus, the library
 /// does not supports and recommends not to support strict encoding
@@ -618,19 +618,19 @@ where
 /// Strict encoding of the `HashMap<usize, T>` type is performed by
 /// converting into a fixed-order `Vec<T>` and serializing it according to
 /// the `Vec` strict encoding rules. This operation is internally
-/// performed via conversion into `BTreeMap<usize, T: StrictEncode>`.
-impl<T> StrictEncode for HashMap<usize, T>
+/// performed via conversion into `BTreeMap<usize, T: ConfinedEncode>`.
+impl<T> ConfinedEncode for HashMap<usize, T>
 where
-    T: StrictEncode + Clone,
+    T: ConfinedEncode + Clone,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let ordered: BTreeMap<usize, T> =
             self.iter().map(|(key, val)| (*key, val.clone())).collect();
-        ordered.strict_encode(&mut e)
+        ordered.confined_encode(&mut e)
     }
 }
 
-/// LNP/BP library uses `HashMap<usize, T: StrictEncode>`s to encode
+/// LNP/BP library uses `HashMap<usize, T: ConfinedEncode>`s to encode
 /// ordered lists, where the position of the list item must be fixed, since
 /// the item is referenced from elsewhere by its index. Thus, the library
 /// does not supports and recommends not to support strict encoding
@@ -639,14 +639,14 @@ where
 /// Strict encoding of the `HashMap<usize, T>` type is performed by
 /// converting into a fixed-order `Vec<T>` and serializing it according to
 /// the `Vec` strict encoding rules. This operation is internally
-/// performed via conversion into `BTreeMap<usize, T: StrictEncode>`.
-impl<T> StrictDecode for HashMap<usize, T>
+/// performed via conversion into `BTreeMap<usize, T: ConfinedEncode>`.
+impl<T> ConfinedDecode for HashMap<usize, T>
 where
-    T: StrictDecode + Clone,
+    T: ConfinedDecode + Clone,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let map: HashMap<usize, T> =
-            BTreeMap::<usize, T>::strict_decode(&mut d)?
+            BTreeMap::<usize, T>::confined_decode(&mut d)?
                 .iter()
                 .map(|(key, val)| (*key, val.clone()))
                 .collect();
@@ -654,7 +654,7 @@ where
     }
 }
 
-/// LNP/BP library uses `BTreeMap<usize, T: StrictEncode>`s to encode
+/// LNP/BP library uses `BTreeMap<usize, T: ConfinedEncode>`s to encode
 /// ordered lists, where the position of the list item must be fixed, since
 /// the item is referenced from elsewhere by its index. Thus, the library
 /// does not supports and recommends not to support strict encoding
@@ -663,24 +663,24 @@ where
 /// Strict encoding of the `BTreeMap<usize, T>` type is performed
 /// by converting into a fixed-order `Vec<T>` and serializing it according
 /// to the `Vec` strict encoding rules.
-impl<K, V> StrictEncode for BTreeMap<K, V>
+impl<K, V> ConfinedEncode for BTreeMap<K, V>
 where
-    K: StrictEncode + Ord + Clone,
-    V: StrictEncode + Clone,
+    K: ConfinedEncode + Ord + Clone,
+    V: ConfinedEncode + Clone,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let len = self.len() as usize;
-        let encoded = len.strict_encode(&mut e)?;
+        let encoded = len.confined_encode(&mut e)?;
 
         self.iter().try_fold(encoded, |mut acc, (key, val)| {
-            acc += key.strict_encode(&mut e)?;
-            acc += val.strict_encode(&mut e)?;
+            acc += key.confined_encode(&mut e)?;
+            acc += val.confined_encode(&mut e)?;
             Ok(acc)
         })
     }
 }
 
-/// LNP/BP library uses `BTreeMap<usize, T: StrictEncode>`s to encode
+/// LNP/BP library uses `BTreeMap<usize, T: ConfinedEncode>`s to encode
 /// ordered lists, where the position of the list item must be fixed, since
 /// the item is referenced from elsewhere by its index. Thus, the library
 /// does not supports and recommends not to support strict encoding
@@ -689,17 +689,17 @@ where
 /// Strict encoding of the `BTreeMap<usize, T>` type is performed
 /// by converting into a fixed-order `Vec<T>` and serializing it according
 /// to the `Vec` strict encoding rules.
-impl<K, V> StrictDecode for BTreeMap<K, V>
+impl<K, V> ConfinedDecode for BTreeMap<K, V>
 where
-    K: StrictDecode + Ord + Clone + Debug,
-    V: StrictDecode + Clone,
+    K: ConfinedDecode + Ord + Clone + Debug,
+    V: ConfinedDecode + Clone,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = usize::confined_decode(&mut d)?;
         let mut map = BTreeMap::<K, V>::new();
         for _ in 0..len {
-            let key = K::strict_decode(&mut d)?;
-            let val = V::strict_decode(&mut d)?;
+            let key = K::confined_decode(&mut d)?;
+            let val = V::confined_decode(&mut d)?;
             if let Some(max) = map.keys().max() {
                 if max > &key {
                     // TODO: Introduce new error type on 2.0 release
@@ -721,26 +721,26 @@ where
 
 /// Two-component tuples are encoded as they were fields in the parent
 /// data structure
-impl<K, V> StrictEncode for (K, V)
+impl<K, V> ConfinedEncode for (K, V)
 where
-    K: StrictEncode + Clone,
-    V: StrictEncode + Clone,
+    K: ConfinedEncode + Clone,
+    V: ConfinedEncode + Clone,
 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.0.strict_encode(&mut e)? + self.1.strict_encode(&mut e)?)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        Ok(self.0.confined_encode(&mut e)? + self.1.confined_encode(&mut e)?)
     }
 }
 
 /// Two-component tuples are decoded as they were fields in the parent
 /// data structure
-impl<K, V> StrictDecode for (K, V)
+impl<K, V> ConfinedDecode for (K, V)
 where
-    K: StrictDecode + Clone,
-    V: StrictDecode + Clone,
+    K: ConfinedDecode + Clone,
+    V: ConfinedDecode + Clone,
 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let a = K::strict_decode(&mut d)?;
-        let b = V::strict_decode(&mut d)?;
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let a = K::confined_decode(&mut d)?;
+        let b = V::confined_decode(&mut d)?;
         Ok((a, b))
     }
 }
@@ -748,7 +748,7 @@ where
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::strict_serialize;
+    use crate::confined_serialize;
 
     /// Test for checking the following rule from LNPBP-5:
     ///
@@ -763,11 +763,17 @@ pub mod test {
 
         let two_zero_bytes = &vec![0u8][..];
 
-        assert_eq!(strict_serialize(&o1).unwrap(), two_zero_bytes);
-        assert_eq!(strict_serialize(&o2).unwrap(), two_zero_bytes);
+        assert_eq!(confined_serialize(&o1).unwrap(), two_zero_bytes);
+        assert_eq!(confined_serialize(&o2).unwrap(), two_zero_bytes);
 
-        assert_eq!(Option::<u8>::strict_decode(two_zero_bytes).unwrap(), None);
-        assert_eq!(Option::<u64>::strict_decode(two_zero_bytes).unwrap(), None);
+        assert_eq!(
+            Option::<u8>::confined_decode(two_zero_bytes).unwrap(),
+            None
+        );
+        assert_eq!(
+            Option::<u64>::confined_decode(two_zero_bytes).unwrap(),
+            None
+        );
     }
 
     /// Test for checking the following rule from LNPBP-5:
@@ -797,30 +803,36 @@ pub mod test {
             1u8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
         ][..];
 
-        assert_eq!(strict_serialize(&o1).unwrap(), byte_0);
-        assert_eq!(strict_serialize(&o2).unwrap(), byte_13);
-        assert_eq!(strict_serialize(&o3).unwrap(), byte_255);
-        assert_eq!(strict_serialize(&o4).unwrap(), qword_13);
-        assert_eq!(strict_serialize(&o5).unwrap(), qword_256);
-        assert_eq!(strict_serialize(&o6).unwrap(), qword_max);
-        assert_eq!(strict_serialize(&o7).unwrap(), word_13);
-        assert!(strict_serialize(&o8).err().is_some());
+        assert_eq!(confined_serialize(&o1).unwrap(), byte_0);
+        assert_eq!(confined_serialize(&o2).unwrap(), byte_13);
+        assert_eq!(confined_serialize(&o3).unwrap(), byte_255);
+        assert_eq!(confined_serialize(&o4).unwrap(), qword_13);
+        assert_eq!(confined_serialize(&o5).unwrap(), qword_256);
+        assert_eq!(confined_serialize(&o6).unwrap(), qword_max);
+        assert_eq!(confined_serialize(&o7).unwrap(), word_13);
+        assert!(confined_serialize(&o8).err().is_some());
 
-        assert_eq!(Option::<u8>::strict_decode(byte_0).unwrap(), Some(0));
-        assert_eq!(Option::<u8>::strict_decode(byte_13).unwrap(), Some(13));
-        assert_eq!(Option::<u8>::strict_decode(byte_255).unwrap(), Some(0xFF));
-        assert_eq!(Option::<u64>::strict_decode(qword_13).unwrap(), Some(13));
+        assert_eq!(Option::<u8>::confined_decode(byte_0).unwrap(), Some(0));
+        assert_eq!(Option::<u8>::confined_decode(byte_13).unwrap(), Some(13));
         assert_eq!(
-            Option::<u64>::strict_decode(qword_256).unwrap(),
+            Option::<u8>::confined_decode(byte_255).unwrap(),
+            Some(0xFF)
+        );
+        assert_eq!(Option::<u64>::confined_decode(qword_13).unwrap(), Some(13));
+        assert_eq!(
+            Option::<u64>::confined_decode(qword_256).unwrap(),
             Some(0x1FF)
         );
         assert_eq!(
-            Option::<u64>::strict_decode(qword_max).unwrap(),
+            Option::<u64>::confined_decode(qword_max).unwrap(),
             Some(0xFFFFFFFFFFFFFFFF)
         );
-        assert_eq!(Option::<usize>::strict_decode(word_13).unwrap(), Some(13));
         assert_eq!(
-            Option::<usize>::strict_decode(qword_max).unwrap(),
+            Option::<usize>::confined_decode(word_13).unwrap(),
+            Some(13)
+        );
+        assert_eq!(
+            Option::<usize>::confined_decode(qword_max).unwrap(),
             Some(0xFFFF)
         );
     }
@@ -829,13 +841,13 @@ pub mod test {
     /// which MUST fail with a specific error.
     #[test]
     fn test_option_decode_vec() {
-        assert!(Option::<u8>::strict_decode(&[2u8, 0u8, 0u8, 0u8][..])
+        assert!(Option::<u8>::confined_decode(&[2u8, 0u8, 0u8, 0u8][..])
             .err()
             .is_some());
-        assert!(Option::<u8>::strict_decode(&[3u8, 0u8, 0u8, 0u8][..])
+        assert!(Option::<u8>::confined_decode(&[3u8, 0u8, 0u8, 0u8][..])
             .err()
             .is_some());
-        assert!(Option::<u8>::strict_decode(&[0xFFu8, 0u8, 0u8, 0u8][..])
+        assert!(Option::<u8>::confined_decode(&[0xFFu8, 0u8, 0u8, 0u8][..])
             .err()
             .is_some());
     }
@@ -862,13 +874,13 @@ pub mod test {
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         ][..];
 
-        assert_eq!(strict_serialize(&v1).unwrap(), s1);
-        assert_eq!(strict_serialize(&v2).unwrap(), s2);
-        assert_eq!(strict_serialize(&v3).unwrap(), s3);
-        assert!(strict_serialize(&v4).err().is_some());
+        assert_eq!(confined_serialize(&v1).unwrap(), s1);
+        assert_eq!(confined_serialize(&v2).unwrap(), s2);
+        assert_eq!(confined_serialize(&v3).unwrap(), s3);
+        assert!(confined_serialize(&v4).err().is_some());
 
-        assert_eq!(Vec::<u8>::strict_decode(s1).unwrap(), v1);
-        assert_eq!(Vec::<u8>::strict_decode(s2).unwrap(), v2);
-        assert_eq!(Vec::<u64>::strict_decode(s3).unwrap(), v3);
+        assert_eq!(Vec::<u8>::confined_decode(s1).unwrap(), v1);
+        assert_eq!(Vec::<u8>::confined_decode(s2).unwrap(), v2);
+        assert_eq!(Vec::<u64>::confined_decode(s3).unwrap(), v3);
     }
 }

@@ -15,7 +15,7 @@
 #[macro_use]
 extern crate confined_encoding_derive;
 
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 union Unit {
     variant1: u16,
     variant2: i16,

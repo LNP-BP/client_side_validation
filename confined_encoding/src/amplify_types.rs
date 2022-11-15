@@ -19,172 +19,172 @@ use amplify::num::apfloat::{ieee, Float};
 use amplify::num::{i1024, i256, i512, u1024, u256, u512};
 use half::bf16;
 
-use crate::{Error, StrictDecode, StrictEncode};
+use crate::{ConfinedDecode, ConfinedEncode, Error};
 
-impl StrictEncode for FlagVec {
+impl ConfinedEncode for FlagVec {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.shrunk().as_inner().strict_encode(e)
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.shrunk().as_inner().confined_encode(e)
     }
 }
 
-impl StrictDecode for FlagVec {
+impl ConfinedDecode for FlagVec {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(Self::from_inner(StrictDecode::strict_decode(d)?))
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(Self::from_inner(ConfinedDecode::confined_decode(d)?))
     }
 }
 
-impl StrictEncode for u256 {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_le_bytes().strict_encode(e)
+impl ConfinedEncode for u256 {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_le_bytes().confined_encode(e)
     }
 }
 
-impl StrictDecode for u256 {
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(u256::from_le_bytes(<[u8; 32]>::strict_decode(d)?))
+impl ConfinedDecode for u256 {
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(u256::from_le_bytes(<[u8; 32]>::confined_decode(d)?))
     }
 }
 
-impl StrictEncode for u512 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for u512 {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let bytes = self.to_le_bytes();
         e.write_all(&bytes)?;
         Ok(bytes.len())
     }
 }
 
-impl StrictDecode for u512 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for u512 {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut bytes = [0u8; 64];
         d.read_exact(&mut bytes)?;
         Ok(u512::from_le_bytes(bytes))
     }
 }
 
-impl StrictEncode for u1024 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for u1024 {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let bytes = self.to_le_bytes();
         e.write_all(&bytes)?;
         Ok(bytes.len())
     }
 }
 
-impl StrictDecode for u1024 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for u1024 {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut bytes = [0u8; 128];
         d.read_exact(&mut bytes)?;
         Ok(u1024::from_le_bytes(bytes))
     }
 }
 
-impl StrictEncode for i256 {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_le_bytes().strict_encode(e)
+impl ConfinedEncode for i256 {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_le_bytes().confined_encode(e)
     }
 }
 
-impl StrictDecode for i256 {
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(i256::from_le_bytes(<[u8; 32]>::strict_decode(d)?))
+impl ConfinedDecode for i256 {
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(i256::from_le_bytes(<[u8; 32]>::confined_decode(d)?))
     }
 }
 
-impl StrictEncode for i512 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for i512 {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let bytes = self.to_le_bytes();
         e.write_all(&bytes)?;
         Ok(bytes.len())
     }
 }
 
-impl StrictDecode for i512 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for i512 {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut bytes = [0u8; 64];
         d.read_exact(&mut bytes)?;
         Ok(i512::from_le_bytes(bytes))
     }
 }
 
-impl StrictEncode for i1024 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for i1024 {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         let bytes = self.to_le_bytes();
         e.write_all(&bytes)?;
         Ok(bytes.len())
     }
 }
 
-impl StrictDecode for i1024 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for i1024 {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut bytes = [0u8; 128];
         d.read_exact(&mut bytes)?;
         Ok(i1024::from_le_bytes(bytes))
     }
 }
 
-impl StrictEncode for bf16 {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().strict_encode(e)
+impl ConfinedEncode for bf16 {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().confined_encode(e)
     }
 }
 
-impl StrictDecode for bf16 {
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(bf16::from_bits(u16::strict_decode(d)?))
+impl ConfinedDecode for bf16 {
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(bf16::from_bits(u16::confined_decode(d)?))
     }
 }
 
-impl StrictEncode for ieee::Half {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes()[..2].strict_encode(e)
+impl ConfinedEncode for ieee::Half {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes()[..2].confined_encode(e)
     }
 }
 
-impl StrictDecode for ieee::Half {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for ieee::Half {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
         d.read_exact(&mut buf[..2])?;
         Ok(ieee::Half::from_bits(u256::from_le_bytes(buf)))
     }
 }
 
-impl StrictEncode for ieee::Quad {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes()[..16].strict_encode(e)
+impl ConfinedEncode for ieee::Quad {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes()[..16].confined_encode(e)
     }
 }
 
-impl StrictDecode for ieee::Oct {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for ieee::Oct {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
         d.read_exact(&mut buf[..])?;
         Ok(ieee::Oct::from_bits(u256::from_le_bytes(buf)))
     }
 }
 
-impl StrictEncode for ieee::Oct {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes().strict_encode(e)
+impl ConfinedEncode for ieee::Oct {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes().confined_encode(e)
     }
 }
 
-impl StrictDecode for ieee::Quad {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for ieee::Quad {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
         d.read_exact(&mut buf[..16])?;
         Ok(ieee::Quad::from_bits(u256::from_le_bytes(buf)))
     }
 }
 
-impl StrictEncode for ieee::X87DoubleExtended {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes()[..10].strict_encode(e)
+impl ConfinedEncode for ieee::X87DoubleExtended {
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.to_bits().to_le_bytes()[..10].confined_encode(e)
     }
 }
 
-impl StrictDecode for ieee::X87DoubleExtended {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for ieee::X87DoubleExtended {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; 32];
         d.read_exact(&mut buf[..10])?;
         Ok(ieee::X87DoubleExtended::from_bits(u256::from_le_bytes(buf)))

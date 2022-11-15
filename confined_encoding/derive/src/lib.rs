@@ -21,10 +21,9 @@
 //!
 //! # Derivation macros
 //!
-//! Library exports derivation macros `#[derive(`[`StrictEncode`]`)]`,
-//! `#[derive(`[`StrictDecode`]`)]`, `#[derive(`[`NetworkEncode`]`)]` and
-//! `#[derive(`[`NetworkDecode`]`)]`, which can be added on top of any structure
-//! you'd like to support string encoding (see Example section below).
+//! Library exports derivation macros `#[derive(`[`ConfinedEncode`]`)]`,
+//! `#[derive(`[`ConfinedDecode`]`)]`, which can be added on top of any
+//! structure you'd like to support string encoding (see Example section below).
 //!
 //! Encoding/decoding implemented by both of these macros may be configured at
 //! type and individual field level using `#[confined_encoding(...)]` and
@@ -40,13 +39,9 @@
 //!
 //! # Attribute
 //!
-//! [`StrictEncode`] and [`StrictDecode`] behavior can be customized with
+//! [`ConfinedEncode`] and [`ConfinedDecode`] behavior can be customized with
 //! `#[confined_encoding(...)]` attribute, which accepts different arguments
 //! depending to which part of the data type it is applied.
-//!
-//! The same applies to [`NetworkEncode`] and [`NetworkDecode`], which use
-//! `#[network_encoding(...)]` attribute with the same syntax and internal
-//! parameters.
 //!
 //! ## Attribute arguments at type declaration level
 //!
@@ -135,11 +130,11 @@
 //!
 //! ```
 //! # #[macro_use] extern crate confined_encoding_derive;
-//! use confined_encoding::StrictEncode;
+//! use confined_encoding::ConfinedEncode;
 //!
 //! // All variants have custom values apart from the first one, which should has
 //! // value = 1
-//! #[derive(StrictEncode, StrictDecode)]
+//! #[derive(ConfinedEncode, ConfinedDecode)]
 //! #[confined_encoding(by_value, repr = u32)]
 //! #[repr(u8)]
 //! enum CustomValues {
@@ -155,17 +150,17 @@
 //!     Bit64 = 8,
 //! }
 //!
-//! assert_eq!(CustomValues::Bit8.strict_serialize(), Ok(vec![0x01, 0x00, 0x00, 0x00]));
-//! assert_eq!(CustomValues::Bit16.strict_serialize(), Ok(vec![0x10, 0x00, 0x00, 0x00]));
-//! assert_eq!(CustomValues::Bit32.strict_serialize(), Ok(vec![0x00, 0x10, 0x00, 0x00]));
-//! assert_eq!(CustomValues::Bit64.strict_serialize(), Ok(vec![0x00, 0x00, 0x10, 0x00]));
+//! assert_eq!(CustomValues::Bit8.confined_serialize(), Ok(vec![0x01, 0x00, 0x00, 0x00]));
+//! assert_eq!(CustomValues::Bit16.confined_serialize(), Ok(vec![0x10, 0x00, 0x00, 0x00]));
+//! assert_eq!(CustomValues::Bit32.confined_serialize(), Ok(vec![0x00, 0x10, 0x00, 0x00]));
+//! assert_eq!(CustomValues::Bit64.confined_serialize(), Ok(vec![0x00, 0x00, 0x10, 0x00]));
 //! ```
 //!
 //! ```
 //! # #[macro_use] extern crate confined_encoding_derive;
-//! use confined_encoding::StrictEncode;
+//! use confined_encoding::ConfinedEncode;
 //!
-//! #[derive(StrictEncode, StrictDecode)]
+//! #[derive(ConfinedEncode, ConfinedDecode)]
 //! #[confined_encoding(by_order, repr = u16)]
 //! #[repr(u8)]
 //! enum U16 {
@@ -175,17 +170,17 @@
 //!     Bit64 = 8,
 //! }
 //!
-//! assert_eq!(U16::Bit8.strict_serialize(), Ok(vec![0x00, 0x00]));
-//! assert_eq!(U16::Bit16.strict_serialize(), Ok(vec![0x01, 0x00]));
-//! assert_eq!(U16::Bit32.strict_serialize(), Ok(vec![0x02, 0x00]));
-//! assert_eq!(U16::Bit64.strict_serialize(), Ok(vec![0x03, 0x00]));
+//! assert_eq!(U16::Bit8.confined_serialize(), Ok(vec![0x00, 0x00]));
+//! assert_eq!(U16::Bit16.confined_serialize(), Ok(vec![0x01, 0x00]));
+//! assert_eq!(U16::Bit32.confined_serialize(), Ok(vec![0x02, 0x00]));
+//! assert_eq!(U16::Bit64.confined_serialize(), Ok(vec![0x03, 0x00]));
 //! ```
 //!
 //! ```
 //! # #[macro_use] extern crate confined_encoding_derive;
-//! use confined_encoding::{StrictDecode, StrictEncode};
+//! use confined_encoding::{ConfinedDecode, ConfinedEncode};
 //!
-//! #[derive(StrictEncode, StrictDecode)]
+//! #[derive(ConfinedEncode, ConfinedDecode)]
 //! struct Skipping {
 //!     pub data: Vec<u8>,
 //!
@@ -199,10 +194,10 @@
 //!     data: b"abc".to_vec(),
 //!     ephemeral: Some(true),
 //! };
-//! let ser = obj.strict_serialize().unwrap();
+//! let ser = obj.confined_serialize().unwrap();
 //!
 //! assert_eq!(ser, vec![0x03, 0x00, b'a', b'b', b'c']);
-//! let de = Skipping::strict_deserialize(&ser).unwrap();
+//! let de = Skipping::confined_deserialize(&ser).unwrap();
 //! assert_eq!(de.ephemeral, None);
 //! assert_eq!(obj.data, de.data);
 //! ```
@@ -217,16 +212,16 @@ use encoding_derive_helpers::{decode_derive, encode_derive};
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-/// Derives [`StrictEncode`] implementation for the type.
-#[proc_macro_derive(StrictEncode, attributes(confined_encoding))]
-pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
+/// Derives [`ConfinedEncode`] implementation for the type.
+#[proc_macro_derive(ConfinedEncode, attributes(confined_encoding))]
+pub fn derive_confined_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     encode_derive(
         "confined_encoding",
         ident!(confined_encoding),
-        ident!(StrictEncode),
-        ident!(strict_encode),
-        ident!(strict_serialize),
+        ident!(ConfinedEncode),
+        ident!(confined_encode),
+        ident!(confined_serialize),
         derive_input,
         false,
     )
@@ -234,16 +229,16 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives [`StrictDecode`] implementation for the type.
-#[proc_macro_derive(StrictDecode, attributes(confined_encoding))]
-pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
+/// Derives [`ConfinedDecode`] implementation for the type.
+#[proc_macro_derive(ConfinedDecode, attributes(confined_encoding))]
+pub fn derive_confined_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     decode_derive(
         "confined_encoding",
         ident!(confined_encoding),
-        ident!(StrictDecode),
-        ident!(strict_decode),
-        ident!(strict_deserialize),
+        ident!(ConfinedDecode),
+        ident!(confined_decode),
+        ident!(confined_deserialize),
         derive_input,
         false,
     )

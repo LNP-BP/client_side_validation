@@ -42,4 +42,4 @@ pub use api::{
     ValidationFailure, ValidationLog, ValidationReport, Validity,
 };
 pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};
-pub use confined_encoding::derive::{StrictDecode, StrictEncode};
+pub use confined_encoding::derive::{ConfinedDecode, ConfinedEncode};

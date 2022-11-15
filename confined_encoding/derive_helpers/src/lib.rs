@@ -30,15 +30,15 @@
 //! use proc_macro::TokenStream;
 //! use syn::DeriveInput;
 //!
-//! #[proc_macro_derive(StrictEncode, attributes(confined_encoding))]
-//! pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
+//! #[proc_macro_derive(ConfinedEncode, attributes(confined_encoding))]
+//! pub fn derive_confined_encode(input: TokenStream) -> TokenStream {
 //!     let derive_input = parse_macro_input!(input as DeriveInput);
 //!     encode_derive(
 //!         "confined_encoding",
 //!         ident!(confined_encoding),
-//!         ident!(StrictEncode),
-//!         ident!(strict_encode),
-//!         ident!(strict_serialize),
+//!         ident!(ConfinedEncode),
+//!         ident!(confined_encode),
+//!         ident!(confined_serialize),
 //!         derive_input,
 //!         TlvEncoding::Denied,
 //!     )

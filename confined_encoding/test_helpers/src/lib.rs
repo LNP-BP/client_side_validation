@@ -57,7 +57,7 @@
 //! # #[macro_use] extern crate confined_encoding_test;
 //! use confined_encoding_test::*;
 //!
-//! #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
+//! #[derive(Clone, PartialEq, Eq, Debug, ConfinedEncode, ConfinedDecode)]
 //! struct Data(pub Vec<u8>);
 //!
 //! #[test]
@@ -77,7 +77,7 @@ extern crate amplify;
 
 use std::fmt::Debug;
 
-use confined_encoding::{Error, StrictDecode, StrictEncode};
+use confined_encoding::{ConfinedDecode, ConfinedEncode, Error};
 
 /// Failures happening during strict encoding tests of enum encodings.
 ///
@@ -235,7 +235,7 @@ where
 ///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
-/// #[derive(StrictEncode, StrictDecode)]
+/// #[derive(ConfinedEncode, ConfinedDecode)]
 /// #[confined_encoding(repr = u8)]
 /// enum Bits {
 ///     #[confined_encoding(value = 8)]
@@ -260,9 +260,9 @@ macro_rules! test_encoding_enum {
         $(
             .and_then(|_| {
                 use $crate::EnumEncodingTestFailure;
-                match $se::strict_serialize(&$item) {
+                match $se::confined_serialize(&$item) {
                     Ok(bytes) if bytes == &$val.to_le_bytes() => {
-                        let deser = $se::strict_deserialize(bytes.clone())
+                        let deser = $se::confined_deserialize(bytes.clone())
                             .map_err(|e| EnumEncodingTestFailure::DecoderFailure(
                                 $item, e.to_string(), bytes
                             ))?;
@@ -321,7 +321,7 @@ macro_rules! test_encoding_enum {
 ///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
-/// #[derive(StrictEncode, StrictDecode)]
+/// #[derive(ConfinedEncode, ConfinedDecode)]
 /// #[confined_encoding(repr = u8, by_value)]
 /// enum Bits {
 ///     Bit8 = 8,
@@ -410,7 +410,7 @@ macro_rules! test_encoding_enum_by_values {
 ///
 /// #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 /// #[repr(u8)]
-/// #[derive(StrictEncode, StrictDecode)]
+/// #[derive(ConfinedEncode, ConfinedDecode)]
 /// #[confined_encoding(repr = u8, by_value)]
 /// enum Bits {
 ///     Bit8 = 8,
@@ -440,7 +440,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
             $( set.insert($val); )+
             for x in 0..=u8::MAX {
                 if !set.contains(&x) {
-                    match $se::strict_deserialize(&[x]) {
+                    match $se::confined_deserialize(&[x]) {
                         Err($se::Error::EnumValueNotKnown(stringify!($enum), a)) if a == x as usize => {},
                         Err(err) => return Err(
                             EnumEncodingTestFailure::DecoderWrongErrorOnUnknownValue(x, err.to_string())
@@ -464,7 +464,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
 #[derive(Clone, PartialEq, Eq, Debug, Display, Error)]
 pub enum DataEncodingTestFailure<T>
 where
-    T: StrictEncode + StrictDecode + PartialEq + Debug + Clone,
+    T: ConfinedEncode + ConfinedDecode + PartialEq + Debug + Clone,
 {
     /// Failure during encoding enum variant
     #[display("Failure during encoding: {0:?}")]
@@ -553,7 +553,7 @@ where
 /// # #[macro_use] extern crate confined_encoding;
 /// # use confined_encoding_test::test_object_encoding_roundtrip;
 ///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
+/// #[derive(Clone, PartialEq, Eq, Debug, ConfinedEncode, ConfinedDecode)]
 /// struct Data(pub Vec<u8>);
 ///
 /// let data = Data(vec![0x01, 0x02]);
@@ -564,11 +564,11 @@ pub fn test_object_encoding_roundtrip<T>(
     object: &T,
 ) -> Result<Vec<u8>, DataEncodingTestFailure<T>>
 where
-    T: StrictEncode + StrictDecode + PartialEq + Clone + Debug,
+    T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
     let mut encoded_object: Vec<u8> = vec![];
     let written = object
-        .strict_encode(&mut encoded_object)
+        .confined_encode(&mut encoded_object)
         .map_err(DataEncodingTestFailure::EncoderFailure)?;
     let len = encoded_object.len();
     if written != len {
@@ -578,7 +578,7 @@ where
         });
     }
     let decoded_object =
-        T::strict_decode(&encoded_object[..]).map_err(|e| {
+        T::confined_decode(&encoded_object[..]).map_err(|e| {
             DataEncodingTestFailure::DecoderFailure(e, encoded_object.clone())
         })?;
     if &decoded_object != object {
@@ -619,7 +619,7 @@ where
 /// # #[macro_use] extern crate confined_encoding;
 /// # use confined_encoding_test::test_vec_decoding_roundtrip;
 ///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
+/// #[derive(Clone, PartialEq, Eq, Debug, ConfinedEncode, ConfinedDecode)]
 /// struct Data(pub Vec<u8>);
 ///
 /// let data = Data(vec![0x01, 0x02]);
@@ -632,10 +632,10 @@ pub fn test_vec_decoding_roundtrip<T>(
     test_vec: impl AsRef<[u8]>,
 ) -> Result<T, DataEncodingTestFailure<T>>
 where
-    T: StrictEncode + StrictDecode + PartialEq + Clone + Debug,
+    T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
     let test_vec = test_vec.as_ref();
-    let decoded_object = T::strict_decode(test_vec).map_err(|e| {
+    let decoded_object = T::confined_decode(test_vec).map_err(|e| {
         DataEncodingTestFailure::DecoderFailure(e, test_vec.to_vec())
     })?;
     let encoded_object = test_object_encoding_roundtrip(&decoded_object)?;
@@ -675,7 +675,7 @@ where
 /// # #[macro_use] extern crate confined_encoding;
 /// # use confined_encoding_test::test_encoding_roundtrip;
 ///
-/// #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
+/// #[derive(Clone, PartialEq, Eq, Debug, ConfinedEncode, ConfinedDecode)]
 /// struct Data(pub Vec<u8>);
 ///
 /// let data = Data(vec![0x01, 0x02]);
@@ -686,7 +686,7 @@ pub fn test_encoding_roundtrip<T>(
     test_vec: impl AsRef<[u8]>,
 ) -> Result<(), DataEncodingTestFailure<T>>
 where
-    T: StrictEncode + StrictDecode + PartialEq + Clone + Debug,
+    T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
     let decoded_object = test_vec_decoding_roundtrip(test_vec)?;
     if object != &decoded_object {

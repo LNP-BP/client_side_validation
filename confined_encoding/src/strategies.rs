@@ -20,7 +20,7 @@ use std::io;
 
 use amplify::Wrapper;
 
-use super::{Error, StrictDecode, StrictEncode};
+use super::{ConfinedDecode, ConfinedEncode, Error};
 
 /// Encodes/decodes data as a [`bitcoin_hashes::Hash`]-based (wrapper) type,
 /// i.e. as a fixed-size byte string of [`bitcoin_hashes::Hash::LEN`] length.
@@ -36,7 +36,7 @@ pub struct BitcoinConsensus;
 pub struct Wrapped;
 
 /// Marker trait defining specific encoding strategy which should be used for
-/// automatic implementation of both [`StrictEncode`] and [`StrictDecode`].
+/// automatic implementation of both [`ConfinedEncode`] and [`ConfinedDecode`].
 pub trait Strategy {
     /// Specific strategy. List of supported strategies:
     /// - [`HashFixedBytes`]
@@ -45,67 +45,67 @@ pub trait Strategy {
     type Strategy;
 }
 
-impl<T> StrictEncode for T
+impl<T> ConfinedEncode for T
 where
     T: Strategy + Clone,
-    amplify::Holder<T, <T as Strategy>::Strategy>: StrictEncode,
+    amplify::Holder<T, <T as Strategy>::Strategy>: ConfinedEncode,
 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        amplify::Holder::new(self.clone()).strict_encode(e)
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        amplify::Holder::new(self.clone()).confined_encode(e)
     }
 }
 
-impl<T> StrictDecode for T
+impl<T> ConfinedDecode for T
 where
     T: Strategy,
-    amplify::Holder<T, <T as Strategy>::Strategy>: StrictDecode,
+    amplify::Holder<T, <T as Strategy>::Strategy>: ConfinedDecode,
 {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(amplify::Holder::strict_decode(d)?.into_inner())
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(amplify::Holder::confined_decode(d)?.into_inner())
     }
 }
 
-impl<W> StrictEncode for amplify::Holder<W, Wrapped>
+impl<W> ConfinedEncode for amplify::Holder<W, Wrapped>
 where
     W: Wrapper,
-    W::Inner: StrictEncode,
+    W::Inner: ConfinedEncode,
 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_inner().as_inner().strict_encode(e)
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.as_inner().as_inner().confined_encode(e)
     }
 }
 
-impl<W> StrictDecode for amplify::Holder<W, Wrapped>
+impl<W> ConfinedDecode for amplify::Holder<W, Wrapped>
 where
     W: Wrapper,
-    W::Inner: StrictDecode,
+    W::Inner: ConfinedDecode,
 {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(Self::new(W::from_inner(W::Inner::strict_decode(d)?)))
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(Self::new(W::from_inner(W::Inner::confined_decode(d)?)))
     }
 }
 
-impl<H> StrictEncode for amplify::Holder<H, HashFixedBytes>
+impl<H> ConfinedEncode for amplify::Holder<H, HashFixedBytes>
 where
     H: bitcoin_hashes::Hash,
 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.as_inner()[..])?;
         Ok(H::LEN)
     }
 }
 
-impl<H> StrictDecode for amplify::Holder<H, HashFixedBytes>
+impl<H> ConfinedDecode for amplify::Holder<H, HashFixedBytes>
 where
     H: bitcoin_hashes::Hash,
 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = vec![0u8; H::LEN];
         d.read_exact(&mut buf)?;
         Ok(Self::new(H::from_slice(&buf).expect(
@@ -115,24 +115,24 @@ where
     }
 }
 
-impl<B> StrictEncode for amplify::Holder<B, BitcoinConsensus>
+impl<B> ConfinedEncode for amplify::Holder<B, BitcoinConsensus>
 where
     B: bitcoin::consensus::Encodable,
 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         self.as_inner()
             .consensus_encode(&mut e)
             .map_err(Error::from)
     }
 }
 
-impl<B> StrictDecode for amplify::Holder<B, BitcoinConsensus>
+impl<B> ConfinedDecode for amplify::Holder<B, BitcoinConsensus>
 where
     B: bitcoin::consensus::Decodable,
 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         Ok(Self::new(B::consensus_decode(&mut d).map_err(Error::from)?))
     }
 }

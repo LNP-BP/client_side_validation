@@ -30,12 +30,12 @@
 //! byte string occupying 37 bytes. This standard is used for the strict
 //! encoding of networking addresses.
 //!
-//! Library defines two main traits, [`StrictEncode`] and [`StrictDecode`],
+//! Library defines two main traits, [`ConfinedEncode`] and [`ConfinedDecode`],
 //! which should be implemented on each type that requires to be represented
 //! for client-side-validation. It also defines possible encoding error cases
 //! with [`derive@Error`] and provides derivation macros
-//! `#[derive(StrictEncode, StrictDecode)]`, which are a part of
-//! `strict_encode_derive` sub-crate and represented by a default feature
+//! `#[derive(ConfinedEncode, ConfinedDecode)]`, which are a part of
+//! `confined_encode_derive` sub-crate and represented by a default feature
 //! `derive`. Finally, it implements strict encoding traits for main data types
 //! defined by rust standard library and frequently used crates; the latter
 //! increases the number of dependencies and thus can be controlled with
@@ -55,7 +55,7 @@
 #[cfg(feature = "derive")]
 pub extern crate confined_encoding_derive as derive;
 #[cfg(feature = "derive")]
-pub use derive::{NetworkDecode, NetworkEncode, StrictDecode, StrictEncode};
+pub use derive::{ConfinedDecode, ConfinedEncode};
 
 #[macro_use]
 extern crate amplify;
@@ -85,7 +85,7 @@ use std::{fmt, io};
 
 /// Re-exporting extended read and write functions from bitcoin consensus
 /// module so others may use semantic convenience
-/// `strict_encode::ReadExt`
+/// `confined_encode::ReadExt`
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::IoError;
 pub use collections::{LargeVec, MediumVec};
@@ -99,17 +99,17 @@ pub use strategies::Strategy;
 /// applied. It is generally recommended for consensus-related commitments to
 /// utilize `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits  
 /// from `commit_verify` module.
-pub trait StrictEncode {
+pub trait ConfinedEncode {
     /// Encode with the given [`std::io::Write`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error>;
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error>;
 
-    /// Serializes data as a byte array using [`StrictEncode::strict_encode`]
-    /// function
-    fn strict_serialize(&self) -> Result<Vec<u8>, Error> {
+    /// Serializes data as a byte array using
+    /// [`ConfinedEncode::confined_encode`] function
+    fn confined_serialize(&self) -> Result<Vec<u8>, Error> {
         let mut e = vec![];
-        let _ = self.strict_encode(&mut e)?;
+        let _ = self.confined_encode(&mut e)?;
         Ok(e)
     }
 }
@@ -117,45 +117,45 @@ pub trait StrictEncode {
 /// Binary decoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications.
 /// MUST NOT be used for commitment verification: even if the commit procedure
-/// uses [`StrictEncode`], the actual commit verification MUST be done with
+/// uses [`ConfinedEncode`], the actual commit verification MUST be done with
 /// `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits, which,
 /// instead of deserializing (nonce operation for commitments) repeat the
 /// commitment procedure for the revealed message and verify it against the
 /// provided commitment.
-pub trait StrictDecode: Sized {
+pub trait ConfinedDecode: Sized {
     /// Decode with the given [`std::io::Read`] instance; must either
     /// construct an instance or return implementation-specific error type.
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error>;
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error>;
 
     /// Tries to deserialize byte array into the current type using
-    /// [`StrictDecode::strict_decode`]. If there are some data remains in the
-    /// buffer once deserialization is completed, fails with
+    /// [`ConfinedDecode::confined_decode`]. If there are some data remains in
+    /// the buffer once deserialization is completed, fails with
     /// [`Error::DataNotEntirelyConsumed`]. Use `io::Cursor` over the buffer and
-    /// [`StrictDecode::strict_decode`] to avoid such failures.
-    fn strict_deserialize(data: impl AsRef<[u8]>) -> Result<Self, Error> {
-        Self::strict_decode(data.as_ref())
+    /// [`ConfinedDecode::confined_decode`] to avoid such failures.
+    fn confined_deserialize(data: impl AsRef<[u8]>) -> Result<Self, Error> {
+        Self::confined_decode(data.as_ref())
     }
 }
 
 /// Convenience method for strict encoding of data structures implementing
-/// [`StrictEncode`] into a byte vector.
-pub fn strict_serialize<T>(data: &T) -> Result<Vec<u8>, Error>
+/// [`ConfinedEncode`] into a byte vector.
+pub fn confined_serialize<T>(data: &T) -> Result<Vec<u8>, Error>
 where
-    T: StrictEncode,
+    T: ConfinedEncode,
 {
     let mut encoder = io::Cursor::new(vec![]);
-    data.strict_encode(&mut encoder)?;
+    data.confined_encode(&mut encoder)?;
     Ok(encoder.into_inner())
 }
 
 /// Convenience method for strict decoding of data structures implementing
-/// [`StrictDecode`] from any byt data source.
-pub fn strict_deserialize<T>(data: impl AsRef<[u8]>) -> Result<T, Error>
+/// [`ConfinedDecode`] from any byt data source.
+pub fn confined_deserialize<T>(data: impl AsRef<[u8]>) -> Result<T, Error>
 where
-    T: StrictDecode,
+    T: ConfinedDecode,
 {
     let mut decoder = io::Cursor::new(data.as_ref());
-    let rv = T::strict_decode(&mut decoder)?;
+    let rv = T::confined_decode(&mut decoder)?;
     let consumed = decoder.position() as usize;
 
     // Fail if data are not consumed entirely.
@@ -215,8 +215,8 @@ pub enum Error {
     /// A repeated value for `{0}` found during set collection deserialization
     RepeatedValue(String),
 
-    /// Returned by the convenience method [`StrictDecode::strict_decode`] if
-    /// not all provided data were consumed during decoding process
+    /// Returned by the convenience method [`ConfinedDecode::confined_decode`]
+    /// if not all provided data were consumed during decoding process
     #[display(
         "Data were not consumed entirely during strict decoding procedure"
     )]

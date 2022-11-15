@@ -15,19 +15,17 @@
 #[macro_use]
 extern crate amplify;
 #[macro_use]
-extern crate confined_encoding_derive;
-#[macro_use]
 extern crate confined_encoding_test;
 
 mod common;
 
 use common::{compile_test, Error, Result};
-use confined_encoding::{StrictDecode, StrictEncode};
+use confined_encoding::{ConfinedDecode, ConfinedEncode};
 use confined_encoding_test::test_encoding_roundtrip;
 
 #[test]
 #[should_panic]
-fn no_strict_units() { compile_test("basics-failures/no_strict_units"); }
+fn no_confined_units() { compile_test("basics-failures/no_confined_units"); }
 
 #[test]
 #[should_panic]
@@ -37,8 +35,8 @@ fn no_networking_unions() {
 
 #[test]
 #[should_panic]
-fn strict_network_exclusivity() {
-    compile_test("basics-failures/strict_network_exclusivity");
+fn confined_network_exclusivity() {
+    compile_test("basics-failures/confined_network_exclusivity");
 }
 
 #[test]
@@ -52,7 +50,7 @@ fn no_empty_types() { compile_test("basics-failures/no_empty_types"); }
 #[test]
 fn unit_struct() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct Strict(u16);
     test_encoding_roundtrip(&Strict(0xcafe), [0xFE, 0xCA])?;
 
@@ -67,7 +65,7 @@ fn bytes() -> Result {
     ];
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct Vect {
         data: Vec<u8>,
     }
@@ -79,14 +77,14 @@ fn bytes() -> Result {
     )?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode)]
+    #[derive(ConfinedEncode)]
     struct Slice<'a> {
         slice: &'a [u8],
     }
-    assert_eq!(&Slice { slice: &data[2..] }.strict_serialize()?, &data);
+    assert_eq!(&Slice { slice: &data[2..] }.confined_serialize()?, &data);
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct Array {
         bytes: [u8; 16],
     }
@@ -95,7 +93,7 @@ fn bytes() -> Result {
     test_encoding_roundtrip(&Array { bytes }, &data[2..])?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct Heap(Box<[u8]>);
     test_encoding_roundtrip(&Heap(Box::from(&data[2..])), data)
         .map_err(Error::from)
@@ -104,7 +102,7 @@ fn bytes() -> Result {
 #[test]
 fn skipping() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug, Default)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct Skipping {
         pub data: String,
 
@@ -128,7 +126,7 @@ fn skipping() -> Result {
 fn custom_crate() {
     use confined_encoding as custom_crate;
 
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(crate = custom_crate)]
     struct One {
         a: Vec<u8>,
@@ -137,10 +135,10 @@ fn custom_crate() {
 
 #[test]
 fn generics() {
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     enum CustomErr1<Err>
     where
-        Err: std::error::Error + StrictEncode + StrictDecode,
+        Err: std::error::Error + ConfinedEncode + ConfinedDecode,
     {
         Other(Err),
     }

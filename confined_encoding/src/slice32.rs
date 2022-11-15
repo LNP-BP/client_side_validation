@@ -17,19 +17,22 @@ use std::io;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, Hash};
 
-use crate::{StrictDecode, StrictEncode};
+use crate::{ConfinedDecode, ConfinedEncode};
 
-impl StrictEncode for Slice32 {
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, crate::Error> {
+impl ConfinedEncode for Slice32 {
+    fn confined_encode<E: io::Write>(
+        &self,
+        e: E,
+    ) -> Result<usize, crate::Error> {
         // We use the same encoding as used by hashes - and ensure this by
         // cross-converting with hash
-        sha256::Hash::from_inner(self.to_inner()).strict_encode(e)
+        sha256::Hash::from_inner(self.to_inner()).confined_encode(e)
     }
 }
 
-impl StrictDecode for Slice32 {
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, crate::Error> {
-        let hash = sha256::Hash::strict_decode(d)?;
+impl ConfinedDecode for Slice32 {
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, crate::Error> {
+        let hash = sha256::Hash::confined_decode(d)?;
         Ok(Slice32::from_inner(hash.into_inner()))
     }
 }
@@ -39,14 +42,14 @@ mod test {
     use amplify::hex::FromHex;
     use amplify::{Slice32, Wrapper};
 
-    use crate::{StrictDecode, StrictEncode};
+    use crate::{ConfinedDecode, ConfinedEncode};
 
     #[test]
     fn test_encoding() {
         let s =
             "a3401bcceb26201b55978ff705fecf7d8a0a03598ebeccf2a947030b91a0ff53";
         let slice32 = Slice32::from_hex(s).unwrap();
-        let ser = slice32.strict_serialize().unwrap();
+        let ser = slice32.confined_serialize().unwrap();
 
         let data = [
             0xa3, 0x40, 0x1b, 0xcc, 0xeb, 0x26, 0x20, 0x1b, 0x55, 0x97, 0x8f,
@@ -56,7 +59,7 @@ mod test {
 
         assert_eq!(ser.len(), 32);
         assert_eq!(&ser, &data);
-        assert_eq!(Slice32::strict_deserialize(&ser), Ok(slice32));
+        assert_eq!(Slice32::confined_deserialize(&ser), Ok(slice32));
 
         assert_eq!(Slice32::from_slice(data), Some(slice32));
         assert_eq!(Slice32::from_slice(&data[..30]), None);

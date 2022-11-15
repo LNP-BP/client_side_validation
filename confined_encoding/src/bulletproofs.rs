@@ -14,11 +14,11 @@
 
 use std::io;
 
-use crate::{Error, StrictDecode, StrictEncode};
+use crate::{ConfinedDecode, ConfinedEncode, Error};
 
-impl StrictEncode for secp256k1zkp::Error {
+impl ConfinedEncode for secp256k1zkp::Error {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, _: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, _: E) -> Result<usize, Error> {
         unreachable!(
             "rust compiler requires confined encoding due to derivation \
              macros, but its code must be unreachable"
@@ -26,9 +26,9 @@ impl StrictEncode for secp256k1zkp::Error {
     }
 }
 
-impl StrictDecode for secp256k1zkp::Error {
+impl ConfinedDecode for secp256k1zkp::Error {
     #[inline]
-    fn strict_decode<D: io::Read>(_: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(_: D) -> Result<Self, Error> {
         unreachable!(
             "rust compiler requires confined encoding due to derivation \
              macros, but its code must be unreachable"
@@ -36,34 +36,34 @@ impl StrictDecode for secp256k1zkp::Error {
     }
 }
 
-impl StrictEncode for secp256k1zkp::pedersen::Commitment {
+impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         Ok(e.write(&self[..])?)
     }
 }
 
-impl StrictDecode for secp256k1zkp::pedersen::Commitment {
+impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1zkp::constants::PEDERSEN_COMMITMENT_SIZE];
         d.read_exact(&mut buf)?;
         Ok(Self::from_vec(buf.to_vec()))
     }
 }
 
-impl StrictEncode for secp256k1zkp::pedersen::RangeProof {
+impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.proof[..self.plen].as_ref().strict_encode(e)
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        self.proof[..self.plen].as_ref().confined_encode(e)
     }
 }
 
-impl StrictDecode for secp256k1zkp::pedersen::RangeProof {
+impl ConfinedDecode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
         use secp256k1zkp::constants::MAX_PROOF_SIZE;
-        let data = Vec::<u8>::strict_decode(d)?;
+        let data = Vec::<u8>::confined_decode(d)?;
         match data.len() {
             len if len < MAX_PROOF_SIZE => {
                 let mut buf = [0; MAX_PROOF_SIZE];
@@ -100,10 +100,10 @@ mod test {
         )
         .unwrap();
 
-        let ser = pedersen.strict_serialize().unwrap();
+        let ser = pedersen.confined_serialize().unwrap();
         assert_eq!(ser.len(), 33);
         assert_eq!(
-            secp256k1zkp::pedersen::Commitment::strict_deserialize(ser)
+            secp256k1zkp::pedersen::Commitment::confined_deserialize(ser)
                 .unwrap(),
             pedersen
         );
@@ -125,10 +125,10 @@ mod test {
             None,
         );
 
-        let ser = bulletproof.strict_serialize().unwrap();
+        let ser = bulletproof.confined_serialize().unwrap();
         assert_eq!(ser.len(), bulletproof.plen + 2);
         assert_eq!(
-            secp256k1zkp::pedersen::RangeProof::strict_deserialize(ser)
+            secp256k1zkp::pedersen::RangeProof::confined_deserialize(ser)
                 .unwrap(),
             bulletproof
         );

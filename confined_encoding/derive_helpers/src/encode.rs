@@ -307,7 +307,7 @@ fn encode_fields_impl<'a>(
         ));
     }
 
-    let mut strict_fields = vec![];
+    let mut confined_fields = vec![];
     let mut tlv_fields = bmap! {};
     let mut tlv_aggregator = None;
 
@@ -350,13 +350,13 @@ fn encode_fields_impl<'a>(
         encoding.tlv.unwrap_or(TlvDerive::None).process(
             field,
             name,
-            &mut strict_fields,
+            &mut confined_fields,
             &mut tlv_fields,
             &mut tlv_aggregator,
         )?;
     }
 
-    for name in strict_fields {
+    for name in confined_fields {
         stream.append_all(quote_spanned! { Span::call_site() =>
             len += data.#name.#encode_name(&mut e)?;
         })

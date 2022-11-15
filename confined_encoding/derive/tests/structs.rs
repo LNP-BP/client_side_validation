@@ -25,7 +25,7 @@ use confined_encoding_test::test_encoding_roundtrip;
 #[test]
 fn struct_numbered_fields() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictEncode, StrictDecode)]
+    #[derive(ConfinedEncode, ConfinedDecode)]
     struct NumberedFields(u8, String);
 
     let fields = NumberedFields(7, s!("some"));

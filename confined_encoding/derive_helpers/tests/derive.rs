@@ -26,7 +26,7 @@ use syn::DeriveInput;
 fn test_custom_derivation() {
     #![allow(unused)]
     #[proc_macro_derive(CustomEncode, attributes(custom_encoding))]
-    fn derive_strict_encode(input: TokenStream) -> TokenStream {
+    fn derive_confined_encode(input: TokenStream) -> TokenStream {
         let derive_input = parse_macro_input!(input as DeriveInput);
         encode_derive(
             "custom_encoding",
@@ -42,7 +42,7 @@ fn test_custom_derivation() {
     }
 
     #[proc_macro_derive(CustomDecode, attributes(custom_encoding))]
-    fn derive_strict_decode(input: TokenStream) -> TokenStream {
+    fn derive_confined_decode(input: TokenStream) -> TokenStream {
         let derive_input = parse_macro_input!(input as DeriveInput);
         decode_derive(
             "custom_encoding",

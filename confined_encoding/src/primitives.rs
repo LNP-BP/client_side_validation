@@ -20,25 +20,25 @@ use std::io::{Read, Write};
 
 use amplify::num::u24;
 
-use super::{Error, StrictDecode, StrictEncode};
+use super::{ConfinedDecode, ConfinedEncode, Error};
 
-impl StrictEncode for () {
-    fn strict_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+impl ConfinedEncode for () {
+    fn confined_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
 }
 
-impl StrictDecode for () {
-    fn strict_decode<D: Read>(_: D) -> Result<Self, Error> { Ok(()) }
+impl ConfinedDecode for () {
+    fn confined_decode<D: Read>(_: D) -> Result<Self, Error> { Ok(()) }
 }
 
-impl StrictEncode for bool {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        (*self as u8).strict_encode(&mut e)
+impl ConfinedEncode for bool {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        (*self as u8).confined_encode(&mut e)
     }
 }
 
-impl StrictDecode for bool {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        match u8::strict_decode(&mut d)? {
+impl ConfinedDecode for bool {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        match u8::confined_decode(&mut d)? {
             0 => Ok(false),
             1 => Ok(true),
             v => Err(Error::ValueOutOfRange("boolean", 0..1, v as u128)),
@@ -46,248 +46,248 @@ impl StrictDecode for bool {
     }
 }
 
-impl StrictEncode for u8 {
+impl ConfinedEncode for u8 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&[*self][..])?;
         Ok(1)
     }
 }
 
-impl StrictDecode for u8 {
+impl ConfinedDecode for u8 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 1];
         d.read_exact(&mut ret)?;
         Ok(ret[0])
     }
 }
 
-impl StrictEncode for i8 {
+impl ConfinedEncode for i8 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(1)
     }
 }
 
-impl StrictDecode for i8 {
+impl ConfinedDecode for i8 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 1];
         d.read_exact(&mut ret)?;
         Ok(ret[0] as i8)
     }
 }
 
-impl StrictEncode for u16 {
+impl ConfinedEncode for u16 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(2)
     }
 }
 
-impl StrictDecode for u16 {
+impl ConfinedDecode for u16 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 2];
         d.read_exact(&mut ret)?;
         Ok(u16::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for i16 {
+impl ConfinedEncode for i16 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(2)
     }
 }
 
-impl StrictDecode for i16 {
+impl ConfinedDecode for i16 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 2];
         d.read_exact(&mut ret)?;
         Ok(i16::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for u24 {
+impl ConfinedEncode for u24 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(3)
     }
 }
 
-impl StrictDecode for u24 {
+impl ConfinedDecode for u24 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 3];
         d.read_exact(&mut ret)?;
         Ok(u24::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for u32 {
+impl ConfinedEncode for u32 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(4)
     }
 }
 
-impl StrictDecode for u32 {
+impl ConfinedDecode for u32 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 4];
         d.read_exact(&mut ret)?;
         Ok(u32::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for i32 {
+impl ConfinedEncode for i32 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(4)
     }
 }
 
-impl StrictDecode for i32 {
+impl ConfinedDecode for i32 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 4];
         d.read_exact(&mut ret)?;
         Ok(i32::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for u64 {
+impl ConfinedEncode for u64 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(8)
     }
 }
 
-impl StrictDecode for u64 {
+impl ConfinedDecode for u64 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 8];
         d.read_exact(&mut ret)?;
         Ok(u64::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for i64 {
+impl ConfinedEncode for i64 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(8)
     }
 }
 
-impl StrictDecode for i64 {
+impl ConfinedDecode for i64 {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut ret = [0u8; 8];
         d.read_exact(&mut ret)?;
         Ok(i64::from_le_bytes(ret))
     }
 }
 
-impl StrictEncode for u128 {
+impl ConfinedEncode for u128 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(16)
     }
 }
 
-impl StrictDecode for u128 {
+impl ConfinedDecode for u128 {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(u128::from_le_bytes(<[u8; 16]>::strict_decode(d)?))
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(u128::from_le_bytes(<[u8; 16]>::confined_decode(d)?))
     }
 }
 
-impl StrictEncode for i128 {
+impl ConfinedEncode for i128 {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(16)
     }
 }
 
-impl StrictDecode for i128 {
+impl ConfinedDecode for i128 {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(i128::from_le_bytes(<[u8; 16]>::strict_decode(d)?))
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+        Ok(i128::from_le_bytes(<[u8; 16]>::confined_decode(d)?))
     }
 }
 
-impl StrictEncode for usize {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for usize {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         if *self > u16::MAX as usize {
             return Err(Error::ExceedMaxItems(*self));
         }
         let size = *self as u16;
-        size.strict_encode(&mut e)
+        size.confined_encode(&mut e)
     }
 }
 
-impl StrictDecode for usize {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        u16::strict_decode(&mut d).map(|val| val as usize)
+impl ConfinedDecode for usize {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        u16::confined_decode(&mut d).map(|val| val as usize)
     }
 }
 
-impl StrictEncode for f32 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for f32 {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(4)
     }
 }
 
-impl StrictDecode for f32 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for f32 {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf: [u8; 4] = [0; 4];
         d.read_exact(&mut buf)?;
         Ok(Self::from_le_bytes(buf))
     }
 }
 
-impl StrictEncode for f64 {
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+impl ConfinedEncode for f64 {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;
         Ok(8)
     }
 }
 
-impl StrictDecode for f64 {
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+impl ConfinedDecode for f64 {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let mut buf: [u8; 8] = [0; 8];
         d.read_exact(&mut buf)?;
         Ok(Self::from_le_bytes(buf))
     }
 }
 
-impl StrictEncode for Duration {
+impl ConfinedEncode for Duration {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        (self.as_secs(), self.subsec_nanos()).strict_encode(e)
+    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+        (self.as_secs(), self.subsec_nanos()).confined_encode(e)
     }
 }
 
-impl StrictDecode for Duration {
+impl ConfinedDecode for Duration {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         Ok(Self::new(
-            u64::strict_decode(&mut d)?,
-            u32::strict_decode(&mut d)?,
+            u64::confined_decode(&mut d)?,
+            u32::confined_decode(&mut d)?,
         ))
     }
 }
@@ -297,17 +297,17 @@ mod _chrono {
 
     use super::*;
 
-    impl StrictEncode for NaiveDateTime {
+    impl ConfinedEncode for NaiveDateTime {
         #[inline]
-        fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-            self.timestamp().strict_encode(e)
+        fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+            self.timestamp().confined_encode(e)
         }
     }
 
-    impl StrictDecode for NaiveDateTime {
+    impl ConfinedDecode for NaiveDateTime {
         #[inline]
-        fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-            let secs = i64::strict_decode(d)?;
+        fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+            let secs = i64::confined_decode(d)?;
             Self::from_timestamp_opt(secs, 0).ok_or_else(|| {
                 Error::DataIntegrityError(s!(
                     "number of seconds in timestamp exceeds UNIX limit"
@@ -316,17 +316,17 @@ mod _chrono {
         }
     }
 
-    impl StrictEncode for DateTime<Utc> {
+    impl ConfinedEncode for DateTime<Utc> {
         #[inline]
-        fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-            self.naive_utc().strict_encode(e)
+        fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+            self.naive_utc().confined_encode(e)
         }
     }
 
-    impl StrictDecode for DateTime<Utc> {
+    impl ConfinedDecode for DateTime<Utc> {
         #[inline]
-        fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-            let naive = NaiveDateTime::strict_decode(d)?;
+        fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+            let naive = NaiveDateTime::confined_decode(d)?;
             Ok(DateTime::from_utc(naive, Utc))
         }
     }
@@ -338,7 +338,7 @@ pub mod test {
     use confined_encoding_test::test_encoding_roundtrip;
 
     use super::*;
-    use crate::strict_deserialize;
+    use crate::confined_deserialize;
 
     #[test]
     fn test_u_encoding() {
@@ -441,12 +441,14 @@ pub mod test {
 
     #[test]
     #[should_panic(expected = "ExceedMaxItems(131071)")]
-    fn test_usize_encode_fail() { 0x01FFFF_usize.strict_serialize().unwrap(); }
+    fn test_usize_encode_fail() {
+        0x01FFFF_usize.confined_serialize().unwrap();
+    }
 
     #[test]
     #[should_panic(expected = "DataNotEntirelyConsumed")]
     fn test_usize_decode_fail() {
-        let _: usize = strict_deserialize([0xFF, 0xFF, 0xFF, 0x54]).unwrap();
+        let _: usize = confined_deserialize([0xFF, 0xFF, 0xFF, 0x54]).unwrap();
     }
 
     #[test]
@@ -455,7 +457,7 @@ pub mod test {
         test_encoding_roundtrip(&false, [0x00]).unwrap();
 
         assert_eq!(
-            bool::strict_decode(&[0x20][..]),
+            bool::confined_decode(&[0x20][..]),
             Err(Error::ValueOutOfRange("boolean", 0..1, 0x20))
         );
     }
@@ -473,21 +475,21 @@ pub mod test {
     fn test_chrono_encoding() {
         let utc = Utc::now();
 
-        let ser = utc.strict_serialize().unwrap();
+        let ser = utc.confined_serialize().unwrap();
         assert_eq!(ser.len(), 8);
 
         let naive = utc.naive_utc();
         let naive =
             NaiveDateTime::from_timestamp_opt(naive.timestamp(), 0).unwrap();
-        assert_eq!(strict_deserialize(&ser), Ok(naive));
+        assert_eq!(confined_deserialize(&ser), Ok(naive));
 
-        let ser = naive.strict_serialize().unwrap();
+        let ser = naive.confined_serialize().unwrap();
         assert_eq!(ser.len(), 8);
-        assert_eq!(strict_deserialize(&ser), Ok(naive));
+        assert_eq!(confined_deserialize(&ser), Ok(naive));
 
         let duration = Duration::new(naive.timestamp() as u64, 38455567);
-        let ser = duration.strict_serialize().unwrap();
+        let ser = duration.confined_serialize().unwrap();
         assert_eq!(ser.len(), 12);
-        assert_eq!(strict_deserialize(&ser), Ok(duration));
+        assert_eq!(confined_deserialize(&ser), Ok(duration));
     }
 }

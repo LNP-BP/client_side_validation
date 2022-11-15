@@ -108,14 +108,14 @@ pub mod strategies {
     /// and then returning its result serialized with strict encoding rules.
     pub struct UsingHash<H>(std::marker::PhantomData<H>)
     where
-        H: Hash + confined_encoding::StrictEncode;
+        H: Hash + confined_encoding::ConfinedEncode;
 
     impl<T> CommitEncode for amplify::Holder<T, UsingStrict>
     where
-        T: confined_encoding::StrictEncode,
+        T: confined_encoding::ConfinedEncode,
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
-            self.as_inner().strict_encode(e).expect(
+            self.as_inner().confined_encode(e).expect(
                 "Strict encoding must not fail for types using \
                  `strategy::UsingStrict`",
             )
@@ -134,19 +134,19 @@ pub mod strategies {
 
     impl<T, H> CommitEncode for amplify::Holder<T, UsingHash<H>>
     where
-        H: Hash + confined_encoding::StrictEncode,
-        T: confined_encoding::StrictEncode,
+        H: Hash + confined_encoding::ConfinedEncode,
+        T: confined_encoding::ConfinedEncode,
     {
         fn commit_encode<E: io::Write>(&self, e: E) -> usize {
             let mut engine = H::engine();
             engine.input(
-                &confined_encoding::strict_serialize(self.as_inner()).expect(
+                &confined_encoding::confined_serialize(self.as_inner()).expect(
                     "Strict encoding of hash strategy-based commitment data \
                      must not fail",
                 ),
             );
             let hash = H::from_engine(engine);
-            hash.strict_encode(e).expect(
+            hash.confined_encode(e).expect(
                 "Strict encoding must not fail for types using \
                  `strategy::UsingHash`",
             )

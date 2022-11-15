@@ -62,11 +62,11 @@ If you are using other client-side-validation libraries, consider importing
 just a single [`client_side_validation`] library which re-exports all of them,
 including the current one.
 
-Library defines two main traits, [`StrictEncode`] and [`StrictDecode`],
+Library defines two main traits, [`ConfinedEncode`] and [`ConfinedDecode`],
 which should be implemented on each type that requires to be represented
 for client-side-validation. 
 
-Library exports derivation macros `#[derive(StrictEncode, StrictDecode)]`, 
+Library exports derivation macros `#[derive(ConfinedEncode, ConfinedDecode)]`, 
 which are a part of [`confined_encoding_derive`] sub-crate and controlled by a 
 default feature `derive`. Finally, it implements strict encoding traits for main
 data types defined by rust standard library and frequently used crates; the

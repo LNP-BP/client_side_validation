@@ -16,5 +16,5 @@
 extern crate confined_encoding_derive;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 struct Empty;
