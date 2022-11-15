@@ -79,11 +79,9 @@ mod primitives;
 mod slice32;
 pub mod strategies;
 
-use std::io::Seek;
 use std::ops::Range;
-use std::path::Path;
 use std::string::FromUtf8Error;
-use std::{fmt, fs, io};
+use std::{fmt, io};
 
 /// Re-exporting extended read and write functions from bitcoin consensus
 /// module so others may use semantic convenience
@@ -114,14 +112,6 @@ pub trait StrictEncode {
         let _ = self.strict_encode(&mut e)?;
         Ok(e)
     }
-
-    /// Saves data to a file at a given `path`. If the file does not exists,
-    /// attempts to create the file. If the file already exists, it gets
-    /// truncated.
-    fn strict_file_save(&self, path: impl AsRef<Path>) -> Result<usize, Error> {
-        let file = fs::File::create(path)?;
-        self.strict_encode(file)
-    }
 }
 
 /// Binary decoding according to the strict rules that usually apply to
@@ -144,19 +134,6 @@ pub trait StrictDecode: Sized {
     /// [`StrictDecode::strict_decode`] to avoid such failures.
     fn strict_deserialize(data: impl AsRef<[u8]>) -> Result<Self, Error> {
         Self::strict_decode(data.as_ref())
-    }
-
-    /// Reads data from file at `path` and reconstructs object from it. Fails
-    /// with [`Error::DataNotEntirelyConsumed`] if file contains remaining
-    /// data after the object reconstruction.
-    fn strict_file_load(path: impl AsRef<Path>) -> Result<Self, Error> {
-        let mut file = fs::File::open(path)?;
-        let obj = Self::strict_decode(&mut file)?;
-        if file.stream_position()? != file.metadata()?.len() {
-            Err(Error::DataNotEntirelyConsumed)
-        } else {
-            Ok(obj)
-        }
     }
 }
 
