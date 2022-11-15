@@ -191,7 +191,7 @@ pub mod test_helpers {
     use bitcoin_hashes::sha256::Midstate;
 
     use super::*;
-    use crate::convolve_commit::{ConvolveCommitProof, ConvolveCommitVerify};
+    use crate::convolve_commit::{ConvolveCommit, ConvolveCommitProof};
 
     pub enum TestProtocol {}
     impl CommitmentProtocol for TestProtocol {
@@ -259,7 +259,7 @@ pub mod test_helpers {
         container: Source,
     ) where
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
-        Source: ConvolveCommitVerify<Msg, [u8; 32], TestProtocol>
+        Source: ConvolveCommit<Msg, [u8; 32], TestProtocol>
             + VerifyEq
             + Eq
             + Hash
@@ -322,7 +322,7 @@ mod test {
     use super::test_helpers::*;
     use super::*;
     use crate::commit_verify::test_helpers::gen_messages;
-    use crate::convolve_commit::{ConvolveCommitProof, ConvolveCommitVerify};
+    use crate::convolve_commit::{ConvolveCommit, ConvolveCommitProof};
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash, Error, Display)]
     #[display("error")]
@@ -365,7 +365,7 @@ mod test {
         }
     }
 
-    impl<T> ConvolveCommitVerify<T, [u8; 32], TestProtocol> for DummyVec
+    impl<T> ConvolveCommit<T, [u8; 32], TestProtocol> for DummyVec
     where
         T: AsRef<[u8]> + Clone + CommitEncode,
     {

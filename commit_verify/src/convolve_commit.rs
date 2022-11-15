@@ -21,7 +21,7 @@ use crate::{CommitEncode, CommitmentProtocol};
 pub trait ConvolveCommitProof<Msg, Source, Protocol>
 where
     Self: Sized + VerifyEq,
-    Source: ConvolveCommitVerify<Msg, Self, Protocol>,
+    Source: ConvolveCommit<Msg, Self, Protocol>,
     Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
@@ -153,7 +153,7 @@ where
 /// }
 /// // ...
 /// ```
-pub trait ConvolveCommitVerify<Msg, Proof, Protocol>
+pub trait ConvolveCommit<Msg, Proof, Protocol>
 where
     Self: Sized,
     Msg: CommitEncode,
