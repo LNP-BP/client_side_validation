@@ -18,46 +18,21 @@ use crate::{Error, StrictDecode, StrictEncode};
 
 impl StrictEncode for secp256k1zkp::Error {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        let code: u8 = match self {
-            secp256k1zkp::Error::IncapableContext => 0,
-            secp256k1zkp::Error::IncorrectSignature => 1,
-            secp256k1zkp::Error::InvalidMessage => 2,
-            secp256k1zkp::Error::InvalidPublicKey => 3,
-            secp256k1zkp::Error::InvalidCommit => 4,
-            secp256k1zkp::Error::InvalidSignature => 5,
-            secp256k1zkp::Error::InvalidSecretKey => 6,
-            secp256k1zkp::Error::InvalidRecoveryId => 7,
-            secp256k1zkp::Error::IncorrectCommitSum => 8,
-            secp256k1zkp::Error::InvalidRangeProof => 9,
-            secp256k1zkp::Error::PartialSigFailure => 10,
-        };
-        code.strict_encode(e)
+    fn strict_encode<E: io::Write>(&self, _: E) -> Result<usize, Error> {
+        unreachable!(
+            "rust compiler requires confined encoding due to derivation \
+             macros, but its code must be unreachable"
+        )
     }
 }
 
 impl StrictDecode for secp256k1zkp::Error {
     #[inline]
-    fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(match u8::strict_decode(d)? {
-            0 => secp256k1zkp::Error::IncapableContext,
-            1 => secp256k1zkp::Error::IncorrectSignature,
-            2 => secp256k1zkp::Error::InvalidMessage,
-            3 => secp256k1zkp::Error::InvalidPublicKey,
-            4 => secp256k1zkp::Error::InvalidCommit,
-            5 => secp256k1zkp::Error::InvalidSignature,
-            6 => secp256k1zkp::Error::InvalidSecretKey,
-            7 => secp256k1zkp::Error::InvalidRecoveryId,
-            8 => secp256k1zkp::Error::IncorrectCommitSum,
-            9 => secp256k1zkp::Error::InvalidRangeProof,
-            10 => secp256k1zkp::Error::PartialSigFailure,
-            unknown => {
-                return Err(Error::EnumValueNotKnown(
-                    "secp256k1zkp::Error",
-                    unknown as usize,
-                ))
-            }
-        })
+    fn strict_decode<D: io::Read>(_: D) -> Result<Self, Error> {
+        unreachable!(
+            "rust compiler requires confined encoding due to derivation \
+             macros, but its code must be unreachable"
+        )
     }
 }
 
@@ -158,24 +133,4 @@ mod test {
             bulletproof
         );
     }
-
-    /* TODO: #25 Uncomment this test once `grin_secp256k1zkp::Error` impl `Ord`
-    #[test]
-    fn error_encoding() {
-        test_encoding_enum_u8_exhaustive!(crate => secp256k1zkp::Error;
-            secp256k1zkp::Error::IncapableContext => 0u8,
-            secp256k1zkp::Error::IncorrectSignature => 1u8,
-            secp256k1zkp::Error::InvalidMessage => 2u8,
-            secp256k1zkp::Error::InvalidPublicKey => 3u8,
-            secp256k1zkp::Error::InvalidCommit => 4u8,
-            secp256k1zkp::Error::InvalidSignature => 5u8,
-            secp256k1zkp::Error::InvalidSecretKey => 6u8,
-            secp256k1zkp::Error::InvalidRecoveryId => 7u8,
-            secp256k1zkp::Error::IncorrectCommitSum => 8u8,
-            secp256k1zkp::Error::InvalidRangeProof => 9u8,
-            secp256k1zkp::Error::PartialSigFailure => 10u8
-        )
-        .unwrap()
-    }
-     */
 }
