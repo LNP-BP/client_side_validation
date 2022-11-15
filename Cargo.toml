@@ -38,5 +38,5 @@ features = [ "all" ]
 
 [workspace]
 members = [".", "confined_encoding", "commit_verify", "single_use_seals",
-    "confined_encoding/derive", "confined_encoding/derive_helpers", "confined_encoding/test_helpers"]
+    "confined_encoding/derive", "confined_encoding/test_helpers"]
 default-members = ["."]
