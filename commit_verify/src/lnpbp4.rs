@@ -538,7 +538,7 @@ impl CommitConceal for MerkleBlock {
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
         let mut concealed = self.clone();
         concealed
-            .conceal_except(&[])
+            .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
         concealed.cross_section[0].merkle_node_with(0)

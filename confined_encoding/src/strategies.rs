@@ -35,10 +35,6 @@ pub struct BitcoinConsensus;
 /// implementing [`amplify::Wrapper`]
 pub struct Wrapped;
 
-/// Encodes/decodes internet address according to LNPBP-42 "Uniform address
-/// encoding" rules. Applicable only for types implementing [`net::Uniform`].
-pub struct UsingUniformAddr;
-
 /// Marker trait defining specific encoding strategy which should be used for
 /// automatic implementation of both [`StrictEncode`] and [`StrictDecode`].
 pub trait Strategy {
@@ -46,8 +42,6 @@ pub trait Strategy {
     /// - [`HashFixedBytes`]
     /// - [`BitcoinConsensus`]
     /// - [`Wrapped`]
-    /// - [`UsingUniformAddr`]
-    /// - [`MoneroConsensus`]
     type Strategy;
 }
 
