@@ -45,8 +45,8 @@ hash_newtype!(
     false // We do not reverse displaying MerkleNodes in hexadecimal
 );
 
-impl strict_encoding::Strategy for MerkleNode {
-    type Strategy = strict_encoding::strategies::HashFixedBytes;
+impl confined_encoding::Strategy for MerkleNode {
+    type Strategy = confined_encoding::strategies::HashFixedBytes;
 }
 
 impl commit_encode::Strategy for MerkleNode {
@@ -294,7 +294,7 @@ mod test {
     use amplify::{bmap, s};
     use bitcoin_hashes::hex::ToHex;
     use bitcoin_hashes::{sha256d, Hash};
-    use strict_encoding::{StrictDecode, StrictEncode};
+    use confined_encoding::{ConfinedDecode, ConfinedEncode};
 
     use super::*;
     use crate::commit_encode::{strategies, Strategy};
@@ -311,8 +311,8 @@ mod test {
             Ord,
             Hash,
             Debug,
-            StrictEncode,
-            StrictDecode
+            ConfinedEncode,
+            ConfinedDecode
         )]
         struct Item(pub String);
         // Next, we say that it should be concealed using some function
@@ -392,7 +392,10 @@ mod test {
         );
 
         let item = Item(s!("Some text"));
-        assert_eq!(&b"\x09\x00Some text"[..], item.strict_serialize().unwrap());
+        assert_eq!(
+            &b"\x09\x00Some text"[..],
+            item.confined_serialize().unwrap()
+        );
         assert_eq!(
             "6680bbec0d05d3eaac9c8b658c40f28d2f0cb0f245c7b1cabf5a61c35bd03d8e",
             item.commit_serialize().to_hex()
@@ -401,7 +404,7 @@ mod test {
             "3e4b2dcf9bca33400028c8947565c1ff421f6d561e9ec48f88f0c9a24ebc8c30",
             item.consensus_commit().to_hex()
         );
-        assert_ne!(item.commit_serialize(), item.strict_serialize().unwrap());
+        assert_ne!(item.commit_serialize(), item.confined_serialize().unwrap());
         assert_eq!(
             MerkleNode::hash(&item.commit_serialize()),
             item.consensus_commit()
@@ -424,7 +427,7 @@ mod test {
              \x03\x00\
              \x31\x00\
              My third case to make the Merkle tree two layered"[..],
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             "d911717b8dfbbcef68495c93c0a5e69df618f5dcc194d69e80b6fafbfcd6ed5d",
@@ -436,7 +439,7 @@ mod test {
         );
         assert_ne!(
             collection.commit_serialize(),
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             MerkleNode::from_slice(&collection.commit_serialize()).unwrap(),
@@ -457,7 +460,7 @@ mod test {
              My second case with a very long string\
              \x31\x00\
              My third case to make the Merkle tree two layered"[..],
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             "fd72061e26055fb907aa512a591b4291e739f15198eb72027c4dd6506f14f469",
@@ -469,7 +472,7 @@ mod test {
         );
         assert_ne!(
             vec.commit_serialize(),
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             MerkleNode::from_slice(&vec.commit_serialize()).unwrap(),

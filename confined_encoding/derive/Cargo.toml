@@ -1,0 +1,28 @@
+[package]
+name = "confined_encoding_derive"
+version = "0.8.0"
+license = "Apache-2.0"
+authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
+description = "Strict encoding derivation macros"
+repository = "https://github.com/LNP-BP/client_side_validation"
+homepage = "https://github.com/LNP-BP"
+keywords = ["lnp-bp", "strict-encoding", "networking", "internet2", "proc-macro"]
+categories = ["encoding", "parsing"]
+readme = "../README.md"
+edition = "2021"
+rust-version = "1.59.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "1"
+proc-macro2 = "1"
+encoding_derive_helpers = "0.8.1"
+amplify_syn = "1.1.6"
+
+[dev-dependencies]
+confined_encoding = { path = ".." }
+confined_encoding_test = { path = "../test_helpers" }
+amplify = "3.13.0"
+compiletest_rs = "0.9.0"

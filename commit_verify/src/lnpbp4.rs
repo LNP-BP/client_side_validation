@@ -51,7 +51,7 @@ use std::io::Write;
 use amplify::num::u256;
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
-use strict_encoding::{StrictDecode, StrictEncode};
+use confined_encoding::{ConfinedDecode, ConfinedEncode};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
@@ -108,7 +108,7 @@ const MIDSTATE_LNPBP4: [u8; 32] = [
 
 /// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the
 /// amount of concealed information.
-pub trait Proof: StrictEncode + StrictDecode + Clone + Eq + Debug {}
+pub trait Proof: ConfinedEncode + ConfinedDecode + Clone + Eq + Debug {}
 
 /// Tag used for [`CommitmentHash`] hash type
 pub struct Lnpbp4Tag;
@@ -130,7 +130,7 @@ impl sha256t::Tag for Lnpbp4Tag {
 #[derive(
     Wrapper, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, From
 )]
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 #[wrapper(
     Debug, Display, LowerHex, Index, IndexRange, IndexFrom, IndexTo, IndexFull
 )]
@@ -204,7 +204,7 @@ impl Iterator for MessageIter {
 
 /// Complete information about LNPBP-4 merkle tree.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -274,7 +274,9 @@ impl CommitConceal for MerkleTree {
 impl CommitEncode for MerkleTree {
     fn commit_encode<E: Write>(&self, e: E) -> usize {
         let commitment = self.commit_conceal();
-        commitment.strict_encode(e).expect("memory encoder failure")
+        commitment
+            .confined_encode(e)
+            .expect("memory encoder failure")
     }
 }
 
@@ -368,7 +370,7 @@ impl MerkleTree {
 
 /// LNPBP-4 Merkle tree node.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -471,7 +473,7 @@ impl TreeNode {
 
 /// Partially-concealed merkle tree data.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -538,7 +540,7 @@ impl CommitConceal for MerkleBlock {
     fn commit_conceal(&self) -> Self::ConcealedCommitment {
         let mut concealed = self.clone();
         concealed
-            .conceal_except(&[])
+            .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
         concealed.cross_section[0].merkle_node_with(0)
@@ -548,7 +550,9 @@ impl CommitConceal for MerkleBlock {
 impl CommitEncode for MerkleBlock {
     fn commit_encode<E: Write>(&self, e: E) -> usize {
         let commitment = self.commit_conceal();
-        commitment.strict_encode(e).expect("memory encoder failure")
+        commitment
+            .confined_encode(e)
+            .expect("memory encoder failure")
     }
 }
 
@@ -882,7 +886,7 @@ impl MerkleBlock {
 
 /// A proof of the merkle commitment.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-#[derive(StrictEncode, StrictDecode)]
+#[derive(ConfinedEncode, ConfinedDecode)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

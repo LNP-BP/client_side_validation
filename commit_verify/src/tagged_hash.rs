@@ -19,8 +19,6 @@
 use amplify::{Slice32, Wrapper};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{hex, sha256, sha256t, Error, Hash, HashEngine};
-#[cfg(feature = "serde")]
-use serde_with::{As, DisplayFromStr};
 
 /// Helper class for tests and creation of tagged hashes with dynamically-
 /// defined tags. Do not use in all other cases; utilize
@@ -37,10 +35,7 @@ use serde_with::{As, DisplayFromStr};
 )]
 #[display(LowerHex)]
 #[wrapper(FromStr, LowerHex, UpperHex)]
-pub struct Midstate(
-    #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
-    Slice32,
-);
+pub struct Midstate(Slice32);
 
 impl Midstate {
     /// Constructs tagged hash midstate for a given tag data

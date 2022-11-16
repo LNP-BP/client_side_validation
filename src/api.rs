@@ -16,7 +16,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
 use std::ops::AddAssign;
 
-use strict_encoding::{StrictDecode, StrictEncode};
+use confined_encoding::{ConfinedDecode, ConfinedEncode};
 
 /// Result of client-side validation operation
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -52,7 +52,7 @@ impl Display for Validity {
 /// issues, warnings, info messages) contained within a [`ValidationReport`]
 /// produced during client-side-validation.
 pub trait ValidationLog:
-    Clone + Eq + Hash + Debug + Display + StrictEncode + StrictDecode
+    Clone + Eq + Hash + Debug + Display + ConfinedEncode + ConfinedDecode
 {
 }
 
@@ -92,12 +92,18 @@ pub trait ValidationReport {
         + Hash
         + Debug
         + Display
-        + StrictEncode
-        + StrictDecode;
+        + ConfinedEncode
+        + ConfinedDecode;
 
     /// Information reports about client-side-validation, which do not affect
     /// data safety or validity and may not be presented to the user
-    type Info: Clone + Eq + Hash + Debug + Display + StrictEncode + StrictDecode;
+    type Info: Clone
+        + Eq
+        + Hash
+        + Debug
+        + Display
+        + ConfinedEncode
+        + ConfinedDecode;
 }
 
 /// Client-side-validation status containing all reports from the validation
@@ -109,8 +115,8 @@ pub trait ValidationReport {
     Hash,
     Debug,
     Default,
-    StrictEncode,
-    StrictDecode
+    ConfinedEncode,
+    ConfinedDecode
 )]
 pub struct Status<R>
 where
@@ -399,8 +405,8 @@ mod test {
             Hash,
             Debug,
             Default,
-            StrictEncode,
-            StrictDecode
+            ConfinedEncode,
+            ConfinedDecode
         )]
         struct Seal {}
 
@@ -431,10 +437,26 @@ mod test {
             }
         }
 
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
+        #[derive(
+            Clone,
+            PartialEq,
+            Eq,
+            Hash,
+            Debug,
+            ConfinedEncode,
+            ConfinedDecode
+        )]
         struct Report {}
 
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
+        #[derive(
+            Clone,
+            PartialEq,
+            Eq,
+            Hash,
+            Debug,
+            ConfinedEncode,
+            ConfinedDecode
+        )]
         struct Issue {
             seal: Seal,
         }

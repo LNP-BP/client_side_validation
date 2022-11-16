@@ -1,6 +1,6 @@
 [package]
 name = "client_side_validation"
-version = "0.9.0"
+version = "0.9.0-alpha.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Client-side validation foundation library"
@@ -11,35 +11,32 @@ categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
 readme = "README.md"
 edition = "2021"
 rust-version = "1.59.0"
-exclude = [".github", "commit_verify", "strict_encoding", "single_use_seals"]
+exclude = [".github", "commit_verify", "confined_encoding", "single_use_seals"]
 
 [lib]
 name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-strict_encoding = { version = "0.9.0", path = "./strict_encoding" }
-commit_verify = { version = "0.9.0", path = "./commit_verify" }
-single_use_seals = { version = "0.9.0", path = "./single_use_seals" }
+confined_encoding = { version = "0.9.0-alpha.1", path = "confined_encoding" }
+commit_verify = { version = "0.9.0-alpha.1", path = "./commit_verify" }
+single_use_seals = { version = "0.9.0-alpha.1", path = "./single_use_seals" }
 
 [dev-dependencies]
 async-trait = "0.1.51"
 
 [features]
 default = []
-all = ["serde", "rand", "bitcoin", "crypto", "async", "bulletproofs", "float"]
+all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 serde = ["commit_verify/serde"]
-bitcoin = ["strict_encoding/bitcoin", "strict_encoding/miniscript"]
-crypto = ["strict_encoding/crypto"]
 bulletproofs = ["commit_verify/bulletproofs"]
-float = ["strict_encoding/float"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
 
 [workspace]
-members = [".", "strict_encoding", "commit_verify", "single_use_seals",
-           "strict_encoding/derive", "strict_encoding/derive_helpers", "strict_encoding/test_helpers"]
+members = [".", "confined_encoding", "commit_verify", "single_use_seals",
+    "confined_encoding/derive", "confined_encoding/test_helpers"]
 default-members = ["."]

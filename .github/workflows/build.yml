@@ -31,13 +31,10 @@ jobs:
       matrix:
         feature:
           - rand
-          - crypto
           - serde
           - async
-          - bitcoin
-          - rand,crypto,bitcoin
-          - all
           - bulletproofs
+          - all
     steps:
       - uses: actions/checkout@v2
       - name: Install rust stable
