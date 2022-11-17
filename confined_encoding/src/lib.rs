@@ -65,6 +65,8 @@ extern crate confined_encoding_test;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde;
+#[cfg(feature = "bulletproofs")]
+extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 
 #[macro_use]
 mod macros;
@@ -72,6 +74,7 @@ mod macros;
 mod amplify_types;
 mod bitcoin;
 mod bitcoin_hashes;
+#[cfg(feature = "bulletproofs")]
 mod bulletproofs;
 mod collections;
 mod pointers;

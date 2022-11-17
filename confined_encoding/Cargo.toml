@@ -1,6 +1,6 @@
 [package]
 name = "confined_encoding"
-version = "0.9.0-alpha.1"
+version = "0.9.0-alpha.2"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Confined encoding: deterministic binary serialization for client-side validation"
@@ -23,19 +23,20 @@ amplify = { version = "3.13.0", features = ["proc_attr", "apfloat"] }
 confined_encoding_derive = { version = "0.9.0-alpha.1", path = "./derive", optional = true }
 bitcoin_hashes = "0.11.0" # We need this separately since bitcoin is an optional dependency
 bitcoin = "0.29.2"
-grin_secp256k1zkp = "0.7.11"
+lnpbp_secp256k1zkp = { version = "0.9.0-alpha.1", optional = true }
 chrono = "0.4.23"
 half = "2.1.0"
-serde = { version = "1.0", optional = true }
 
 [dev-dependencies]
 rand = "0.7" # We can't use more recent version due to ed25519-dalek limitations
 amplify = { version = "3.13.0", features = ["proc_attr", "hex"] }
 confined_encoding_test = { path = "./test_helpers" }
+lnpbp_secp256k1zkp = { version = "0.9.0-alpha.1", features = ["rand"] }
 
 [features]
 default = ["derive"]
-all = ["derive", "serde"]
+all = ["derive", "bulletproofs"]
+bulletproofs = ["lnpbp_secp256k1zkp"]
 derive = ["confined_encoding_derive"]
 
 [package.metadata.docs.rs]

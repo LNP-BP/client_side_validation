@@ -250,15 +250,14 @@ dependencies = [
  "chrono",
  "confined_encoding_derive",
  "confined_encoding_test",
- "grin_secp256k1zkp",
  "half",
+ "lnpbp_secp256k1zkp",
  "rand 0.7.3",
- "serde",
 ]
 
 [[package]]
 name = "confined_encoding_derive"
-version = "0.8.0"
+version = "0.9.0-alpha.1"
 dependencies = [
  "amplify",
  "amplify_syn",
@@ -537,6 +536,17 @@ name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
+name = "lnpbp_secp256k1zkp"
+version = "0.9.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fcbc5c60ffff3f9931f93b601a3fcb41ec0af8d2eef10026d7ab2ddc426f148"
+dependencies = [
+ "cc",
+ "libc",
+ "rand 0.8.5",
+]
 
 [[package]]
 name = "log"

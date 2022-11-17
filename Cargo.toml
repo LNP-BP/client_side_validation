@@ -31,7 +31,7 @@ all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 serde = ["commit_verify/serde"]
-bulletproofs = ["commit_verify/bulletproofs"]
+bulletproofs = ["commit_verify/bulletproofs", "confined_encoding/bulletproofs"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
