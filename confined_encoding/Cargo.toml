@@ -23,7 +23,7 @@ amplify = { version = "3.13.0", features = ["proc_attr", "apfloat"] }
 confined_encoding_derive = { version = "0.9.0-alpha.1", path = "./derive", optional = true }
 bitcoin_hashes = "0.11.0" # We need this separately since bitcoin is an optional dependency
 bitcoin = "0.29.2"
-grin_secp256k1zkp = "0.7.11"
+grin_secp256k1zkp = { version = "0.7.11", optional = true }
 chrono = "0.4.23"
 half = "2.1.0"
 serde = { version = "1.0", optional = true }
@@ -35,7 +35,8 @@ confined_encoding_test = { path = "./test_helpers" }
 
 [features]
 default = ["derive"]
-all = ["derive", "serde"]
+all = ["derive", "serde", "bulletproofs"]
+bulletproofs = ["grin_secp256k1zkp"]
 derive = ["confined_encoding_derive"]
 
 [package.metadata.docs.rs]

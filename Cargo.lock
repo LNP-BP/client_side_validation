@@ -253,12 +253,11 @@ dependencies = [
  "grin_secp256k1zkp",
  "half",
  "rand 0.7.3",
- "serde",
 ]
 
 [[package]]
 name = "confined_encoding_derive"
-version = "0.8.0"
+version = "0.9.0-alpha.1"
 dependencies = [
  "amplify",
  "amplify_syn",
