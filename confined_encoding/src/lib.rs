@@ -65,6 +65,8 @@ extern crate confined_encoding_test;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde;
+#[cfg(feature = "bulletproofs")]
+extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 
 #[macro_use]
 mod macros;
