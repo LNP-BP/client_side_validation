@@ -26,7 +26,6 @@ bitcoin = "0.29.2"
 grin_secp256k1zkp = { version = "0.7.11", optional = true }
 chrono = "0.4.23"
 half = "2.1.0"
-serde = { version = "1.0", optional = true }
 
 [dev-dependencies]
 rand = "0.7" # We can't use more recent version due to ed25519-dalek limitations
@@ -35,7 +34,7 @@ confined_encoding_test = { path = "./test_helpers" }
 
 [features]
 default = ["derive"]
-all = ["derive", "serde", "bulletproofs"]
+all = ["derive", "bulletproofs"]
 bulletproofs = ["grin_secp256k1zkp"]
 derive = ["confined_encoding_derive"]
 
