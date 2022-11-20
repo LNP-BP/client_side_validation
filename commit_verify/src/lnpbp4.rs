@@ -847,8 +847,9 @@ impl MerkleBlock {
         for node in &self.cross_section {
             match node {
                 TreeNode::ConcealedNode { depth, hash } => {
+                    let inserted = map.insert(*depth, *hash).is_none();
                     debug_assert!(
-                        map.insert(*depth, *hash).is_none(),
+                        inserted,
                         "MerkleBlock conceal procedure is broken"
                     );
                 }
