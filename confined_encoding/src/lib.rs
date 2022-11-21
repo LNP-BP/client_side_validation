@@ -91,7 +91,6 @@ use std::{fmt, io};
 /// `confined_encode::ReadExt`
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::IoError;
-pub use collections::{LargeVec, MediumVec};
 pub use strategies::Strategy;
 
 /// Binary encoding according to the strict rules that usually apply to
