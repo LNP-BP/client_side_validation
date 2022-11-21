@@ -12,7 +12,7 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io;
@@ -513,50 +513,6 @@ where
 }
 
 /// Strict encoding for a unique value collection represented by a rust
-/// `HashSet` type is performed in the same way as `Vec` encoding.
-/// NB: Array members must are ordered with the sort operation, so type
-/// `T` must implement `Ord` trait in such a way that it produces
-/// deterministically-sorted result
-impl<T> ConfinedEncode for HashSet<T>
-where
-    T: ConfinedEncode + Eq + Ord + Hash + Debug,
-{
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
-        let mut encoded = len.confined_encode(&mut e)?;
-        let mut vec: Vec<&T> = self.iter().collect();
-        vec.sort();
-        for item in vec {
-            encoded += item.confined_encode(&mut e)?;
-        }
-        Ok(encoded)
-    }
-}
-
-/// Strict decoding of a unique value collection represented by a rust
-/// `HashSet` type is performed alike `Vec` decoding with the only
-/// exception: if the repeated value met a [Error::RepeatedValue] is
-/// returned.
-impl<T> ConfinedDecode for HashSet<T>
-where
-    T: ConfinedDecode + Eq + Ord + Hash + Debug,
-{
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::confined_decode(&mut d)?;
-        let mut data = HashSet::<T>::with_capacity(len as usize);
-        for _ in 0..len {
-            let val = T::confined_decode(&mut d)?;
-            if data.contains(&val) {
-                return Err(Error::RepeatedValue(format!("{:?}", val)));
-            } else {
-                data.insert(val);
-            }
-        }
-        Ok(data)
-    }
-}
-
-/// Strict encoding for a unique value collection represented by a rust
 /// `BTreeSet` type is performed in the same way as `Vec` encoding.
 /// NB: Array members must are ordered with the sort operation, so type
 /// `T` must implement `Ord` trait in such a way that it produces
@@ -606,51 +562,6 @@ where
             data.insert(val);
         }
         Ok(data)
-    }
-}
-
-/// LNP/BP library uses `HashMap<usize, T: ConfinedEncode>`s to encode
-/// ordered lists, where the position of the list item must be fixed, since
-/// the item is referenced from elsewhere by its index. Thus, the library
-/// does not supports and recommends not to support strict encoding
-/// of any other `HashMap` variants.
-///
-/// Strict encoding of the `HashMap<usize, T>` type is performed by
-/// converting into a fixed-order `Vec<T>` and serializing it according to
-/// the `Vec` strict encoding rules. This operation is internally
-/// performed via conversion into `BTreeMap<usize, T: ConfinedEncode>`.
-impl<T> ConfinedEncode for HashMap<usize, T>
-where
-    T: ConfinedEncode + Clone,
-{
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let ordered: BTreeMap<usize, T> =
-            self.iter().map(|(key, val)| (*key, val.clone())).collect();
-        ordered.confined_encode(&mut e)
-    }
-}
-
-/// LNP/BP library uses `HashMap<usize, T: ConfinedEncode>`s to encode
-/// ordered lists, where the position of the list item must be fixed, since
-/// the item is referenced from elsewhere by its index. Thus, the library
-/// does not supports and recommends not to support strict encoding
-/// of any other `HashMap` variants.
-///
-/// Strict encoding of the `HashMap<usize, T>` type is performed by
-/// converting into a fixed-order `Vec<T>` and serializing it according to
-/// the `Vec` strict encoding rules. This operation is internally
-/// performed via conversion into `BTreeMap<usize, T: ConfinedEncode>`.
-impl<T> ConfinedDecode for HashMap<usize, T>
-where
-    T: ConfinedDecode + Clone,
-{
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let map: HashMap<usize, T> =
-            BTreeMap::<usize, T>::confined_decode(&mut d)?
-                .iter()
-                .map(|(key, val)| (*key, val.clone()))
-                .collect();
-        Ok(map)
     }
 }
 
