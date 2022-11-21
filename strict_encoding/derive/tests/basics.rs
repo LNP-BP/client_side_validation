@@ -80,7 +80,7 @@ fn bytes() -> Result {
         &Vect {
             data: data[2..].to_vec(),
         },
-        &data,
+        data,
     )?;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
@@ -102,7 +102,7 @@ fn bytes() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictEncode, StrictDecode)]
     struct Heap(Box<[u8]>);
-    test_encoding_roundtrip(&Heap(Box::from(&data[2..])), &data)
+    test_encoding_roundtrip(&Heap(Box::from(&data[2..])), data)
         .map_err(Error::from)
 }
 
@@ -124,7 +124,7 @@ fn skipping() -> Result {
             data: s!("String"),
             ephemeral: false,
         },
-        &[0x06, 0x00, b'S', b't', b'r', b'i', b'n', b'g'],
+        [0x06, 0x00, b'S', b't', b'r', b'i', b'n', b'g'],
     )
     .map_err(Error::from)
 }

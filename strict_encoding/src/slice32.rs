@@ -58,7 +58,7 @@ mod test {
         assert_eq!(&ser, &data);
         assert_eq!(Slice32::strict_deserialize(&ser), Ok(slice32));
 
-        assert_eq!(Slice32::from_slice(&data), Some(slice32));
+        assert_eq!(Slice32::from_slice(data), Some(slice32));
         assert_eq!(Slice32::from_slice(&data[..30]), None);
         assert_eq!(&slice32.to_vec(), &data);
         assert_eq!(&slice32.as_inner()[..], &data);
