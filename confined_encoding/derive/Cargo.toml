@@ -24,5 +24,5 @@ amplify_syn = "1.1.6"
 [dev-dependencies]
 confined_encoding = { path = ".." }
 confined_encoding_test = { path = "../test_helpers" }
-amplify = "3.13.0"
+amplify = "4.0.0-alpha.3"
 compiletest_rs = "0.9.0"

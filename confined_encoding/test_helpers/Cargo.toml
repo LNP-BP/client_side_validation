@@ -15,5 +15,5 @@ rust-version = "1.59.0"
 [lib]
 
 [dependencies]
-amplify = "3.13.0"
+amplify = "4.0.0-alpha.3"
 confined_encoding = { version = "0.9.0-alpha.1", path = ".." }
