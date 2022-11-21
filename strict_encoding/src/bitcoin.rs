@@ -923,7 +923,7 @@ pub(crate) mod test {
         test_encoding_roundtrip(&secp_pk_03, PK_BYTES_03).unwrap();
         test_encoding_roundtrip(&secp_pk_one, PK_BYTES_ONEKEY).unwrap();
         assert_eq!(
-            secp256k1::PublicKey::strict_deserialize(&PK_BYTES_04),
+            secp256k1::PublicKey::strict_deserialize(PK_BYTES_04),
             Err(Error::DataIntegrityError(s!("invalid public key data: \
                                               uncompressed Secp256k1 \
                                               public key format is not \
@@ -1026,21 +1026,21 @@ pub(crate) mod test {
         let msg = Message::from_slice(&[1u8; 32]).unwrap();
 
         let ecdsa = secp.sign_ecdsa(&msg, &sk_ecdsa);
-        test_encoding_roundtrip(&ecdsa, &ECDSA_BYTES).unwrap();
+        test_encoding_roundtrip(&ecdsa, ECDSA_BYTES).unwrap();
         assert!(secp.verify_ecdsa(&msg, &ecdsa, &pk_ecdsa).is_ok());
 
         let schnorr =
             secp.sign_schnorr_with_aux_rand(&msg, &sk_schnorr, &[0u8; 32]);
-        test_encoding_roundtrip(&schnorr, &SCHNORR_BYTES).unwrap();
+        test_encoding_roundtrip(&schnorr, SCHNORR_BYTES).unwrap();
         assert!(secp.verify_schnorr(&schnorr, &msg, &pk_schnorr).is_ok());
 
         // Schnorr signature can be deserialized as ECDSA and vice verse,
         // (since there is no encoding-level way of verifying its type)
         // but MUST be invalid upon signature validation
         let schnorr_as_ecdsa: ecdsa::Signature =
-            test_vec_decoding_roundtrip(&SCHNORR_BYTES).unwrap();
+            test_vec_decoding_roundtrip(SCHNORR_BYTES).unwrap();
         let ecdsa_as_schnorr: schnorr::Signature =
-            test_vec_decoding_roundtrip(&ECDSA_BYTES).unwrap();
+            test_vec_decoding_roundtrip(ECDSA_BYTES).unwrap();
         assert_eq!(
             secp.verify_ecdsa(&msg, &schnorr_as_ecdsa, &pk_ecdsa),
             Err(secp256k1::Error::IncorrectSignature)
@@ -1066,16 +1066,16 @@ pub(crate) mod test {
     #[test]
     fn test_encoding_network(
     ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
-        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, &[
+        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, [
             0xF9, 0xBE, 0xB4, 0xD9,
         ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Testnet, &[
+        test_encoding_roundtrip(&bitcoin::Network::Testnet, [
             0x0B, 0x11, 0x09, 0x07,
         ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Signet, &[
+        test_encoding_roundtrip(&bitcoin::Network::Signet, [
             0x0A, 0x03, 0xCF, 0x40,
         ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Regtest, &[
+        test_encoding_roundtrip(&bitcoin::Network::Regtest, [
             0xFA, 0xBF, 0xB5, 0xDA,
         ])
     }
@@ -1224,9 +1224,9 @@ pub(crate) mod test {
 
         // test random and null outpoints
         let outpoint = OutPoint::new(txid, vout);
-        test_encoding_roundtrip(&outpoint, &OUTPOINT).unwrap();
+        test_encoding_roundtrip(&outpoint, OUTPOINT).unwrap();
         let null = OutPoint::null();
-        test_encoding_roundtrip(&null, &OUTPOINT_NULL).unwrap();
+        test_encoding_roundtrip(&null, OUTPOINT_NULL).unwrap();
     }
 
     #[test]
@@ -1342,14 +1342,14 @@ pub(crate) mod test {
             9ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
         )
         .unwrap();
-        test_encoding_roundtrip(&ext_pubkey1, &EXT_PUBKEY1).unwrap();
+        test_encoding_roundtrip(&ext_pubkey1, EXT_PUBKEY1).unwrap();
 
         let ext_pubkey2 = bip32::ExtendedPubKey::from_str(
             "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJP\
             MM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5",
         )
         .unwrap();
-        test_encoding_roundtrip(&ext_pubkey2, &EXT_PUBKEY2).unwrap();
+        test_encoding_roundtrip(&ext_pubkey2, EXT_PUBKEY2).unwrap();
     }
 
     #[test]
@@ -1390,28 +1390,27 @@ pub(crate) mod test {
         ];
 
         // OP_RETURN
-        let op_return: Script =
-            test_vec_decoding_roundtrip(&OP_RETURN).unwrap();
+        let op_return: Script = test_vec_decoding_roundtrip(OP_RETURN).unwrap();
         assert!(op_return.is_op_return());
 
         // P2PK
-        let p2pk: Script = test_vec_decoding_roundtrip(&P2PK).unwrap();
+        let p2pk: Script = test_vec_decoding_roundtrip(P2PK).unwrap();
         assert!(p2pk.is_p2pk());
 
         //P2PKH
-        let p2pkh: Script = test_vec_decoding_roundtrip(&P2PKH).unwrap();
+        let p2pkh: Script = test_vec_decoding_roundtrip(P2PKH).unwrap();
         assert!(p2pkh.is_p2pkh());
 
         //P2SH
-        let p2sh: Script = test_vec_decoding_roundtrip(&P2SH).unwrap();
+        let p2sh: Script = test_vec_decoding_roundtrip(P2SH).unwrap();
         assert!(p2sh.is_p2sh());
 
         //P2WPKH
-        let p2wpkh: Script = test_vec_decoding_roundtrip(&P2WPKH).unwrap();
+        let p2wpkh: Script = test_vec_decoding_roundtrip(P2WPKH).unwrap();
         assert!(p2wpkh.is_v0_p2wpkh());
 
         //P2WSH
-        let p2wsh: Script = test_vec_decoding_roundtrip(&P2WSH).unwrap();
+        let p2wsh: Script = test_vec_decoding_roundtrip(P2WSH).unwrap();
         assert!(p2wsh.is_v0_p2wsh());
     }
 }

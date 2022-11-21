@@ -187,7 +187,7 @@ fn tlv_optional() -> Result {
             fixed: 0xDD,
             tlv: None,
         },
-        &[0xDD],
+        [0xDD],
     )?;
     test_encoding_roundtrip(
         &Tlv {
@@ -210,7 +210,7 @@ fn tlv_newtype() -> Result {
     #[network_encoding(use_tlv)]
     struct Tlv(#[network_encoding(tlv = 0xBEEF)] Option<u32>);
 
-    test_encoding_roundtrip(&Tlv(None), &[])?;
+    test_encoding_roundtrip(&Tlv(None), [])?;
     //    println!("{:02x?}", Tlv::strict_deserialize(tlv_u32!())?);
     test_encoding_roundtrip(&Tlv(Some(TLV_U32)), tlv_u32!())
         .map_err(Error::from)
@@ -228,7 +228,7 @@ fn tlv_default() -> Result {
         tlv: Vec<u8>,
     }
 
-    test_encoding_roundtrip(&TlvDefault::default(), &[0x00])?;
+    test_encoding_roundtrip(&TlvDefault::default(), [0x00])?;
 
     test_encoding_roundtrip(
         &TlvDefault {
@@ -271,19 +271,19 @@ fn tlv_ordering() -> Result {
         0x01, 0x00, // length
         0xA2, // value
     ];
-    let _: Tlv = strict_deserialize(&data).unwrap();
+    let _: Tlv = strict_deserialize(data).unwrap();
 
-    test_encoding_roundtrip(&Tlv::default(), &[])?;
+    test_encoding_roundtrip(&Tlv::default(), [])?;
     test_encoding_roundtrip(
         &Tlv {
             second: Some(0xA2),
             first: Some(0xA1),
         },
-        &data,
+        data,
     )?;
 
     // Now lets switch ordering
-    Tlv::strict_deserialize(&[
+    Tlv::strict_deserialize([
         // Count of TLV fields
         0x02, 0x00, //
         // Second goes first
@@ -318,16 +318,16 @@ fn pseudo_tlv() -> Result {
     ];
 
     // Checking that the data are entirely consumed
-    let _: Tlv = strict_deserialize(&data1).unwrap();
-    let _: Tlv = strict_deserialize(&data2).unwrap();
+    let _: Tlv = strict_deserialize(data1).unwrap();
+    let _: Tlv = strict_deserialize(data2).unwrap();
 
-    test_encoding_roundtrip(&Tlv::default(), &data1)?;
+    test_encoding_roundtrip(&Tlv::default(), data1)?;
     test_encoding_roundtrip(
         &Tlv {
             vec: vec![0xB1, 0xB2, 0xB3],
             unknown_tlvs: bmap! {},
         },
-        &data2,
+        data2,
     )
     .map_err(Error::from)
 }
@@ -345,13 +345,13 @@ fn tlv_collection() -> Result {
         vec: Vec<u8>,
     }
 
-    test_encoding_roundtrip(&Tlv::default(), &[])?;
+    test_encoding_roundtrip(&Tlv::default(), [])?;
     test_encoding_roundtrip(
         &Tlv {
             map: bmap! { 0xA1u8 => s!("First"), 0xA2u8 => s!("Second") },
             vec: vec![0xB1, 0xB2, 0xB3],
         },
-        &[
+        [
             // Count of TLV fields
             0x02, 0x00, //
             // First goes first
@@ -389,7 +389,7 @@ fn tlv_unknown() -> Result {
         rest_of_tlvs: tlv::Stream,
     }
 
-    test_encoding_roundtrip(&TlvStream::default(), &[0x00; 2])
+    test_encoding_roundtrip(&TlvStream::default(), [0x00; 2])
         .map_err(Error::from)
 }
 

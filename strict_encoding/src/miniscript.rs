@@ -1207,15 +1207,15 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_bare_ctx() { BareCtx::strict_deserialize(&[0u8]).unwrap(); }
+    fn test_bare_ctx() { BareCtx::strict_deserialize([0u8]).unwrap(); }
 
     #[test]
     #[should_panic]
-    fn test_legacy_ctx() { Legacy::strict_deserialize(&[0u8]).unwrap(); }
+    fn test_legacy_ctx() { Legacy::strict_deserialize([0u8]).unwrap(); }
 
     #[test]
     #[should_panic]
-    fn test_segwitv0_ctx() { Segwitv0::strict_deserialize(&[0u8]).unwrap(); }
+    fn test_segwitv0_ctx() { Segwitv0::strict_deserialize([0u8]).unwrap(); }
 
     #[test]
     fn test_policy() {
