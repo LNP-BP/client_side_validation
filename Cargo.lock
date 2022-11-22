@@ -277,7 +277,6 @@ version = "0.9.0-alpha.2"
 dependencies = [
  "amplify 4.0.0-alpha.6",
  "bitcoin",
- "bitcoin_hashes",
  "chrono",
  "confined_encoding_derive",
  "confined_encoding_test",

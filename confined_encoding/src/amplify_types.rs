@@ -18,7 +18,7 @@ use amplify::flags::FlagVec;
 use amplify::num::apfloat::{ieee, Float};
 use amplify::num::{i1024, i256, i512, u1024, u256, u512};
 use amplify::{Bytes32, Wrapper};
-use bitcoin_hashes::{sha256, Hash};
+use bitcoin::hashes::{sha256, Hash};
 use half::bf16;
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
@@ -56,14 +56,18 @@ impl ConfinedDecode for FlagVec {
 }
 
 impl ConfinedEncode for u256 {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_le_bytes().confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let bytes = self.to_le_bytes();
+        e.write_all(&bytes)?;
+        Ok(bytes.len())
     }
 }
 
 impl ConfinedDecode for u256 {
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(u256::from_le_bytes(<[u8; 32]>::confined_decode(d)?))
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf)?;
+        Ok(u256::from_le_bytes(buf))
     }
 }
 
@@ -100,14 +104,18 @@ impl ConfinedDecode for u1024 {
 }
 
 impl ConfinedEncode for i256 {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_le_bytes().confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let bytes = self.to_le_bytes();
+        e.write_all(&bytes)?;
+        Ok(bytes.len())
     }
 }
 
 impl ConfinedDecode for i256 {
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(i256::from_le_bytes(<[u8; 32]>::confined_decode(d)?))
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut bytes = [0u8; 32];
+        d.read_exact(&mut bytes)?;
+        Ok(i256::from_le_bytes(bytes))
     }
 }
 

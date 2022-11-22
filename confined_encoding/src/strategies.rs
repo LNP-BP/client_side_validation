@@ -86,7 +86,7 @@ where
 
 impl<H> ConfinedEncode for amplify::Holder<H, HashFixedBytes>
 where
-    H: bitcoin_hashes::Hash,
+    H: bitcoin::hashes::Hash,
 {
     #[inline]
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
@@ -97,7 +97,7 @@ where
 
 impl<H> ConfinedDecode for amplify::Holder<H, HashFixedBytes>
 where
-    H: bitcoin_hashes::Hash,
+    H: bitcoin::hashes::Hash,
 {
     #[inline]
     fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {

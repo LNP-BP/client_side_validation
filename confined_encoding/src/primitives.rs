@@ -209,8 +209,10 @@ impl ConfinedEncode for u128 {
 
 impl ConfinedDecode for u128 {
     #[inline]
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(u128::from_le_bytes(<[u8; 16]>::confined_decode(d)?))
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 16];
+        d.read_exact(&mut buf)?;
+        Ok(u128::from_le_bytes(buf))
     }
 }
 
@@ -224,8 +226,10 @@ impl ConfinedEncode for i128 {
 
 impl ConfinedDecode for i128 {
     #[inline]
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(i128::from_le_bytes(<[u8; 16]>::confined_decode(d)?))
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let mut buf = [0u8; 16];
+        d.read_exact(&mut buf)?;
+        Ok(i128::from_le_bytes(buf))
     }
 }
 

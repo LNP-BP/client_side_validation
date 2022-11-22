@@ -73,11 +73,9 @@ mod macros;
 
 mod amplify_types;
 mod bitcoin;
-mod bitcoin_hashes;
 #[cfg(feature = "bulletproofs")]
 mod bulletproofs;
 mod collections;
-mod pointers;
 mod primitives;
 pub mod strategies;
 
