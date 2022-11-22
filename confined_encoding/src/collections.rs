@@ -29,7 +29,7 @@ impl<T> ConfinedEncode for Option<T>
 where
     T: ConfinedEncode,
 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         Ok(match self {
             None => confined_encode_list!(e; 0u8),
             Some(val) => confined_encode_list!(e; 1u8, val),
@@ -46,26 +46,26 @@ impl<T> ConfinedDecode for Option<T>
 where
     T: ConfinedDecode,
 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u8::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u8::confined_decode(d)?;
         match len {
             0 => Ok(None),
-            1 => Ok(Some(T::confined_decode(&mut d)?)),
+            1 => Ok(Some(T::confined_decode(d)?)),
             invalid => Err(Error::WrongOptionalEncoding(invalid)),
         }
     }
 }
 
 impl ConfinedEncode for TinyString {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         e.write_all(self.as_bytes())?;
-        Ok(1 + self.len())
+        Ok(())
     }
 }
 
 impl ConfinedDecode for TinyString {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u8::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u8::confined_decode(d)?;
         let mut data = Vec::<u8>::with_capacity(len as usize);
         d.read_exact(&mut data)?;
         let s = String::from_utf8(data)?;
@@ -80,12 +80,12 @@ impl<T> ConfinedEncode for TinyVec<T>
 where
     T: ConfinedEncode,
 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.len_u8().confined_encode(&mut e)?;
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.len_u8().confined_encode(e)?;
         for elem in self.iter() {
-            len += elem.confined_encode(&mut e)?;
+            elem.confined_encode(e)?;
         }
-        Ok(len)
+        Ok(())
     }
 }
 
@@ -93,11 +93,11 @@ impl<T> ConfinedDecode for TinyVec<T>
 where
     T: ConfinedDecode,
 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u8::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u8::confined_decode(d)?;
         let mut data = TinyVec::<T>::with_capacity(len as usize);
         for _ in 0..len {
-            data.push(T::confined_decode(&mut d)?)
+            data.push(T::confined_decode(d)?)
                 .expect("TinyVec must have up to 255 items");
         }
         Ok(data)
@@ -108,12 +108,12 @@ impl<T> ConfinedEncode for SmallVec<T>
 where
     T: ConfinedEncode,
 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.len_u16().confined_encode(&mut e)?;
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.len_u16().confined_encode(e)?;
         for elem in self.iter() {
-            len += elem.confined_encode(&mut e)?;
+            elem.confined_encode(e)?;
         }
-        Ok(len)
+        Ok(())
     }
 }
 
@@ -121,11 +121,11 @@ impl<T> ConfinedDecode for SmallVec<T>
 where
     T: ConfinedDecode,
 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u16::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u16::confined_decode(d)?;
         let mut data = SmallVec::<T>::with_capacity(len as usize);
         for _ in 0..len {
-            data.push(T::confined_decode(&mut d)?)
+            data.push(T::confined_decode(d)?)
                 .expect("SmallVec must have up to 2^16-1 items");
         }
         Ok(data)
@@ -141,12 +141,12 @@ impl<T> ConfinedEncode for SmallOrdSet<T>
 where
     T: ConfinedEncode + Eq + Ord,
 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.len_u16().confined_encode(&mut e)?;
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.len_u16().confined_encode(e)?;
         for elem in self.iter() {
-            len += elem.confined_encode(&mut e)?;
+            elem.confined_encode(e)?;
         }
-        Ok(len)
+        Ok(())
     }
 }
 
@@ -158,11 +158,11 @@ impl<T> ConfinedDecode for SmallOrdSet<T>
 where
     T: ConfinedDecode + Eq + Ord + Debug,
 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u16::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u16::confined_decode(d)?;
         let mut data = SmallOrdSet::<T>::new();
         for _ in 0..len {
-            let val = T::confined_decode(&mut d)?;
+            let val = T::confined_decode(d)?;
             if let Some(max) = data.iter().max() {
                 if max > &val {
                     // TODO: Introduce new error type on 2.0 release
@@ -197,13 +197,13 @@ where
     K: ConfinedEncode + Ord + Hash,
     V: ConfinedEncode,
 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.len_u16().confined_encode(&mut e)?;
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.len_u16().confined_encode(e)?;
         for (key, val) in self.iter() {
-            len += key.confined_encode(&mut e)?;
-            len += val.confined_encode(&mut e)?;
+            key.confined_encode(e)?;
+            val.confined_encode(e)?;
         }
-        Ok(len)
+        Ok(())
     }
 }
 
@@ -221,12 +221,12 @@ where
     K: ConfinedDecode + Ord + Hash + Debug,
     V: ConfinedDecode,
 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = u16::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u16::confined_decode(d)?;
         let mut map = SmallOrdMap::<K, V>::new();
         for _ in 0..len {
-            let key = K::confined_decode(&mut d)?;
-            let val = V::confined_decode(&mut d)?;
+            let key = K::confined_decode(d)?;
+            let val = V::confined_decode(d)?;
             if let Some(max) = map.keys().max() {
                 if max > &key {
                     // TODO: Introduce new error type on 2.0 release
@@ -254,8 +254,10 @@ where
     K: ConfinedEncode + Clone,
     V: ConfinedEncode + Clone,
 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.0.confined_encode(&mut e)? + self.1.confined_encode(&mut e)?)
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.0.confined_encode(e)?;
+        self.1.confined_encode(e)?;
+        Ok(())
     }
 }
 
@@ -266,9 +268,9 @@ where
     K: ConfinedDecode + Clone,
     V: ConfinedDecode + Clone,
 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let a = K::confined_decode(&mut d)?;
-        let b = V::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let a = K::confined_decode(d)?;
+        let b = V::confined_decode(d)?;
         Ok((a, b))
     }
 }

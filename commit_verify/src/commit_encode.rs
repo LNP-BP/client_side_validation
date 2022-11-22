@@ -159,7 +159,7 @@ pub mod strategies {
         V: CommitEncode,
     {
         fn commit_encode<E: io::Write>(&self, mut e: E) -> usize {
-            self.0.commit_encode(&mut e) + self.1.commit_encode(&mut e)
+            self.0.commit_encode(e) + self.1.commit_encode(e)
         }
     }
 
@@ -170,9 +170,9 @@ pub mod strategies {
         C: CommitEncode,
     {
         fn commit_encode<E: io::Write>(&self, mut e: E) -> usize {
-            self.0.commit_encode(&mut e)
-                + self.1.commit_encode(&mut e)
-                + self.2.commit_encode(&mut e)
+            self.0.commit_encode(e)
+                + self.1.commit_encode(e)
+                + self.2.commit_encode(e)
         }
     }
 

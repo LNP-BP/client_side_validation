@@ -17,22 +17,11 @@
 macro_rules! confined_encode_list {
     ( $encoder:ident; $($item:expr),+ ) => {
         {
-            let mut len = 0usize;
             $(
-                len += $item.confined_encode(&mut $encoder)?;
+                $item.confined_encode($encoder)?;
             )+
-            len
         }
     };
-
-    ( $encoder:ident; $len:ident; $($item:expr),+ ) => {
-        {
-            $(
-                $len += $item.confined_encode(&mut $encoder)?;
-            )+
-            $len
-        }
-    }
 }
 
 /// Macro simplifying decoding of a structure with a given list of fields
@@ -42,16 +31,7 @@ macro_rules! confined_decode_self {
         {
             Self {
             $(
-                $item: $crate::ConfinedDecode::confined_decode(&mut $decoder)?,
-            )+
-            }
-        }
-    };
-    ( $decoder:ident; $($item:ident),+ ; crate) => {
-        {
-            Self {
-            $(
-                $item: $crate::ConfinedDecode::confined_decode(&mut $decoder)?,
+                $item: $crate::ConfinedDecode::confined_decode($decoder)?,
             )+
             }
         }

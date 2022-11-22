@@ -77,7 +77,6 @@ mod bitcoin;
 mod bulletproofs;
 mod collections;
 mod primitives;
-pub(crate) mod strategies;
 
 use std::ops::Range;
 use std::string::FromUtf8Error;
@@ -89,7 +88,6 @@ use std::{fmt, io};
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::confinement::{Confined, MediumVec, SmallVec};
 use amplify::IoError;
-pub use strategies::Strategy;
 
 /// Binary encoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications;
@@ -107,10 +105,10 @@ pub trait ConfinedEncode {
 
     /// Serializes data as a byte array not larger than 64kB (2^16-1 bytes)
     /// using [`ConfinedEncode::confined_encode`] function
-    fn confined_serialize<const MIN: usize, const MAX: usize>(
+    fn confined_serialize<const MAX: usize>(
         &self,
-    ) -> Result<Confined<Vec<u8>, MIN, MAX>, Error> {
-        let mut e = Confined::new();
+    ) -> Result<Confined<Vec<u8>, 0, MAX>, Error> {
+        let mut e = Confined::<Vec<u8>, 0, MAX>::new();
         self.confined_encode(&mut e)?;
         Ok(e)
     }
@@ -148,10 +146,10 @@ pub trait ConfinedDecode: Sized {
     fn confined_deserialize<const MIN: usize, const MAX: usize>(
         data: &Confined<Vec<u8>, MIN, MAX>,
     ) -> Result<Self, Error> {
-        let mut cursor = io::Cursor::new(data);
+        let mut cursor = io::Cursor::new(data.as_inner());
         let me = Self::confined_decode(&mut cursor)?;
-        if !cursor.is_empty() {
-            Err(Error::DataNotEntirelyConsumed)
+        if cursor.position() as usize != data.len() {
+            return Err(Error::DataNotEntirelyConsumed);
         }
         Ok(me)
     }
@@ -236,7 +234,9 @@ pub enum Error {
 
 impl From<Error> for fmt::Error {
     #[inline]
-    fn from(_: Error) -> Self { fmt::Error }
+    fn from(_: Error) -> Self {
+        fmt::Error
+    }
 }
 
 impl From<FromUtf8Error> for Error {

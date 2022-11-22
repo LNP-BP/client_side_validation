@@ -13,32 +13,35 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 //! Taking implementation of little-endian integer encoding
-
-use core::time::Duration;
 use std::io;
-use std::io::{Read, Write};
 
-use amplify::num::u24;
+use amplify::num::apfloat::{ieee, Float};
+use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
+use half::bf16;
 
 use super::{ConfinedDecode, ConfinedEncode, Error};
 
 impl ConfinedEncode for () {
-    fn confined_encode<E: Write>(&self, _: E) -> Result<usize, Error> { Ok(0) }
+    fn confined_encode(&self, _: &mut impl io::Write) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 impl ConfinedDecode for () {
-    fn confined_decode<D: Read>(_: D) -> Result<Self, Error> { Ok(()) }
+    fn confined_decode(_: &mut impl io::Read) -> Result<Self, Error> {
+        Ok(())
+    }
 }
 
 impl ConfinedEncode for bool {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        (*self as u8).confined_encode(&mut e)
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        (*self as u8).confined_encode(e)
     }
 }
 
 impl ConfinedDecode for bool {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        match u8::confined_decode(&mut d)? {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        match u8::confined_decode(d)? {
             0 => Ok(false),
             1 => Ok(true),
             v => Err(Error::ValueOutOfRange("boolean", 0..1, v as u128)),
@@ -46,279 +49,92 @@ impl ConfinedDecode for bool {
     }
 }
 
-impl ConfinedEncode for u8 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&[*self][..])?;
-        Ok(1)
-    }
-}
-
-impl ConfinedDecode for u8 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 1];
-        d.read_exact(&mut ret)?;
-        Ok(ret[0])
-    }
-}
-
-impl ConfinedEncode for i8 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(1)
-    }
-}
-
-impl ConfinedDecode for i8 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 1];
-        d.read_exact(&mut ret)?;
-        Ok(ret[0] as i8)
-    }
-}
-
-impl ConfinedEncode for u16 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(2)
-    }
-}
-
-impl ConfinedDecode for u16 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 2];
-        d.read_exact(&mut ret)?;
-        Ok(u16::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for i16 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(2)
-    }
-}
-
-impl ConfinedDecode for i16 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 2];
-        d.read_exact(&mut ret)?;
-        Ok(i16::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for u24 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(3)
-    }
-}
-
-impl ConfinedDecode for u24 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 3];
-        d.read_exact(&mut ret)?;
-        Ok(u24::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for u32 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(4)
-    }
-}
-
-impl ConfinedDecode for u32 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 4];
-        d.read_exact(&mut ret)?;
-        Ok(u32::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for i32 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(4)
-    }
-}
-
-impl ConfinedDecode for i32 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 4];
-        d.read_exact(&mut ret)?;
-        Ok(i32::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for u64 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(8)
-    }
-}
-
-impl ConfinedDecode for u64 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 8];
-        d.read_exact(&mut ret)?;
-        Ok(u64::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for i64 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(8)
-    }
-}
-
-impl ConfinedDecode for i64 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut ret = [0u8; 8];
-        d.read_exact(&mut ret)?;
-        Ok(i64::from_le_bytes(ret))
-    }
-}
-
-impl ConfinedEncode for u128 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(16)
-    }
-}
-
-impl ConfinedDecode for u128 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 16];
-        d.read_exact(&mut buf)?;
-        Ok(u128::from_le_bytes(buf))
-    }
-}
-
-impl ConfinedEncode for i128 {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(16)
-    }
-}
-
-impl ConfinedDecode for i128 {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 16];
-        d.read_exact(&mut buf)?;
-        Ok(i128::from_le_bytes(buf))
-    }
-}
-
-impl ConfinedEncode for f32 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(4)
-    }
-}
-
-impl ConfinedDecode for f32 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf: [u8; 4] = [0; 4];
-        d.read_exact(&mut buf)?;
-        Ok(Self::from_le_bytes(buf))
-    }
-}
-
-impl ConfinedEncode for f64 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_le_bytes())?;
-        Ok(8)
-    }
-}
-
-impl ConfinedDecode for f64 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf: [u8; 8] = [0; 8];
-        d.read_exact(&mut buf)?;
-        Ok(Self::from_le_bytes(buf))
-    }
-}
-
-impl ConfinedEncode for Duration {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        (self.as_secs(), self.subsec_nanos()).confined_encode(e)
-    }
-}
-
-impl ConfinedDecode for Duration {
-    #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        Ok(Self::new(
-            u64::confined_decode(&mut d)?,
-            u32::confined_decode(&mut d)?,
-        ))
-    }
-}
-
-mod _chrono {
-    use chrono::{DateTime, NaiveDateTime, Utc};
-
-    use super::*;
-
-    impl ConfinedEncode for NaiveDateTime {
-        #[inline]
-        fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-            self.timestamp().confined_encode(e)
+macro_rules! encoding_int {
+    ($ty:ty, $l:literal) => {
+        impl ConfinedEncode for $ty {
+            fn confined_encode(
+                &self,
+                e: &mut impl io::Write,
+            ) -> Result<(), Error> {
+                e.write_all(&self.to_le_bytes())?;
+                Ok(())
+            }
         }
-    }
 
-    impl ConfinedDecode for NaiveDateTime {
-        #[inline]
-        fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-            let secs = i64::confined_decode(d)?;
-            Self::from_timestamp_opt(secs, 0).ok_or_else(|| {
-                Error::DataIntegrityError(s!(
-                    "number of seconds in timestamp exceeds UNIX limit"
-                ))
-            })
+        impl ConfinedDecode for $ty {
+            fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+                let mut buf = [0u8; $l];
+                d.read_exact(&mut buf)?;
+                Ok(Self::from_le_bytes(buf))
+            }
         }
-    }
+    };
+}
 
-    impl ConfinedEncode for DateTime<Utc> {
-        #[inline]
-        fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-            self.naive_utc().confined_encode(e)
-        }
-    }
+encoding_int!(u8, 1);
+encoding_int!(u16, 2);
+encoding_int!(u24, 3);
+encoding_int!(u32, 4);
+encoding_int!(u64, 8);
+encoding_int!(u128, 16);
+encoding_int!(u256, 32);
+encoding_int!(u512, 64);
+encoding_int!(u1024, 128);
 
-    impl ConfinedDecode for DateTime<Utc> {
-        #[inline]
-        fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-            let naive = NaiveDateTime::confined_decode(d)?;
-            Ok(DateTime::from_utc(naive, Utc))
-        }
+encoding_int!(i8, 1);
+encoding_int!(i16, 2);
+// TODO: Add i24 encoding once the type will be in amplify::num
+//encoding_int!(i24, 3);
+encoding_int!(i32, 4);
+encoding_int!(i64, 8);
+encoding_int!(i128, 16);
+encoding_int!(i256, 32);
+encoding_int!(i512, 64);
+encoding_int!(i1024, 128);
+
+impl ConfinedEncode for bf16 {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.to_bits().confined_encode(e)
     }
 }
+
+impl ConfinedDecode for bf16 {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        Ok(bf16::from_bits(u16::confined_decode(d)?))
+    }
+}
+
+macro_rules! encoding_float {
+    ($ty:ty, $l:literal) => {
+        impl ConfinedEncode for $ty {
+            fn confined_encode(
+                &self,
+                e: &mut impl io::Write,
+            ) -> Result<(), Error> {
+                let bytes = self.to_bits().to_le_bytes(); // this gives 32-byte slice
+                e.write_all(&bytes[..2])?;
+                Ok(())
+            }
+        }
+
+        impl ConfinedDecode for $ty {
+            fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+                let mut buf = [0u8; 32];
+                d.read_exact(&mut buf[..$l])?;
+                // Constructing inner representation
+                let inner = u256::from_le_bytes(buf);
+                Ok(Self::from_bits(inner))
+            }
+        }
+    };
+}
+
+encoding_float!(ieee::Half, 2);
+encoding_float!(ieee::Single, 4);
+encoding_float!(ieee::Double, 8);
+encoding_float!(ieee::X87DoubleExtended, 10);
+encoding_float!(ieee::Quad, 16);
+encoding_float!(ieee::Oct, 32);
 
 #[cfg(test)]
 pub mod test {
@@ -346,35 +162,46 @@ pub mod test {
         test_encoding_roundtrip(&54_u64, [54, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         test_encoding_roundtrip(&0x45a6_u64, [0xa6, 0x45, 0, 0, 0, 0, 0, 0])
             .unwrap();
-        test_encoding_roundtrip(&0x56fe45a6_u64, [
-            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0x56fe45a6_u64,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0xcafedead56fe45a6_u64, [
-            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca,
-        ])
+        test_encoding_roundtrip(
+            &0xcafedead56fe45a6_u64,
+            [0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca],
+        )
         .unwrap();
-        test_encoding_roundtrip(&54_u128, [
-            54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &54_u128,
+            [54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0x45a6_u128, [
-            0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0x45a6_u128,
+            [0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0x56fe45a6_u128, [
-            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0x56fe45a6_u128,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0xcafedead56fe45a6_u128, [
-            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0, 0,
-            0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0xcafedead56fe45a6_u128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0,
+                0, 0, 0,
+            ],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0xbadefeed65671331cafedead56fe45a6_u128, [
-            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13, 0x67,
-            0x65, 0xed, 0xfe, 0xde, 0xba,
-        ])
+        test_encoding_roundtrip(
+            &0xbadefeed65671331cafedead56fe45a6_u128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13,
+                0x67, 0x65, 0xed, 0xfe, 0xde, 0xba,
+            ],
+        )
         .unwrap();
     }
 
@@ -395,48 +222,47 @@ pub mod test {
         test_encoding_roundtrip(&54_i64, [54, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         test_encoding_roundtrip(&0x45a6_i64, [0xa6, 0x45, 0, 0, 0, 0, 0, 0])
             .unwrap();
-        test_encoding_roundtrip(&0x56fe45a6_i64, [
-            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0x56fe45a6_i64,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0x7afedead56fe45a6_i64, [
-            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0x7a,
-        ])
+        test_encoding_roundtrip(
+            &0x7afedead56fe45a6_i64,
+            [0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0x7a],
+        )
         .unwrap();
-        test_encoding_roundtrip(&54_i128, [
-            54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &54_i128,
+            [54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0x45a6_i128, [
-            0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0x45a6_i128,
+            [0xa6, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0x56fe45a6_i128, [
-            0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0x56fe45a6_i128,
+            [0xa6, 0x45, 0xfe, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0xcafedead56fe45a6_i128, [
-            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0, 0,
-            0, 0,
-        ])
+        test_encoding_roundtrip(
+            &0xcafedead56fe45a6_i128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0, 0, 0, 0, 0,
+                0, 0, 0,
+            ],
+        )
         .unwrap();
-        test_encoding_roundtrip(&0x1adefeed65671331cafedead56fe45a6_i128, [
-            0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13, 0x67,
-            0x65, 0xed, 0xfe, 0xde, 0x1a,
-        ])
+        test_encoding_roundtrip(
+            &0x1adefeed65671331cafedead56fe45a6_i128,
+            [
+                0xa6, 0x45, 0xfe, 0x56, 0xad, 0xde, 0xfe, 0xca, 0x31, 0x13,
+                0x67, 0x65, 0xed, 0xfe, 0xde, 0x1a,
+            ],
+        )
         .unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "ExceedMaxItems(131071)")]
-    fn test_usize_encode_fail() {
-        0x01FFFF_usize.confined_serialize().unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "DataNotEntirelyConsumed")]
-    fn test_usize_decode_fail() {
-        let _: usize = confined_deserialize([0xFF, 0xFF, 0xFF, 0x54]).unwrap();
     }
 
     #[test]
@@ -451,33 +277,50 @@ pub mod test {
     }
 
     #[test]
-    fn test_float_encoding() {
-        test_encoding_roundtrip(&5.7692_f32, [73, 157, 184, 64]).unwrap();
-        test_encoding_roundtrip(&54546457.76965676_f64, [
-            206, 65, 40, 206, 128, 2, 138, 65,
-        ])
+    fn test_large_uints() {
+        test_encoding_roundtrip(
+            &u256::from(0x_dead_cafe_4bad_beef_u64),
+            [
+                0xef, 0xbe, 0xad, 0x4b, 0xfe, 0xca, 0xad, 0xde, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00,
+            ],
+        )
         .unwrap();
-    }
 
-    #[test]
-    fn test_chrono_encoding() {
-        let utc = Utc::now();
+        test_encoding_roundtrip(
+            &u512::from(0x_dead_cafe_4bad_beef_u64),
+            [
+                0xef, 0xbe, 0xad, 0x4b, 0xfe, 0xca, 0xad, 0xde, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+        )
+        .unwrap();
 
-        let ser = utc.confined_serialize().unwrap();
-        assert_eq!(ser.len(), 8);
-
-        let naive = utc.naive_utc();
-        let naive =
-            NaiveDateTime::from_timestamp_opt(naive.timestamp(), 0).unwrap();
-        assert_eq!(confined_deserialize(&ser), Ok(naive));
-
-        let ser = naive.confined_serialize().unwrap();
-        assert_eq!(ser.len(), 8);
-        assert_eq!(confined_deserialize(&ser), Ok(naive));
-
-        let duration = Duration::new(naive.timestamp() as u64, 38455567);
-        let ser = duration.confined_serialize().unwrap();
-        assert_eq!(ser.len(), 12);
-        assert_eq!(confined_deserialize(&ser), Ok(duration));
+        test_encoding_roundtrip(
+            &u1024::from(0x_dead_cafe_4bad_beef_u64),
+            [
+                0xef, 0xbe, 0xad, 0x4b, 0xfe, 0xca, 0xad, 0xde, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ],
+        )
+        .unwrap();
     }
 }

@@ -18,7 +18,7 @@ use crate::{ConfinedDecode, ConfinedEncode, Error};
 
 impl ConfinedEncode for secp256k1zkp::Error {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, _: E) -> Result<usize, Error> {
+    fn confined_encode(&self, _: &mut impl io::Write) -> Result<(), Error> {
         unreachable!(
             "rust compiler requires confined encoding due to derivation \
              macros, but its code must be unreachable"
@@ -28,7 +28,7 @@ impl ConfinedEncode for secp256k1zkp::Error {
 
 impl ConfinedDecode for secp256k1zkp::Error {
     #[inline]
-    fn confined_decode<D: io::Read>(_: D) -> Result<Self, Error> {
+    fn confined_decode(_: &mut impl io::Read) -> Result<Self, Error> {
         unreachable!(
             "rust compiler requires confined encoding due to derivation \
              macros, but its code must be unreachable"
@@ -38,16 +38,15 @@ impl ConfinedDecode for secp256k1zkp::Error {
 
 impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self[..].len();
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         e.write_all(&self[..])?;
-        Ok(len)
+        Ok(())
     }
 }
 
 impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1zkp::constants::PEDERSEN_COMMITMENT_SIZE];
         d.read_exact(&mut buf)?;
         Ok(Self::from_vec(buf.to_vec()))
@@ -56,18 +55,18 @@ impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
 
 impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = (self.plen as u16).confined_encode(&mut e)?;
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        (self.plen as u16).confined_encode(e)?;
         e.write_all(&self.proof[..self.plen])?;
-        Ok(len + self.plen)
+        Ok(())
     }
 }
 
 impl ConfinedDecode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         use secp256k1zkp::constants::MAX_PROOF_SIZE;
-        let len = u16::confined_decode(&mut d)? as usize;
+        let len = u16::confined_decode(d)? as usize;
         if len as usize >= MAX_PROOF_SIZE {
             return Err(Error::DataIntegrityError(format!(
                 "Wrong bulletproof data size: expected no more than {}, got {}",

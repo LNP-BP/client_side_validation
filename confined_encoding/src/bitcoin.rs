@@ -24,57 +24,82 @@ use bitcoin::util::taproot::{
 };
 use bitcoin::{schnorr as bip340, secp256k1, OutPoint, Txid, XOnlyPublicKey};
 
-use crate::{strategies, ConfinedDecode, ConfinedEncode, Error, Strategy};
+use crate::{ConfinedDecode, ConfinedEncode, Error};
 
-impl Strategy for sha256::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for sha256d::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl<T> Strategy for sha256t::Hash<T>
-where
-    T: sha256t::Tag,
-{
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for sha512::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for ripemd160::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl Strategy for hash160::Hash {
-    type Strategy = strategies::HashFixedBytes;
-}
-impl<T> Strategy for hmac::Hmac<T>
-where
-    T: Hash,
-{
-    type Strategy = strategies::HashFixedBytes;
+fn encode<H: Hash>(hash: &H, e: &mut impl Write) -> Result<(), Error> {
+    let slice = &hash[..];
+    debug_assert_eq!(slice.len(), H::LEN);
+    e.write_all(slice)?;
+    Ok(())
 }
 
-impl Strategy for Txid {
-    type Strategy = strategies::HashFixedBytes;
+macro_rules! hash_encoding {
+    ($ty:ty) => {
+        impl ConfinedEncode for $ty {
+            fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
+                encode(self, e)
+            }
+        }
+        impl ConfinedDecode for $ty {
+            fn confined_decode(d: &mut impl Read) -> Result<Self, Error> {
+                let mut buf = [0u8; <$ty as Hash>::LEN];
+                d.read_exact(&mut buf)?;
+                Ok(<$ty as Hash>::from_slice(&buf)
+                    .expect("bitcoin hashes inner structure is broken"))
+            }
+        }
+    };
 }
-impl Strategy for TapBranchHash {
-    type Strategy = strategies::HashFixedBytes;
+
+hash_encoding!(sha256::Hash);
+hash_encoding!(sha256d::Hash);
+hash_encoding!(sha512::Hash);
+hash_encoding!(ripemd160::Hash);
+hash_encoding!(hash160::Hash);
+
+hash_encoding!(Txid);
+hash_encoding!(TapBranchHash);
+hash_encoding!(TapLeafHash);
+hash_encoding!(TapTweakHash);
+
+impl<T: sha256t::Tag> ConfinedEncode for sha256t::Hash<T> {
+    fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
+        encode(self, e)
+    }
 }
-impl Strategy for TapLeafHash {
-    type Strategy = strategies::HashFixedBytes;
+
+impl<T: sha256t::Tag> ConfinedDecode for sha256t::Hash<T> {
+    fn confined_decode(d: &mut impl Read) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf)?;
+        Ok(Self::from_slice(&buf)
+            .expect("bitcoin hashes inner structure is broken"))
+    }
 }
-impl Strategy for TapTweakHash {
-    type Strategy = strategies::HashFixedBytes;
+
+impl<T: Hash> ConfinedEncode for hmac::Hmac<T> {
+    fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
+        encode(self, e)
+    }
+}
+
+impl ConfinedDecode for hmac::Hmac<sha256::Hash> {
+    fn confined_decode(d: &mut impl Read) -> Result<Self, Error> {
+        let mut buf = [0u8; 32];
+        d.read_exact(&mut buf)?;
+        Ok(Self::from_slice(&buf)
+            .expect("bitcoin hashes inner structure is broken"))
+    }
 }
 
 impl ConfinedEncode for LeafVersion {
-    fn confined_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.to_consensus().confined_encode(e)
     }
 }
 
 impl ConfinedDecode for LeafVersion {
-    fn confined_decode<D: Read>(d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let leaf_version = u8::confined_decode(d)?;
         LeafVersion::from_consensus(leaf_version).map_err(|_| {
             Error::DataIntegrityError(format!(
@@ -86,13 +111,13 @@ impl ConfinedDecode for LeafVersion {
 }
 
 impl ConfinedEncode for FutureLeafVersion {
-    fn confined_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.to_consensus().confined_encode(e)
     }
 }
 
 impl ConfinedDecode for FutureLeafVersion {
-    fn confined_decode<D: Read>(d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         match LeafVersion::confined_decode(d)? {
             LeafVersion::TapScript => {
                 Err(Error::DataIntegrityError(s!("known LeafVersion was \
@@ -105,7 +130,7 @@ impl ConfinedDecode for FutureLeafVersion {
 }
 
 impl ConfinedEncode for TaprootMerkleBranch {
-    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         let vec = self.as_inner();
         // Merkle branch always has length less than 128
         let count: u8 = vec.len().try_into().map_err(|_| {
@@ -113,20 +138,20 @@ impl ConfinedEncode for TaprootMerkleBranch {
                 "Taproot Merkle branch with more than 128 elements"
             ))
         })?;
-        let mut len = count.confined_encode(&mut e)?;
+        count.confined_encode(e)?;
         for elem in vec {
-            len += elem.confined_encode(&mut e)?;
+            elem.confined_encode(e)?;
         }
-        Ok(len)
+        Ok(())
     }
 }
 
 impl ConfinedDecode for TaprootMerkleBranch {
-    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
-        let count = u8::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let count = u8::confined_decode(d)?;
         let mut vec = Vec::with_capacity(count as usize);
         for _ in 0..count {
-            vec.push(sha256::Hash::confined_decode(&mut d)?);
+            vec.push(sha256::Hash::confined_decode(d)?);
         }
         TaprootMerkleBranch::try_from(vec).map_err(|_| {
             Error::DataIntegrityError(s!(
@@ -138,26 +163,22 @@ impl ConfinedDecode for TaprootMerkleBranch {
 
 impl ConfinedEncode for secp256k1::PublicKey {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         let data = self.serialize();
         e.write_all(&data[..])?;
-        Ok(33)
+        Ok(())
     }
 }
 
 impl ConfinedDecode for secp256k1::PublicKey {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        if buf[0] == 0x04 {
-            return Err(Error::DataIntegrityError(s!("invalid public key \
-                                                     data: uncompressed \
-                                                     Secp256k1 public key \
-                                                     format is not \
-                                                     allowed, use \
-                                                     compressed form \
-                                                     instead")));
+        if buf[0] != 0x02 || buf[1] != 0x03 {
+            return Err(Error::DataIntegrityError(s!(
+                "invalid public key data: only compressed Secp256k1 public keys are allowed"
+            )));
         }
         Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
@@ -167,39 +188,45 @@ impl ConfinedDecode for secp256k1::PublicKey {
 
 impl ConfinedEncode for XOnlyPublicKey {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         e.write_all(&self.serialize())?;
-        Ok(32)
+        Ok(())
     }
 }
 
 impl ConfinedDecode for XOnlyPublicKey {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::SCHNORR_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        Self::from_slice(&buf[..]).map_err(|_| {
-            Error::DataIntegrityError(s!("invalid public key data"))
+        Self::from_slice(&buf[..]).map_err(|err| {
+            Error::DataIntegrityError(format!(
+                "invalid public key data: {}",
+                err
+            ))
         })
     }
 }
 
 impl ConfinedEncode for bip340::TweakedPublicKey {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         e.write_all(&self.serialize())?;
-        Ok(32)
+        Ok(())
     }
 }
 
 impl ConfinedDecode for bip340::TweakedPublicKey {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::SCHNORR_PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
         Ok(Self::dangerous_assume_tweaked(
-            XOnlyPublicKey::from_slice(&buf[..]).map_err(|_| {
-                Error::DataIntegrityError(s!("invalid public key data"))
+            XOnlyPublicKey::from_slice(&buf[..]).map_err(|err| {
+                Error::DataIntegrityError(format!(
+                    "invalid public key data: {}",
+                    err
+                ))
             })?,
         ))
     }
@@ -207,29 +234,30 @@ impl ConfinedDecode for bip340::TweakedPublicKey {
 
 impl ConfinedEncode for OutPoint {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(confined_encode_list!(e; self.txid, self.vout))
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        confined_encode_list!(e; self.txid, self.vout);
+        Ok(())
     }
 }
 
 impl ConfinedDecode for OutPoint {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         Ok(confined_decode_self!(d; txid, vout))
     }
 }
 
 impl ConfinedEncode for bitcoin::Network {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.magic().confined_encode(&mut e)
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.magic().confined_encode(e)
     }
 }
 
 impl ConfinedDecode for bitcoin::Network {
     #[inline]
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let magic = u32::confined_decode(&mut d)?;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let magic = u32::confined_decode(d)?;
         Self::from_magic(magic).ok_or(Error::ValueOutOfRange(
             "bitcoin::Network",
             0..0,
@@ -369,43 +397,47 @@ pub(crate) mod test {
     #[test]
     #[should_panic(expected = "DataIntegrityError")]
     fn test_garbagedata_pubkey() {
-        static PK_BYTES_04: [u8; 60] = [
+        secp256k1::PublicKey::confined_decode(&mut [
             0x04, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93, 0x82,
             0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
             0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f, 0x46, 0x79, 0xef,
             0x87, 0x28, 0x8e, 0xd7, 0x3c, 0xe4, 0x7f, 0xc4, 0xf5, 0xc7, 0x9d,
             0x19, 0xeb, 0xfa, 0x57, 0xda, 0x7c, 0xff, 0x3a, 0xff, 0x6e, 0x81,
             0x9e, 0x4e, 0xe9, 0x71, 0xd8,
-        ];
-        secp256k1::PublicKey::confined_decode(&PK_BYTES_04[..]).unwrap();
+        ])
+        .unwrap();
     }
 
     #[test]
     #[should_panic(expected = "DataIntegrityError")]
     fn test_grabagedata_pubkey2() {
-        static PK_BYTES_02: [u8; 33] = [
+        secp256k1::PublicKey::confined_decode(&mut [
             0xa5, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93, 0x82,
             0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
             0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f, 0x46, 0x79, 0xef,
-        ];
-        secp256k1::PublicKey::confined_decode(&PK_BYTES_02[..]).unwrap();
+        ])
+        .unwrap();
     }
 
     #[test]
     fn test_encoding_network(
     ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
-        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, [
-            0xF9, 0xBE, 0xB4, 0xD9,
-        ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Testnet, [
-            0x0B, 0x11, 0x09, 0x07,
-        ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Signet, [
-            0x0A, 0x03, 0xCF, 0x40,
-        ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Regtest, [
-            0xFA, 0xBF, 0xB5, 0xDA,
-        ])
+        test_encoding_roundtrip(
+            &bitcoin::Network::Bitcoin,
+            [0xF9, 0xBE, 0xB4, 0xD9],
+        )?;
+        test_encoding_roundtrip(
+            &bitcoin::Network::Testnet,
+            [0x0B, 0x11, 0x09, 0x07],
+        )?;
+        test_encoding_roundtrip(
+            &bitcoin::Network::Signet,
+            [0x0A, 0x03, 0xCF, 0x40],
+        )?;
+        test_encoding_roundtrip(
+            &bitcoin::Network::Regtest,
+            [0xFA, 0xBF, 0xB5, 0xDA],
+        )
     }
 
     #[test]
@@ -414,9 +446,9 @@ pub(crate) mod test {
     )]
     fn test_encoding_network_failure() {
         // Bitcoin Network structure do not support "Other" networks
-        bitcoin::Network::confined_decode(
-            &[0xA1u8, 0xA2u8, 0xA3u8, 0xA4u8][..],
-        )
+        bitcoin::Network::confined_decode(&mut [
+            0xA1u8, 0xA2u8, 0xA3u8, 0xA4u8,
+        ])
         .unwrap();
     }
 
@@ -453,11 +485,11 @@ pub(crate) mod test {
     #[test]
     #[should_panic(expected = "UnexpectedEof")]
     fn test_garbagedata_outpoint() {
-        static OUTPOINT: [u8; 32] = [
+        OutPoint::confined_decode(&mut [
             0x53, 0xc6, 0x31, 0x13, 0xed, 0x18, 0x68, 0xfc, 0xa, 0xdf, 0x8e,
             0xcd, 0xfd, 0x1f, 0x4d, 0xd6, 0xe5, 0xe3, 0x85, 0x83, 0xa4, 0x9d,
             0xb, 0x14, 0xe7, 0xf8, 0x87, 0xa4, 0xd1, 0x61, 0x78, 0x21,
-        ];
-        OutPoint::confined_decode(&OUTPOINT[..]).unwrap();
+        ])
+        .unwrap();
     }
 }

@@ -15,19 +15,13 @@
 use std::io;
 
 use amplify::flags::FlagVec;
-use amplify::num::apfloat::{ieee, Float};
-use amplify::num::{i1024, i256, i512, u1024, u256, u512};
 use amplify::{Bytes32, Wrapper};
 use bitcoin::hashes::{sha256, Hash};
-use half::bf16;
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
 
 impl ConfinedEncode for Bytes32 {
-    fn confined_encode<E: io::Write>(
-        &self,
-        e: E,
-    ) -> Result<usize, crate::Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         // We use the same encoding as used by hashes - and ensure this by
         // cross-converting with hash
         sha256::Hash::from_inner(self.to_inner()).confined_encode(e)
@@ -35,7 +29,7 @@ impl ConfinedEncode for Bytes32 {
 }
 
 impl ConfinedDecode for Bytes32 {
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, crate::Error> {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let hash = sha256::Hash::confined_decode(d)?;
         Ok(Bytes32::from_inner(hash.into_inner()))
     }
@@ -43,183 +37,19 @@ impl ConfinedDecode for Bytes32 {
 
 impl ConfinedEncode for FlagVec {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.shrunk().as_inner().confined_encode(e)
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        // to_inner does the shrunk operation internally
+        // TODO: Remove clone on amplify fix
+        let shrunk = self.clone().to_inner();
+        shrunk.confined_encode(e)
     }
 }
 
 impl ConfinedDecode for FlagVec {
     #[inline]
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(Self::from_inner(ConfinedDecode::confined_decode(d)?))
-    }
-}
-
-impl ConfinedEncode for u256 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let bytes = self.to_le_bytes();
-        e.write_all(&bytes)?;
-        Ok(bytes.len())
-    }
-}
-
-impl ConfinedDecode for u256 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 32];
-        d.read_exact(&mut buf)?;
-        Ok(u256::from_le_bytes(buf))
-    }
-}
-
-impl ConfinedEncode for u512 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let bytes = self.to_le_bytes();
-        e.write_all(&bytes)?;
-        Ok(bytes.len())
-    }
-}
-
-impl ConfinedDecode for u512 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut bytes = [0u8; 64];
-        d.read_exact(&mut bytes)?;
-        Ok(u512::from_le_bytes(bytes))
-    }
-}
-
-impl ConfinedEncode for u1024 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let bytes = self.to_le_bytes();
-        e.write_all(&bytes)?;
-        Ok(bytes.len())
-    }
-}
-
-impl ConfinedDecode for u1024 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut bytes = [0u8; 128];
-        d.read_exact(&mut bytes)?;
-        Ok(u1024::from_le_bytes(bytes))
-    }
-}
-
-impl ConfinedEncode for i256 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let bytes = self.to_le_bytes();
-        e.write_all(&bytes)?;
-        Ok(bytes.len())
-    }
-}
-
-impl ConfinedDecode for i256 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut bytes = [0u8; 32];
-        d.read_exact(&mut bytes)?;
-        Ok(i256::from_le_bytes(bytes))
-    }
-}
-
-impl ConfinedEncode for i512 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let bytes = self.to_le_bytes();
-        e.write_all(&bytes)?;
-        Ok(bytes.len())
-    }
-}
-
-impl ConfinedDecode for i512 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut bytes = [0u8; 64];
-        d.read_exact(&mut bytes)?;
-        Ok(i512::from_le_bytes(bytes))
-    }
-}
-
-impl ConfinedEncode for i1024 {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let bytes = self.to_le_bytes();
-        e.write_all(&bytes)?;
-        Ok(bytes.len())
-    }
-}
-
-impl ConfinedDecode for i1024 {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut bytes = [0u8; 128];
-        d.read_exact(&mut bytes)?;
-        Ok(i1024::from_le_bytes(bytes))
-    }
-}
-
-impl ConfinedEncode for bf16 {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().confined_encode(e)
-    }
-}
-
-impl ConfinedDecode for bf16 {
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(bf16::from_bits(u16::confined_decode(d)?))
-    }
-}
-
-impl ConfinedEncode for ieee::Half {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_bits().to_le_bytes()[..2])?;
-        Ok(2)
-    }
-}
-
-impl ConfinedDecode for ieee::Half {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 32];
-        d.read_exact(&mut buf[..2])?;
-        Ok(ieee::Half::from_bits(u256::from_le_bytes(buf)))
-    }
-}
-
-impl ConfinedEncode for ieee::Quad {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_bits().to_le_bytes()[..16])?;
-        Ok(16)
-    }
-}
-
-impl ConfinedDecode for ieee::Oct {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 32];
-        d.read_exact(&mut buf[..])?;
-        Ok(ieee::Oct::from_bits(u256::from_le_bytes(buf)))
-    }
-}
-
-impl ConfinedEncode for ieee::Oct {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_bits().to_le_bytes()[..32])?;
-        Ok(32)
-    }
-}
-
-impl ConfinedDecode for ieee::Quad {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 32];
-        d.read_exact(&mut buf[..16])?;
-        Ok(ieee::Quad::from_bits(u256::from_le_bytes(buf)))
-    }
-}
-
-impl ConfinedEncode for ieee::X87DoubleExtended {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        e.write_all(&self.to_bits().to_le_bytes()[..10])?;
-        Ok(10)
-    }
-}
-
-impl ConfinedDecode for ieee::X87DoubleExtended {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; 32];
-        d.read_exact(&mut buf[..10])?;
-        Ok(ieee::X87DoubleExtended::from_bits(u256::from_le_bytes(buf)))
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let tiny_vec = ConfinedDecode::confined_decode(d)?;
+        Ok(Self::from_inner(tiny_vec))
     }
 }
 
@@ -229,42 +59,6 @@ mod test {
     use confined_encoding_test::test_encoding_roundtrip;
 
     use super::*;
-
-    #[test]
-    fn test_large_uints() {
-        test_encoding_roundtrip(&u256::from(0x_dead_cafe_4bad_beef_u64), [
-            0xef, 0xbe, 0xad, 0x4b, 0xfe, 0xca, 0xad, 0xde, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        ])
-        .unwrap();
-
-        test_encoding_roundtrip(&u512::from(0x_dead_cafe_4bad_beef_u64), [
-            0xef, 0xbe, 0xad, 0x4b, 0xfe, 0xca, 0xad, 0xde, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        ])
-        .unwrap();
-
-        test_encoding_roundtrip(&u1024::from(0x_dead_cafe_4bad_beef_u64), [
-            0xef, 0xbe, 0xad, 0x4b, 0xfe, 0xca, 0xad, 0xde, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        ])
-        .unwrap();
-    }
 
     #[test]
     fn test_encoding() {
