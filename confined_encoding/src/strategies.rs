@@ -46,7 +46,7 @@ where
     amplify::Holder<T, <T as Strategy>::Strategy>: ConfinedEncode,
 {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<usize, Error> {
         amplify::Holder::new(self.clone()).confined_encode(e)
     }
 }

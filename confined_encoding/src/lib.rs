@@ -77,7 +77,7 @@ mod bitcoin;
 mod bulletproofs;
 mod collections;
 mod primitives;
-pub mod strategies;
+pub(crate) mod strategies;
 
 use std::ops::Range;
 use std::string::FromUtf8Error;
@@ -87,6 +87,7 @@ use std::{fmt, io};
 /// module so others may use semantic convenience
 /// `confined_encode::ReadExt`
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
+use amplify::confinement::{Confined, MediumVec, SmallVec};
 use amplify::IoError;
 pub use strategies::Strategy;
 
@@ -102,14 +103,28 @@ pub trait ConfinedEncode {
     /// Encode with the given [`std::io::Write`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error>;
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error>;
 
-    /// Serializes data as a byte array using
-    /// [`ConfinedEncode::confined_encode`] function
-    fn confined_serialize(&self) -> Result<Vec<u8>, Error> {
-        let mut e = vec![];
-        let _ = self.confined_encode(&mut e)?;
+    /// Serializes data as a byte array not larger than 64kB (2^16-1 bytes)
+    /// using [`ConfinedEncode::confined_encode`] function
+    fn confined_serialize<const MIN: usize, const MAX: usize>(
+        &self,
+    ) -> Result<Confined<Vec<u8>, MIN, MAX>, Error> {
+        let mut e = Confined::new();
+        self.confined_encode(&mut e)?;
         Ok(e)
+    }
+
+    /// Serializes data as a byte array not larger than 64kB (2^16-1 bytes)
+    /// using [`ConfinedEncode::confined_encode`] function
+    fn confined_serialize_64kb(&self) -> Result<SmallVec<u8>, Error> {
+        self.confined_serialize()
+    }
+
+    /// Serializes data as a byte array not larger than 16MB (2^24-1 bytes)
+    /// using [`ConfinedEncode::confined_encode`] function
+    fn confined_serialize_16mb(&self) -> Result<MediumVec<u8>, Error> {
+        self.confined_serialize()
     }
 }
 
@@ -124,44 +139,38 @@ pub trait ConfinedEncode {
 pub trait ConfinedDecode: Sized {
     /// Decode with the given [`std::io::Read`] instance; must either
     /// construct an instance or return implementation-specific error type.
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error>;
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error>;
+
+    /// Tries to deserialize byte array into the current type using
+    /// [`ConfinedDecode::confined_decode`]. If there are some data remains in
+    /// the buffer once deserialization is completed, fails with
+    /// [`Error::DataNotEntirelyConsumed`].
+    fn confined_deserialize<const MIN: usize, const MAX: usize>(
+        data: &Confined<Vec<u8>, MIN, MAX>,
+    ) -> Result<Self, Error> {
+        let mut cursor = io::Cursor::new(data);
+        let me = Self::confined_decode(&mut cursor)?;
+        if !cursor.is_empty() {
+            Err(Error::DataNotEntirelyConsumed)
+        }
+        Ok(me)
+    }
+
+    /// Tries to deserialize byte array into the current type using
+    /// [`ConfinedDecode::confined_decode`]. If there are some data remains in
+    /// the buffer once deserialization is completed, fails with
+    /// [`Error::DataNotEntirelyConsumed`].
+    fn confined_deserialize_64bk(data: &SmallVec<u8>) -> Result<Self, Error> {
+        Self::confined_deserialize(data)
+    }
 
     /// Tries to deserialize byte array into the current type using
     /// [`ConfinedDecode::confined_decode`]. If there are some data remains in
     /// the buffer once deserialization is completed, fails with
     /// [`Error::DataNotEntirelyConsumed`]. Use `io::Cursor` over the buffer and
     /// [`ConfinedDecode::confined_decode`] to avoid such failures.
-    fn confined_deserialize(data: impl AsRef<[u8]>) -> Result<Self, Error> {
-        Self::confined_decode(data.as_ref())
-    }
-}
-
-/// Convenience method for strict encoding of data structures implementing
-/// [`ConfinedEncode`] into a byte vector.
-pub fn confined_serialize<T>(data: &T) -> Result<Vec<u8>, Error>
-where
-    T: ConfinedEncode,
-{
-    let mut encoder = io::Cursor::new(vec![]);
-    data.confined_encode(&mut encoder)?;
-    Ok(encoder.into_inner())
-}
-
-/// Convenience method for strict decoding of data structures implementing
-/// [`ConfinedDecode`] from any byt data source.
-pub fn confined_deserialize<T>(data: impl AsRef<[u8]>) -> Result<T, Error>
-where
-    T: ConfinedDecode,
-{
-    let mut decoder = io::Cursor::new(data.as_ref());
-    let rv = T::confined_decode(&mut decoder)?;
-    let consumed = decoder.position() as usize;
-
-    // Fail if data are not consumed entirely.
-    if consumed == data.as_ref().len() {
-        Ok(rv)
-    } else {
-        Err(Error::DataNotEntirelyConsumed)
+    fn confined_deserialize_16mb(data: &MediumVec<u8>) -> Result<Self, Error> {
+        Self::confined_deserialize(data)
     }
 }
 
@@ -177,6 +186,7 @@ pub enum Error {
     #[from]
     Utf8Conversion(std::str::Utf8Error),
 
+    // TODO: Use error types from the amplify::Confined
     /// A collection (slice, vector or other type) has more items ({0}) than
     /// 2^16 (i.e. maximum value which may be held by `u16` `size`
     /// representation according to the LNPBP-6 spec)
@@ -232,44 +242,5 @@ impl From<Error> for fmt::Error {
 impl From<FromUtf8Error> for Error {
     fn from(err: FromUtf8Error) -> Self {
         Error::Utf8Conversion(err.utf8_error())
-    }
-}
-
-/// Possible errors during TLV extension encoding and decoding process
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error)]
-#[display(doc_comments)]
-pub enum TlvError {
-    /// deterministic order of TLV records is broken: type {read} follows after
-    /// type {max}
-    Order {
-        /// TLV type id read at the current position
-        read: u64,
-        /// maximum value of TLV type id read previously
-        max: u64,
-    },
-
-    /// incorrect length of TLV record value: expected {expected}, but only
-    /// {actual} bytes read
-    Len {
-        /// TLV value length encoded in the TLV record
-        expected: u64,
-        /// Actual remaining length of the TLV stream
-        actual: u64,
-    },
-
-    /// repeated TLV record with id {0}
-    Repeated(u64),
-
-    /// an unknown even TLV type {0}
-    UnknownEvenType(u64),
-}
-
-// TODO: With 2.0 release add Tlv case to the Error enum
-impl From<TlvError> for Error {
-    fn from(err: TlvError) -> Self {
-        match err {
-            TlvError::Repeated(size) => Error::RepeatedValue(size.to_string()),
-            err => Error::DataIntegrityError(err.to_string()),
-        }
     }
 }
