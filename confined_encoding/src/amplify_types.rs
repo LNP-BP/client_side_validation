@@ -17,9 +17,29 @@ use std::io;
 use amplify::flags::FlagVec;
 use amplify::num::apfloat::{ieee, Float};
 use amplify::num::{i1024, i256, i512, u1024, u256, u512};
+use amplify::{Bytes32, Wrapper};
+use bitcoin_hashes::{sha256, Hash};
 use half::bf16;
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
+
+impl ConfinedEncode for Bytes32 {
+    fn confined_encode<E: io::Write>(
+        &self,
+        e: E,
+    ) -> Result<usize, crate::Error> {
+        // We use the same encoding as used by hashes - and ensure this by
+        // cross-converting with hash
+        sha256::Hash::from_inner(self.to_inner()).confined_encode(e)
+    }
+}
+
+impl ConfinedDecode for Bytes32 {
+    fn confined_decode<D: io::Read>(d: D) -> Result<Self, crate::Error> {
+        let hash = sha256::Hash::confined_decode(d)?;
+        Ok(Bytes32::from_inner(hash.into_inner()))
+    }
+}
 
 impl ConfinedEncode for FlagVec {
     #[inline]
@@ -136,8 +156,9 @@ impl ConfinedDecode for bf16 {
 }
 
 impl ConfinedEncode for ieee::Half {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes()[..2].confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_bits().to_le_bytes()[..2])?;
+        Ok(2)
     }
 }
 
@@ -150,8 +171,9 @@ impl ConfinedDecode for ieee::Half {
 }
 
 impl ConfinedEncode for ieee::Quad {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes()[..16].confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_bits().to_le_bytes()[..16])?;
+        Ok(16)
     }
 }
 
@@ -164,8 +186,9 @@ impl ConfinedDecode for ieee::Oct {
 }
 
 impl ConfinedEncode for ieee::Oct {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes().confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_bits().to_le_bytes()[..32])?;
+        Ok(32)
     }
 }
 
@@ -178,8 +201,9 @@ impl ConfinedDecode for ieee::Quad {
 }
 
 impl ConfinedEncode for ieee::X87DoubleExtended {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bits().to_le_bytes()[..10].confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(&self.to_bits().to_le_bytes()[..10])?;
+        Ok(10)
     }
 }
 
@@ -193,6 +217,7 @@ impl ConfinedDecode for ieee::X87DoubleExtended {
 
 #[cfg(test)]
 mod test {
+    use amplify::hex::FromHex;
     use confined_encoding_test::test_encoding_roundtrip;
 
     use super::*;
@@ -231,5 +256,30 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ])
         .unwrap();
+    }
+
+    #[test]
+    fn test_encoding() {
+        let s =
+            "a3401bcceb26201b55978ff705fecf7d8a0a03598ebeccf2a947030b91a0ff53";
+        let slice32 = Bytes32::from_hex(s).unwrap();
+        let ser = slice32.confined_serialize().unwrap();
+
+        let data = [
+            0xa3, 0x40, 0x1b, 0xcc, 0xeb, 0x26, 0x20, 0x1b, 0x55, 0x97, 0x8f,
+            0xf7, 0x05, 0xfe, 0xcf, 0x7d, 0x8a, 0x0a, 0x03, 0x59, 0x8e, 0xbe,
+            0xcc, 0xf2, 0xa9, 0x47, 0x03, 0x0b, 0x91, 0xa0, 0xff, 0x53,
+        ];
+
+        assert_eq!(ser.len(), 32);
+        assert_eq!(&ser, &data);
+        assert_eq!(Bytes32::confined_deserialize(&ser), Ok(slice32));
+
+        assert_eq!(Bytes32::from_slice(data), Some(slice32));
+        assert_eq!(Bytes32::from_slice(&data[..30]), None);
+        assert_eq!(&slice32.to_vec(), &data);
+        assert_eq!(&slice32.as_inner()[..], &data);
+        assert_eq!(slice32.to_inner(), data);
+        assert_eq!(slice32.into_inner(), data);
     }
 }

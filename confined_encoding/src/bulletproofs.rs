@@ -39,7 +39,9 @@ impl ConfinedDecode for secp256k1zkp::Error {
 impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
     #[inline]
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self[..])?)
+        let len = self[..].len();
+        e.write_all(&self[..])?;
+        Ok(len)
     }
 }
 
@@ -54,30 +56,30 @@ impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
 
 impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.proof[..self.plen].as_ref().confined_encode(e)
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let len = (self.plen as u16).confined_encode(&mut e)?;
+        e.write_all(&self.proof[..self.plen])?;
+        Ok(len + self.plen)
     }
 }
 
 impl ConfinedDecode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         use secp256k1zkp::constants::MAX_PROOF_SIZE;
-        let data = Vec::<u8>::confined_decode(d)?;
-        match data.len() {
-            len if len < MAX_PROOF_SIZE => {
-                let mut buf = [0; MAX_PROOF_SIZE];
-                buf[..len].copy_from_slice(&data);
-                Ok(Self {
-                    proof: buf,
-                    plen: len,
-                })
-            }
-            invalid_len => Err(Error::DataIntegrityError(format!(
+        let len = u16::confined_decode(&mut d)? as usize;
+        if len as usize >= MAX_PROOF_SIZE {
+            return Err(Error::DataIntegrityError(format!(
                 "Wrong bulletproof data size: expected no more than {}, got {}",
-                MAX_PROOF_SIZE, invalid_len
-            ))),
+                MAX_PROOF_SIZE, len
+            )));
         }
+        let mut buf = [0; MAX_PROOF_SIZE];
+        d.read_exact(&mut buf)?;
+        Ok(Self {
+            proof: buf,
+            plen: len,
+        })
     }
 }
 

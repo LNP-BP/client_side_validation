@@ -12,140 +12,15 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::io;
-use std::io::{Read, Write};
-use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+
+use amplify::confinement::{
+    SmallOrdMap, SmallOrdSet, SmallVec, TinyString, TinyVec,
+};
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
-
-/// In terms of strict encoding, ranges are encoded as a tuples of two values:
-/// start and end.
-impl<T> ConfinedEncode for Range<T>
-where
-    T: ConfinedEncode,
-{
-    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.start.confined_encode(&mut e)?
-            + self.end.confined_encode(&mut e)?)
-    }
-}
-
-/// In terms of strict decoding, ranges are represented as a tuples of two
-/// values: start and end.
-impl<T> ConfinedDecode for Range<T>
-where
-    T: ConfinedDecode,
-{
-    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
-        Ok(Range {
-            start: T::confined_decode(&mut d)?,
-            end: T::confined_decode(&mut d)?,
-        })
-    }
-}
-
-/// In terms of strict encoding, inclusive ranges are encoded as a tuples of two
-/// values: start and end.
-impl<T> ConfinedEncode for RangeInclusive<T>
-where
-    T: ConfinedEncode,
-{
-    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(self.start().confined_encode(&mut e)?
-            + self.end().confined_encode(&mut e)?)
-    }
-}
-
-/// In terms of strict decoding, inclusive ranges are represented as a tuples of
-/// two values: start and end.
-impl<T> ConfinedDecode for RangeInclusive<T>
-where
-    T: ConfinedDecode,
-{
-    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
-        Ok(RangeInclusive::new(
-            T::confined_decode(&mut d)?,
-            T::confined_decode(&mut d)?,
-        ))
-    }
-}
-
-/// In terms of strict encoding, partial ranges are encoded as a single value.
-impl<T> ConfinedEncode for RangeFrom<T>
-where
-    T: ConfinedEncode,
-{
-    #[inline]
-    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.start.confined_encode(&mut e)
-    }
-}
-
-/// In terms of strict decoding, partial ranges are represented as a single
-/// value.
-impl<T> ConfinedDecode for RangeFrom<T>
-where
-    T: ConfinedDecode,
-{
-    #[inline]
-    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
-        Ok(RangeFrom {
-            start: T::confined_decode(&mut d)?,
-        })
-    }
-}
-
-/// In terms of strict encoding, partial ranges are encoded as a single value.
-impl<T> ConfinedEncode for RangeTo<T>
-where
-    T: ConfinedEncode,
-{
-    #[inline]
-    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.end.confined_encode(&mut e)
-    }
-}
-
-/// In terms of strict decoding, partial ranges are represented as a single
-/// value.
-impl<T> ConfinedDecode for RangeTo<T>
-where
-    T: ConfinedDecode,
-{
-    #[inline]
-    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
-        Ok(RangeTo {
-            end: T::confined_decode(&mut d)?,
-        })
-    }
-}
-
-/// In terms of strict encoding, partial ranges are encoded as a single value.
-impl<T> ConfinedEncode for RangeToInclusive<T>
-where
-    T: ConfinedEncode,
-{
-    #[inline]
-    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
-        self.end.confined_encode(&mut e)
-    }
-}
-
-/// In terms of strict decoding, partial ranges are represented as a single
-/// value.
-impl<T> ConfinedDecode for RangeToInclusive<T>
-where
-    T: ConfinedDecode,
-{
-    #[inline]
-    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
-        Ok(RangeToInclusive {
-            end: T::confined_decode(&mut d)?,
-        })
-    }
-}
 
 /// In terms of strict encoding, `Option` (optional values) are  
 /// represented by a *significator byte*, which MUST be either `0` (for no
@@ -181,58 +56,77 @@ where
     }
 }
 
-/// In terms of strict encoding, a slice is stored in form of
-/// usize-encoded length (see `ConfinedEncode` implementation for `usize`
-/// type for encoding platform-independent constant-length
-/// encoding rules) followed by a consequently-encoded vec items,
-/// according to their type.
-impl<T> ConfinedEncode for [T]
+impl ConfinedEncode for TinyString {
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        e.write_all(self.as_bytes())?;
+        Ok(1 + self.len())
+    }
+}
+
+impl ConfinedDecode for TinyString {
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u8::confined_decode(&mut d)?;
+        let mut data = Vec::<u8>::with_capacity(len as usize);
+        d.read_exact(&mut data)?;
+        let s = String::from_utf8(data)?;
+        Ok(
+            TinyString::try_from(s)
+                .expect("amplify::TinyString type is broken"),
+        )
+    }
+}
+
+impl<T> ConfinedEncode for TinyVec<T>
 where
     T: ConfinedEncode,
 {
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
-        // We handle oversize problems at the level of `usize` value
-        // serializaton
-        let mut encoded = len.confined_encode(&mut e)?;
-        for item in self {
-            encoded += item.confined_encode(&mut e)?;
+        let mut len = self.len_u8().confined_encode(&mut e)?;
+        for elem in self.iter() {
+            len += elem.confined_encode(&mut e)?;
         }
-        Ok(encoded)
+        Ok(len)
     }
 }
 
-/// In terms of strict encoding, `Vec` is stored in form of
-/// usize-encoded length (see `ConfinedEncode` implementation for `usize`
-/// type for encoding platform-independent constant-length
-/// encoding rules) followed by a consequently-encoded vec items,
-/// according to their type.
-impl<T> ConfinedEncode for Vec<T>
-where
-    T: ConfinedEncode,
-{
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_slice().confined_encode(e)
-    }
-}
-
-/// In terms of strict encoding, `Vec` is stored in form of
-/// usize-encoded length (see `ConfinedEncode` implementation for `usize`
-/// type for encoding platform-independent constant-length
-/// encoding rules) followed by a consequently-encoded vec items,
-/// according to their type.
-///
-/// An attempt to encode `Vec` with more items than can fit in `usize`
-/// encoding rules will result in `Error::ExceedMaxItems`.
-impl<T> ConfinedDecode for Vec<T>
+impl<T> ConfinedDecode for TinyVec<T>
 where
     T: ConfinedDecode,
 {
     fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::confined_decode(&mut d)?;
-        let mut data = Vec::<T>::with_capacity(len as usize);
+        let len = u8::confined_decode(&mut d)?;
+        let mut data = TinyVec::<T>::with_capacity(len as usize);
         for _ in 0..len {
-            data.push(T::confined_decode(&mut d)?);
+            data.push(T::confined_decode(&mut d)?)
+                .expect("TinyVec must have up to 255 items");
+        }
+        Ok(data)
+    }
+}
+
+impl<T> ConfinedEncode for SmallVec<T>
+where
+    T: ConfinedEncode,
+{
+    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
+        let mut len = self.len_u16().confined_encode(&mut e)?;
+        for elem in self.iter() {
+            len += elem.confined_encode(&mut e)?;
+        }
+        Ok(len)
+    }
+}
+
+impl<T> ConfinedDecode for SmallVec<T>
+where
+    T: ConfinedDecode,
+{
+    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
+        let len = u16::confined_decode(&mut d)?;
+        let mut data = SmallVec::<T>::with_capacity(len as usize);
+        for _ in 0..len {
+            data.push(T::confined_decode(&mut d)?)
+                .expect("SmallVec must have up to 2^16-1 items");
         }
         Ok(data)
     }
@@ -243,19 +137,16 @@ where
 /// NB: Array members must are ordered with the sort operation, so type
 /// `T` must implement `Ord` trait in such a way that it produces
 /// deterministically-sorted result
-impl<T> ConfinedEncode for BTreeSet<T>
+impl<T> ConfinedEncode for SmallOrdSet<T>
 where
-    T: ConfinedEncode + Eq + Ord + Debug,
+    T: ConfinedEncode + Eq + Ord,
 {
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
-        let mut encoded = len.confined_encode(&mut e)?;
-        let mut vec: Vec<&T> = self.iter().collect();
-        vec.sort();
-        for item in vec {
-            encoded += item.confined_encode(&mut e)?;
+        let mut len = self.len_u16().confined_encode(&mut e)?;
+        for elem in self.iter() {
+            len += elem.confined_encode(&mut e)?;
         }
-        Ok(encoded)
+        Ok(len)
     }
 }
 
@@ -263,13 +154,13 @@ where
 /// `BTreeSet` type is performed alike `Vec` decoding with the only
 /// exception: if the repeated value met a [Error::RepeatedValue] is
 /// returned.
-impl<T> ConfinedDecode for BTreeSet<T>
+impl<T> ConfinedDecode for SmallOrdSet<T>
 where
     T: ConfinedDecode + Eq + Ord + Debug,
 {
     fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::confined_decode(&mut d)?;
-        let mut data = BTreeSet::<T>::new();
+        let len = u16::confined_decode(&mut d)?;
+        let mut data = SmallOrdSet::<T>::new();
         for _ in 0..len {
             let val = T::confined_decode(&mut d)?;
             if let Some(max) = data.iter().max() {
@@ -285,7 +176,8 @@ where
             if data.contains(&val) {
                 return Err(Error::RepeatedValue(format!("{:?}", val)));
             }
-            data.insert(val);
+            data.push(val)
+                .expect("SmallOrdSet must have up to 2^16-1 items");
         }
         Ok(data)
     }
@@ -300,20 +192,18 @@ where
 /// Strict encoding of the `BTreeMap<usize, T>` type is performed
 /// by converting into a fixed-order `Vec<T>` and serializing it according
 /// to the `Vec` strict encoding rules.
-impl<K, V> ConfinedEncode for BTreeMap<K, V>
+impl<K, V> ConfinedEncode for SmallOrdMap<K, V>
 where
-    K: ConfinedEncode + Ord + Clone,
-    V: ConfinedEncode + Clone,
+    K: ConfinedEncode + Ord + Hash,
+    V: ConfinedEncode,
 {
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
-        let encoded = len.confined_encode(&mut e)?;
-
-        self.iter().try_fold(encoded, |mut acc, (key, val)| {
-            acc += key.confined_encode(&mut e)?;
-            acc += val.confined_encode(&mut e)?;
-            Ok(acc)
-        })
+        let mut len = self.len_u16().confined_encode(&mut e)?;
+        for (key, val) in self.iter() {
+            len += key.confined_encode(&mut e)?;
+            len += val.confined_encode(&mut e)?;
+        }
+        Ok(len)
     }
 }
 
@@ -326,14 +216,14 @@ where
 /// Strict encoding of the `BTreeMap<usize, T>` type is performed
 /// by converting into a fixed-order `Vec<T>` and serializing it according
 /// to the `Vec` strict encoding rules.
-impl<K, V> ConfinedDecode for BTreeMap<K, V>
+impl<K, V> ConfinedDecode for SmallOrdMap<K, V>
 where
-    K: ConfinedDecode + Ord + Clone + Debug,
-    V: ConfinedDecode + Clone,
+    K: ConfinedDecode + Ord + Hash + Debug,
+    V: ConfinedDecode,
 {
     fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::confined_decode(&mut d)?;
-        let mut map = BTreeMap::<K, V>::new();
+        let len = u16::confined_decode(&mut d)?;
+        let mut map = SmallOrdMap::<K, V>::new();
         for _ in 0..len {
             let key = K::confined_decode(&mut d)?;
             let val = V::confined_decode(&mut d)?;
@@ -350,7 +240,8 @@ where
             if map.contains_key(&key) {
                 return Err(Error::RepeatedValue(format!("{:?}", key)));
             }
-            map.insert(key, val);
+            map.insert(key, val)
+                .expect("SmallOrdMap must have up to 2^16-1 items");
         }
         Ok(map)
     }

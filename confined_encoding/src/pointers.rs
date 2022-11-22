@@ -20,17 +20,6 @@ use std::sync::Arc;
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
 
-impl ConfinedEncode for &[u8] {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let mut len = self.len();
-        // We handle oversize problems at the level of `usize` value
-        // serializaton
-        len += len.confined_encode(&mut e)?;
-        e.write_all(self)?;
-        Ok(len)
-    }
-}
-
 impl<const LEN: usize> ConfinedEncode for [u8; LEN] {
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         if LEN > u16::MAX as usize {
@@ -49,21 +38,6 @@ impl<const LEN: usize> ConfinedDecode for [u8; LEN] {
         let mut ret = [0u8; LEN];
         d.read_exact(&mut ret)?;
         Ok(ret)
-    }
-}
-
-impl ConfinedEncode for Box<[u8]> {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        <[u8]>::borrow(self).confined_encode(e)
-    }
-}
-
-impl ConfinedDecode for Box<[u8]> {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let len = usize::confined_decode(&mut d)?;
-        let mut ret = vec![0u8; len];
-        d.read_exact(&mut ret)?;
-        Ok(ret.into_boxed_slice())
     }
 }
 
@@ -118,24 +92,6 @@ where
 {
     fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
         Ok(Arc::new(T::confined_decode(d)?))
-    }
-}
-
-impl ConfinedEncode for &str {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_bytes().confined_encode(e)
-    }
-}
-
-impl ConfinedEncode for String {
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_bytes().confined_encode(e)
-    }
-}
-
-impl ConfinedDecode for String {
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        String::from_utf8(Vec::<u8>::confined_decode(d)?).map_err(Error::from)
     }
 }
 

@@ -49,7 +49,7 @@ use std::fmt::Debug;
 use std::io::Write;
 
 use amplify::num::u256;
-use amplify::{Slice32, Wrapper};
+use amplify::{Bytes32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
 use confined_encoding::{ConfinedDecode, ConfinedEncode};
 
@@ -69,7 +69,7 @@ pub const MAX_TREE_DEPTH: u8 = 16;
 /// procedure.
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
-pub type ProtocolId = Slice32;
+pub type ProtocolId = Bytes32;
 
 /// Original message participating in multi-message commitment.
 ///

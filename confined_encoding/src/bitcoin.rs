@@ -19,9 +19,7 @@ use bitcoin::util::taproot::{
     FutureLeafVersion, LeafVersion, TapBranchHash, TapLeafHash, TapTweakHash,
     TaprootMerkleBranch,
 };
-use bitcoin::{
-    schnorr as bip340, secp256k1, OutPoint, Script, Txid, XOnlyPublicKey,
-};
+use bitcoin::{schnorr as bip340, secp256k1, OutPoint, Txid, XOnlyPublicKey};
 use bitcoin_hashes::sha256;
 
 use crate::{strategies, ConfinedDecode, ConfinedEncode, Error, Strategy};
@@ -77,15 +75,30 @@ impl ConfinedDecode for FutureLeafVersion {
 }
 
 impl ConfinedEncode for TaprootMerkleBranch {
-    fn confined_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
-        self.as_inner().confined_encode(e)
+    fn confined_encode<E: Write>(&self, mut e: E) -> Result<usize, Error> {
+        let vec = self.as_inner();
+        // Merkle branch always has length less than 128
+        let count: u8 = vec.len().try_into().map_err(|_| {
+            Error::DataIntegrityError(s!(
+                "Taproot Merkle branch with more than 128 elements"
+            ))
+        })?;
+        let mut len = count.confined_encode(&mut e)?;
+        for elem in vec {
+            len += elem.confined_encode(&mut e)?;
+        }
+        Ok(len)
     }
 }
 
 impl ConfinedDecode for TaprootMerkleBranch {
-    fn confined_decode<D: Read>(d: D) -> Result<Self, Error> {
-        let data = Vec::<sha256::Hash>::confined_decode(d)?;
-        TaprootMerkleBranch::try_from(data).map_err(|_| {
+    fn confined_decode<D: Read>(mut d: D) -> Result<Self, Error> {
+        let count = u8::confined_decode(&mut d)?;
+        let mut vec = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            vec.push(sha256::Hash::confined_decode(&mut d)?);
+        }
+        TaprootMerkleBranch::try_from(vec).map_err(|_| {
             Error::DataIntegrityError(s!(
                 "taproot merkle branch length exceeds 128 consensus limit"
             ))
@@ -96,7 +109,9 @@ impl ConfinedDecode for TaprootMerkleBranch {
 impl ConfinedEncode for secp256k1::PublicKey {
     #[inline]
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.serialize())?)
+        let data = self.serialize();
+        e.write_all(&data[..])?;
+        Ok(33)
     }
 }
 
@@ -123,7 +138,8 @@ impl ConfinedDecode for secp256k1::PublicKey {
 impl ConfinedEncode for XOnlyPublicKey {
     #[inline]
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.serialize())?)
+        e.write_all(&self.serialize())?;
+        Ok(32)
     }
 }
 
@@ -141,7 +157,8 @@ impl ConfinedDecode for XOnlyPublicKey {
 impl ConfinedEncode for bip340::TweakedPublicKey {
     #[inline]
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.serialize())?)
+        e.write_all(&self.serialize())?;
+        Ok(32)
     }
 }
 
@@ -169,20 +186,6 @@ impl ConfinedDecode for OutPoint {
     #[inline]
     fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         Ok(confined_decode_self!(d; txid, vout))
-    }
-}
-
-impl ConfinedEncode for Script {
-    #[inline]
-    fn confined_encode<E: io::Write>(&self, e: E) -> Result<usize, Error> {
-        self.to_bytes().confined_encode(e)
-    }
-}
-
-impl ConfinedDecode for Script {
-    #[inline]
-    fn confined_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        Ok(Self::from(Vec::<u8>::confined_decode(d)?))
     }
 }
 
@@ -426,67 +429,5 @@ pub(crate) mod test {
             0xb, 0x14, 0xe7, 0xf8, 0x87, 0xa4, 0xd1, 0x61, 0x78, 0x21,
         ];
         OutPoint::confined_decode(&OUTPOINT[..]).unwrap();
-    }
-
-    #[test]
-    fn test_encoding_script() {
-        static OP_RETURN: [u8; 40] = [
-            0x26, 0x0, 0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed, 0x20, 0x28, 0xf,
-            0x53, 0xf2, 0xd2, 0x16, 0x63, 0xca, 0xc8, 0x9e, 0x6b, 0xd2, 0xad,
-            0x19, 0xed, 0xba, 0xbb, 0x4, 0x8c, 0xda, 0x8, 0xe7, 0x3e, 0xd1,
-            0x9e, 0x92, 0x68, 0xd0, 0xaf, 0xea, 0x2a,
-        ];
-        static P2PK: [u8; 37] = [
-            0x23, 0x0, 0x21, 0x2, 0x34, 0xe6, 0xa7, 0x9c, 0x53, 0x59, 0xc6,
-            0x13, 0x76, 0x2d, 0x53, 0x7e, 0xe, 0x19, 0xd8, 0x6c, 0x77, 0xc1,
-            0x66, 0x6d, 0x8c, 0x9a, 0xb0, 0x50, 0xf2, 0x3a, 0xcd, 0x19, 0x8e,
-            0x97, 0xf9, 0x3e, 0xac,
-        ];
-
-        static P2PKH: [u8; 27] = [
-            0x19, 0x0, 0x76, 0xa9, 0x14, 0xaa, 0xca, 0x99, 0x1e, 0x29, 0x8a,
-            0xb8, 0x66, 0xab, 0x60, 0xff, 0x45, 0x22, 0x1b, 0x45, 0x8c, 0x70,
-            0x33, 0x36, 0x5a, 0x88, 0xac,
-        ];
-        static P2SH: [u8; 25] = [
-            0x17, 0x0, 0xa9, 0x14, 0x4d, 0xa3, 0x4a, 0xe8, 0x19, 0x9d, 0xbf,
-            0x68, 0x4f, 0xe9, 0x7a, 0xf8, 0x70, 0x3f, 0x12, 0xe9, 0xf7, 0xaa,
-            0xe6, 0x62, 0x87,
-        ];
-        static P2WPKH: [u8; 24] = [
-            0x16, 0x0, 0x0, 0x14, 0xaa, 0xca, 0x99, 0x1e, 0x29, 0x8a, 0xb8,
-            0x66, 0xab, 0x60, 0xff, 0x45, 0x22, 0x1b, 0x45, 0x8c, 0x70, 0x33,
-            0x36, 0x5a,
-        ];
-        static P2WSH: [u8; 36] = [
-            0x22, 0x0, 0x0, 0x20, 0x9d, 0x27, 0x71, 0x75, 0x73, 0x7f, 0xb5,
-            0x0, 0x41, 0xe7, 0x5f, 0x64, 0x1a, 0xcf, 0x94, 0xd1, 0xd, 0xf9,
-            0xb9, 0x72, 0x1d, 0xb8, 0xff, 0xfe, 0x87, 0x4a, 0xb5, 0x7f, 0x8f,
-            0xfb, 0x6, 0x2e,
-        ];
-
-        // OP_RETURN
-        let op_return: Script = test_vec_decoding_roundtrip(OP_RETURN).unwrap();
-        assert!(op_return.is_op_return());
-
-        // P2PK
-        let p2pk: Script = test_vec_decoding_roundtrip(P2PK).unwrap();
-        assert!(p2pk.is_p2pk());
-
-        //P2PKH
-        let p2pkh: Script = test_vec_decoding_roundtrip(P2PKH).unwrap();
-        assert!(p2pkh.is_p2pkh());
-
-        //P2SH
-        let p2sh: Script = test_vec_decoding_roundtrip(P2SH).unwrap();
-        assert!(p2sh.is_p2sh());
-
-        //P2WPKH
-        let p2wpkh: Script = test_vec_decoding_roundtrip(P2WPKH).unwrap();
-        assert!(p2wpkh.is_v0_p2wpkh());
-
-        //P2WSH
-        let p2wsh: Script = test_vec_decoding_roundtrip(P2WSH).unwrap();
-        assert!(p2wsh.is_v0_p2wsh());
     }
 }

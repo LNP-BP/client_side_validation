@@ -229,22 +229,6 @@ impl ConfinedDecode for i128 {
     }
 }
 
-impl ConfinedEncode for usize {
-    fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        if *self > u16::MAX as usize {
-            return Err(Error::ExceedMaxItems(*self));
-        }
-        let size = *self as u16;
-        size.confined_encode(&mut e)
-    }
-}
-
-impl ConfinedDecode for usize {
-    fn confined_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        u16::confined_decode(&mut d).map(|val| val as usize)
-    }
-}
-
 impl ConfinedEncode for f32 {
     fn confined_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
         e.write_all(&self.to_le_bytes())?;

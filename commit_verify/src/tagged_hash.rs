@@ -16,7 +16,7 @@
 
 #![allow(clippy::needless_borrow)] // Due to amplify_derive::Display bug
 
-use amplify::{Slice32, Wrapper};
+use amplify::{Bytes32, Wrapper};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{hex, sha256, sha256t, Error, Hash, HashEngine};
 
@@ -35,7 +35,7 @@ use bitcoin_hashes::{hex, sha256, sha256t, Error, Hash, HashEngine};
 )]
 #[display(LowerHex)]
 #[wrapper(FromStr, LowerHex, UpperHex)]
-pub struct Midstate(Slice32);
+pub struct Midstate(Bytes32);
 
 impl Midstate {
     /// Constructs tagged hash midstate for a given tag data

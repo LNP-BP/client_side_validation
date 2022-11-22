@@ -79,7 +79,6 @@ mod bulletproofs;
 mod collections;
 mod pointers;
 mod primitives;
-mod slice32;
 pub mod strategies;
 
 use std::ops::Range;
@@ -174,7 +173,6 @@ where
 pub enum Error {
     /// I/O error during data strict encoding
     #[from(io::Error)]
-    #[from(io::ErrorKind)]
     Io(IoError),
 
     /// String data are not in valid UTF-8 encoding
