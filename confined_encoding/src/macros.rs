@@ -42,13 +42,21 @@ macro_rules! confined_decode_self {
 /// Implements confined encoding for a hash type
 macro_rules! hash_encoding {
     ($ty:ty) => {
-        impl ConfinedEncode for $ty {
-            fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
-                encode(self, e)
+        impl $crate::ConfinedEncode for $ty {
+            fn confined_encode(
+                &self,
+                e: &mut impl ::std::io::Write,
+            ) -> Result<(), $crate::Error> {
+                let slice = &self[..];
+                debug_assert_eq!(slice.len(), Self::LEN);
+                e.write_all(slice)?;
+                Ok(())
             }
         }
-        impl ConfinedDecode for $ty {
-            fn confined_decode(d: &mut impl Read) -> Result<Self, Error> {
+        impl $crate::ConfinedDecode for $ty {
+            fn confined_decode(
+                d: &mut impl ::std::io::Read,
+            ) -> Result<Self, $crate::Error> {
                 let mut buf = [0u8; <$ty as Hash>::LEN];
                 d.read_exact(&mut buf)?;
                 Ok(<$ty as Hash>::from_slice(&buf)

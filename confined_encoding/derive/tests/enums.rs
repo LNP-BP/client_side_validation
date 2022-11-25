@@ -19,6 +19,7 @@ extern crate confined_encoding_test;
 
 mod common;
 
+use amplify::confinement::SmallVec;
 use common::Result;
 use confined_encoding_test::test_encoding_roundtrip;
 
@@ -26,7 +27,7 @@ use confined_encoding_test::test_encoding_roundtrip;
 fn enum_associated_types() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(ConfinedEncode, ConfinedDecode)]
-    struct Heap(Box<[u8]>);
+    struct Heap(SmallVec<u8>);
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(ConfinedEncode, ConfinedDecode)]
@@ -42,7 +43,7 @@ fn enum_associated_types() -> Result {
         Seventh,
     }
 
-    let heap = Heap(Box::from([0xA1, 0xA2]));
+    let heap = Heap(small_vec![0xA1, 0xA2]);
     test_encoding_roundtrip(&Hi::First(0xC8), [0x00, 0xC8])?;
     test_encoding_roundtrip(&Hi::Second(heap.clone()), [
         0x01, 0x02, 0x00, 0xA1, 0xA2,

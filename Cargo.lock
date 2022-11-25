@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "confined_encoding"
-version = "0.9.0-alpha.2"
+version = "0.9.0-alpha.3"
 dependencies = [
  "amplify 4.0.0-beta.1",
  "bitcoin",
@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "confined_encoding_derive"
-version = "0.9.0-alpha.1"
+version = "0.9.0-alpha.2"
 dependencies = [
  "amplify 4.0.0-beta.1",
  "amplify_syn",
@@ -307,9 +307,9 @@ dependencies = [
 
 [[package]]
 name = "encoding_derive_helpers"
-version = "0.8.1"
+version = "2.0.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8a2293d9a54744b73b753fad2e3c16295345504dc230696ee8aa5dbfd276ab4"
+checksum = "3d7db69de4bc7f3898b17f84451a7e4d55223990abc48580e3231c0abc9108ba"
 dependencies = [
  "amplify 3.13.0",
  "proc-macro2",

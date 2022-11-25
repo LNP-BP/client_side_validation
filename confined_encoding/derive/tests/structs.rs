@@ -19,6 +19,7 @@ extern crate confined_encoding_test;
 
 mod common;
 
+use amplify::confinement::TinyString;
 use common::Result;
 use confined_encoding_test::test_encoding_roundtrip;
 
@@ -26,9 +27,9 @@ use confined_encoding_test::test_encoding_roundtrip;
 fn struct_numbered_fields() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(ConfinedEncode, ConfinedDecode)]
-    struct NumberedFields(u8, String);
+    struct NumberedFields(u8, TinyString);
 
-    let fields = NumberedFields(7, s!("some"));
+    let fields = NumberedFields(7, TinyString::try_from(s!("some")).unwrap());
     test_encoding_roundtrip(&fields, [
         0x07, 0x04, 0x00, b's', b'o', b'm', b'e',
     ])?;

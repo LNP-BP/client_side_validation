@@ -19,6 +19,7 @@ extern crate confined_encoding_test;
 
 mod common;
 
+use amplify::confinement::TinyString;
 use common::{compile_test, Error, Result};
 use confined_encoding::{ConfinedDecode, ConfinedEncode};
 use confined_encoding_test::test_encoding_roundtrip;
@@ -58,53 +59,11 @@ fn unit_struct() -> Result {
 }
 
 #[test]
-fn bytes() -> Result {
-    let data = [
-        0x10, 0x00, 0xCA, 0xFE, 0xDE, 0xAD, 0xBE, 0xD8, 0x12, 0x34, 0x56, 0x78,
-        0x9A, 0xBC, 0xDE, 0xFF, 0x00, 0x01,
-    ];
-
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(ConfinedEncode, ConfinedDecode)]
-    struct Vect {
-        data: Vec<u8>,
-    }
-    test_encoding_roundtrip(
-        &Vect {
-            data: data[2..].to_vec(),
-        },
-        data,
-    )?;
-
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(ConfinedEncode)]
-    struct Slice<'a> {
-        slice: &'a [u8],
-    }
-    assert_eq!(&Slice { slice: &data[2..] }.confined_serialize()?, &data);
-
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(ConfinedEncode, ConfinedDecode)]
-    struct Array {
-        bytes: [u8; 16],
-    }
-    let mut bytes = [0u8; 16];
-    bytes.copy_from_slice(&data[2..]);
-    test_encoding_roundtrip(&Array { bytes }, &data[2..])?;
-
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(ConfinedEncode, ConfinedDecode)]
-    struct Heap(Box<[u8]>);
-    test_encoding_roundtrip(&Heap(Box::from(&data[2..])), data)
-        .map_err(Error::from)
-}
-
-#[test]
 fn skipping() -> Result {
     #[derive(Clone, PartialEq, Eq, Debug, Default)]
     #[derive(ConfinedEncode, ConfinedDecode)]
     struct Skipping {
-        pub data: String,
+        pub data: TinyString,
 
         // This will initialize the field upon decoding with Option::default()
         // value
@@ -114,7 +73,7 @@ fn skipping() -> Result {
 
     test_encoding_roundtrip(
         &Skipping {
-            data: s!("String"),
+            data: TinyString::try_from(s!("String")).unwrap(),
             ephemeral: false,
         },
         [0x06, 0x00, b'S', b't', b'r', b'i', b'n', b'g'],
@@ -129,7 +88,7 @@ fn custom_crate() {
     #[derive(ConfinedEncode, ConfinedDecode)]
     #[confined_encoding(crate = custom_crate)]
     struct One {
-        a: Vec<u8>,
+        a: u8,
     }
 }
 

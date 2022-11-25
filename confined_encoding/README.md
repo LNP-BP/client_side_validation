@@ -1,4 +1,4 @@
-# Strict encoding library
+# Confined encoding library
 
 ![Build](https://github.com/LNP-BP/client_side_validation/workflows/Build/badge.svg)
 ![Tests](https://github.com/LNP-BP/client_side_validation/workflows/Tests/badge.svg)
@@ -10,21 +10,15 @@
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/confined_encoding)](./LICENSE)
 
-Deterministic binary serialization for client-side-validation.
+Deterministic binary serialization for consenus-critical applications in 
+client-side-validation.
 
-This library implements **strict encoding** standard, defined by
+This library is based on **strict encoding** standard, defined by
 [LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md).
 Strict encoding is a binary conservative encoding extensively used in
 client-side-validation for deterministic portable (platform-independent)
 serialization of data with a known internal data structure. Strict encoding
 is a schema-less encoding.
-
-As a part of strict encoding, crate also includes implementation of
-network address **uniform encoding** standard
-([LNPBP-42](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md)),
-which allows representation of any kind of network address as a fixed-size
-byte string occupying 37 bytes. This standard is used for the strict
-encoding of networking addresses.
 
 Client-side-validation is a paradigm for distributed computing, based on top of
 proof-of-publication/commitment medium layer, which may be a bitcoin blockchain
@@ -33,10 +27,9 @@ or other type of distributed consensus system.
 The development of the library is supported by 
 [LNP/BP Standards Association](https://lnp-bp.org).
 
-The library is designed after Peter Todd concepts of proofmarshall and 
-serialization principles for client-side-validated data and Dr Maxim Orlovsky 
-idea of universal network encodings. Both were shaped into the standards and 
-implemented as a part of this library by Dr Maxim Orlovsky.
+The library is designed after Peter Todd ideas for client-side-validated data 
+serialization by Dr Maxim Orlovsky, who shaped the ideas into the standards and 
+implemented them as a part of this library.
 
 
 ## Documentation
@@ -55,7 +48,7 @@ To use the library, you just need to reference a latest version, in
 `[dependencies]` section of your project `Cargo.toml`.
 
 ```toml
-confined_encoding = "1.3"
+confined_encoding = "2.0"
 ```
 
 If you are using other client-side-validation libraries, consider importing
@@ -68,21 +61,7 @@ for client-side-validation.
 
 Library exports derivation macros `#[derive(ConfinedEncode, ConfinedDecode)]`, 
 which are a part of [`confined_encoding_derive`] sub-crate and controlled by a 
-default feature `derive`. Finally, it implements strict encoding traits for main
-data types defined by rust standard library and frequently used crates; the
-latter increases the number of dependencies and thus can be controlled with
-feature flags:
-- `chrono` (used by default): date & time types from `chrono` crate
-- `miniscript`: types defined in bitcoin Miniscript
-- `crypto`: non-bitcoin cryptographic primitives, which include Ed25519
-  curve, X25519 signatures from `ed25519-dalek` library and pedersen
-  commitments + bulletproofs from `grin_secp256k1zkp` library. Encodings for
-  other cryptography-related types, such as Secp256k1 and hashes, are always
-  included as a part of the library - see NB below.
-
-This crate requires `bitcoin` as an upstream dependency since many of
-strict-encoded formats are standardized as using *bitcoin consensus
-encoding*.
+default feature `derive`.
 
 
 ## Contributing

@@ -291,17 +291,17 @@ pub mod test {
         let o1: Option<u8> = None;
         let o2: Option<u64> = None;
 
-        let two_zero_bytes = &vec![0u8][..];
+        let two_zero_bytes = &small_vec![0u8][..];
 
         assert_eq!(confined_serialize(&o1).unwrap(), two_zero_bytes);
         assert_eq!(confined_serialize(&o2).unwrap(), two_zero_bytes);
 
         assert_eq!(
-            Option::<u8>::confined_decode(two_zero_bytes).unwrap(),
+            Option::<u8>::confined_deserialize(two_zero_bytes).unwrap(),
             None
         );
         assert_eq!(
-            Option::<u64>::confined_decode(two_zero_bytes).unwrap(),
+            Option::<u64>::confined_deserialize(two_zero_bytes).unwrap(),
             None
         );
     }

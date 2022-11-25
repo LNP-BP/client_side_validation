@@ -77,6 +77,7 @@ extern crate amplify;
 
 use std::fmt::Debug;
 
+use amplify::confinement::SmallVec;
 use confined_encoding::{ConfinedDecode, ConfinedEncode, Error};
 
 /// Failures happening during strict encoding tests of enum encodings.
@@ -480,19 +481,6 @@ where
         #[doc = "Byte string which failed to decode"] Vec<u8>,
     ),
 
-    /// Failure of the strict encode implementation: encoder reports incorrect
-    /// length of the serialized data
-    #[display(
-        "Encoder reported incorrect length of the serialized data: \
-         `{returned}` instead of `{actual}`"
-    )]
-    EncoderReturnedWrongLength {
-        /// Actual length of the serialized data
-        actual: usize,
-        /// Incorrect length returned by the encoder
-        returned: usize,
-    },
-
     /// Test case failure representing mismatch between object produced
     /// by decoding from the originally encoded object
     #[display(
@@ -520,7 +508,7 @@ where
         original: Vec<u8>,
         /// Byte string produced by encoding object, decoded from the test
         /// vector
-        transcoded: Vec<u8>,
+        transcoded: SmallVec<u8>,
         /// Object decoded from the test vector
         object: T,
     },
@@ -562,24 +550,17 @@ where
 #[inline]
 pub fn test_object_encoding_roundtrip<T>(
     object: &T,
-) -> Result<Vec<u8>, DataEncodingTestFailure<T>>
+) -> Result<SmallVec<u8>, DataEncodingTestFailure<T>>
 where
     T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
-    let mut encoded_object: Vec<u8> = vec![];
-    let written = object
+    let mut encoded_object = SmallVec::new();
+    object
         .confined_encode(&mut encoded_object)
         .map_err(DataEncodingTestFailure::EncoderFailure)?;
-    let len = encoded_object.len();
-    if written != len {
-        return Err(DataEncodingTestFailure::EncoderReturnedWrongLength {
-            actual: len,
-            returned: written,
-        });
-    }
     let decoded_object =
-        T::confined_decode(&encoded_object[..]).map_err(|e| {
-            DataEncodingTestFailure::DecoderFailure(e, encoded_object.clone())
+        T::confined_deserialize(&encoded_object).map_err(|e| {
+            DataEncodingTestFailure::DecoderFailure(e, encoded_object.to_vec())
         })?;
     if &decoded_object != object {
         return Err(
@@ -629,17 +610,16 @@ where
 /// );
 /// ```
 pub fn test_vec_decoding_roundtrip<T>(
-    test_vec: impl AsRef<[u8]>,
+    test_vec: &SmallVec<u8>,
 ) -> Result<T, DataEncodingTestFailure<T>>
 where
     T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
-    let test_vec = test_vec.as_ref();
-    let decoded_object = T::confined_decode(test_vec).map_err(|e| {
+    let decoded_object = T::confined_deserialize(&test_vec).map_err(|e| {
         DataEncodingTestFailure::DecoderFailure(e, test_vec.to_vec())
     })?;
     let encoded_object = test_object_encoding_roundtrip(&decoded_object)?;
-    if test_vec != encoded_object {
+    if test_vec != &encoded_object {
         return Err(
             DataEncodingTestFailure::TranscodedVecDiffersFromOriginal {
                 original: test_vec.to_vec(),
@@ -688,7 +668,8 @@ pub fn test_encoding_roundtrip<T>(
 where
     T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
-    let decoded_object = test_vec_decoding_roundtrip(test_vec)?;
+    let test_vec = SmallVec::try_from(test_vec.as_ref().to_vec()).unwrap();
+    let decoded_object = test_vec_decoding_roundtrip(&test_vec)?;
     if object != &decoded_object {
         return Err(
             DataEncodingTestFailure::TranscodedObjectDiffersFromOriginal {

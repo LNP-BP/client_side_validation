@@ -26,13 +26,6 @@ use bitcoin::{schnorr as bip340, secp256k1, OutPoint, Txid, XOnlyPublicKey};
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
 
-fn encode<H: Hash>(hash: &H, e: &mut impl Write) -> Result<(), Error> {
-    let slice = &hash[..];
-    debug_assert_eq!(slice.len(), H::LEN);
-    e.write_all(slice)?;
-    Ok(())
-}
-
 hash_encoding!(sha256::Hash);
 hash_encoding!(sha256d::Hash);
 hash_encoding!(sha512::Hash);
@@ -46,7 +39,10 @@ hash_encoding!(TapTweakHash);
 
 impl<T: sha256t::Tag> ConfinedEncode for sha256t::Hash<T> {
     fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
-        encode(self, e)
+        let slice = &self[..];
+        debug_assert_eq!(slice.len(), Self::LEN);
+        e.write_all(slice)?;
+        Ok(())
     }
 }
 
@@ -61,7 +57,10 @@ impl<T: sha256t::Tag> ConfinedDecode for sha256t::Hash<T> {
 
 impl<T: Hash> ConfinedEncode for hmac::Hmac<T> {
     fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
-        encode(self, e)
+        let slice = &self[..];
+        debug_assert_eq!(slice.len(), Self::LEN);
+        e.write_all(slice)?;
+        Ok(())
     }
 }
 
@@ -253,8 +252,9 @@ impl ConfinedDecode for bitcoin::Network {
 #[cfg(test)]
 pub(crate) mod test {
     use bitcoin::hashes::hex::FromHex;
-    use bitcoin::hashes::Hash;
-    use bitcoin_hashes::{hash160, hmac, ripemd160, sha256, sha256d, sha256t};
+    use bitcoin::hashes::{
+        hash160, hmac, ripemd160, sha256, sha256d, sha256t, Hash,
+    };
     use confined_encoding_test::*;
 
     use super::*;
