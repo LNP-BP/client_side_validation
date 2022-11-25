@@ -33,24 +33,6 @@ fn encode<H: Hash>(hash: &H, e: &mut impl Write) -> Result<(), Error> {
     Ok(())
 }
 
-macro_rules! hash_encoding {
-    ($ty:ty) => {
-        impl ConfinedEncode for $ty {
-            fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
-                encode(self, e)
-            }
-        }
-        impl ConfinedDecode for $ty {
-            fn confined_decode(d: &mut impl Read) -> Result<Self, Error> {
-                let mut buf = [0u8; <$ty as Hash>::LEN];
-                d.read_exact(&mut buf)?;
-                Ok(<$ty as Hash>::from_slice(&buf)
-                    .expect("bitcoin hashes inner structure is broken"))
-            }
-        }
-    };
-}
-
 hash_encoding!(sha256::Hash);
 hash_encoding!(sha256d::Hash);
 hash_encoding!(sha512::Hash);
@@ -176,9 +158,11 @@ impl ConfinedDecode for secp256k1::PublicKey {
         let mut buf = [0u8; secp256k1::constants::PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
         if buf[0] != 0x02 || buf[1] != 0x03 {
-            return Err(Error::DataIntegrityError(s!(
-                "invalid public key data: only compressed Secp256k1 public keys are allowed"
-            )));
+            return Err(Error::DataIntegrityError(s!("invalid public key \
+                                                     data: only \
+                                                     compressed Secp256k1 \
+                                                     public keys are \
+                                                     allowed")));
         }
         Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
@@ -422,22 +406,18 @@ pub(crate) mod test {
     #[test]
     fn test_encoding_network(
     ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
-        test_encoding_roundtrip(
-            &bitcoin::Network::Bitcoin,
-            [0xF9, 0xBE, 0xB4, 0xD9],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Testnet,
-            [0x0B, 0x11, 0x09, 0x07],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Signet,
-            [0x0A, 0x03, 0xCF, 0x40],
-        )?;
-        test_encoding_roundtrip(
-            &bitcoin::Network::Regtest,
-            [0xFA, 0xBF, 0xB5, 0xDA],
-        )
+        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, [
+            0xF9, 0xBE, 0xB4, 0xD9,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Testnet, [
+            0x0B, 0x11, 0x09, 0x07,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Signet, [
+            0x0A, 0x03, 0xCF, 0x40,
+        ])?;
+        test_encoding_roundtrip(&bitcoin::Network::Regtest, [
+            0xFA, 0xBF, 0xB5, 0xDA,
+        ])
     }
 
     #[test]
