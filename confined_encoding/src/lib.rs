@@ -87,7 +87,7 @@ use std::{fmt, io};
 /// `confined_encode::ReadExt`
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::confinement::{Confined, MediumVec, SmallVec};
-use amplify::IoError;
+use amplify::{ascii, confinement, IoError};
 
 /// Binary encoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications;
@@ -180,15 +180,18 @@ pub enum Error {
     #[from(io::Error)]
     Io(IoError),
 
-    /// String data are not in valid UTF-8 encoding
+    /// string data are not in valid UTF-8 encoding.\nDetails: {0}
     #[from]
-    Utf8Conversion(std::str::Utf8Error),
+    Utf8(std::str::Utf8Error),
 
-    // TODO: Use error types from the amplify::Confined
-    /// A collection (slice, vector or other type) has more items ({0}) than
-    /// 2^16 (i.e. maximum value which may be held by `u16` `size`
-    /// representation according to the LNPBP-6 spec)
-    ExceedMaxItems(usize),
+    /// string data are not in valid ASCII encoding.\nDetails: {0}
+    #[from]
+    Ascii(ascii::AsAsciiStrError),
+
+    /// Error in the collection confinement (see [`confinement`] module docs).
+    #[display(inner)]
+    #[from]
+    Confinement(confinement::Error),
 
     /// In terms of strict encoding, we interpret `Option` as a zero-length
     /// `Vec` (for `Optional::None`) or single-item `Vec` (for
@@ -196,29 +199,20 @@ pub enum Error {
     /// encoded non-0 or non-1 length Vec will result in
     /// `Error::WrongOptionalEncoding`.
     #[display(
-        "Invalid value {0} met as an optional type byte, which must be equal \
+        "invalid value {0} met as an optional type byte, which must be equal \
          to either 0 (no value) or 1"
     )]
     WrongOptionalEncoding(u8),
 
-    /// Enum `{0}` value does not fit into representation bit dimensions
-    EnumValueOverflow(&'static str),
-
-    /// An unsupported value `{0}` for enum `{0}` encountered during decode
+    /// unsupported value `{0}` for enum `{0}` encountered during decode
     /// operation
     EnumValueNotKnown(&'static str, usize),
 
-    /// The data are correct, however their structure indicate that they were
-    /// created with the future software version which has a functional absent
-    /// in the current implementation.
-    /// {0}
-    UnsupportedDataStructure(&'static str),
-
-    /// Decoding resulted in value `{2}` for type `{0}` that exceeds the
+    /// decoding resulted in value `{2}` for type `{0}` that exceeds the
     /// supported range {1:#?}
     ValueOutOfRange(&'static str, Range<u128>, u128),
 
-    /// A repeated value for `{0}` found during set collection deserialization
+    /// a repeated value for `{0}` found during set collection deserialization
     RepeatedValue(String),
 
     /// Returned by the convenience method [`ConfinedDecode::confined_decode`]
@@ -228,19 +222,21 @@ pub enum Error {
     )]
     DataNotEntirelyConsumed,
 
-    /// Data integrity problem during strict decoding operation: {0}
+    /// data integrity problem during strict decoding operation.\nDetails: {0}
     DataIntegrityError(String),
 }
 
 impl From<Error> for fmt::Error {
     #[inline]
-    fn from(_: Error) -> Self {
-        fmt::Error
-    }
+    fn from(_: Error) -> Self { fmt::Error }
 }
 
 impl From<FromUtf8Error> for Error {
-    fn from(err: FromUtf8Error) -> Self {
-        Error::Utf8Conversion(err.utf8_error())
+    fn from(err: FromUtf8Error) -> Self { Error::Utf8(err.utf8_error()) }
+}
+
+impl<O> From<ascii::FromAsciiError<O>> for Error {
+    fn from(err: ascii::FromAsciiError<O>) -> Self {
+        Error::Ascii(err.ascii_error())
     }
 }

@@ -241,11 +241,8 @@ impl ConfinedDecode for bitcoin::Network {
     #[inline]
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let magic = u32::confined_decode(d)?;
-        Self::from_magic(magic).ok_or(Error::ValueOutOfRange(
-            "bitcoin::Network",
-            0..0,
-            magic as u128,
-        ))
+        Self::from_magic(magic)
+            .ok_or(Error::EnumValueNotKnown("bitcoin::Network", magic as usize))
     }
 }
 
