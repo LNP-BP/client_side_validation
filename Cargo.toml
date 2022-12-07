@@ -21,6 +21,7 @@ path = "src/lib.rs"
 confined_encoding = { version = "0.9.0-alpha.1", path = "confined_encoding" }
 commit_verify = { version = "0.9.0-alpha.1", path = "./commit_verify" }
 single_use_seals = { version = "0.9.0-alpha.1", path = "./single_use_seals" }
+serde_crate = { package = "serde", version = "1", optional = true }
 
 [dev-dependencies]
 async-trait = "0.1.51"
@@ -30,7 +31,7 @@ default = []
 all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
-serde = ["commit_verify/serde"]
+serde = ["commit_verify/serde", "serde_crate"]
 bulletproofs = ["commit_verify/bulletproofs", "confined_encoding/bulletproofs"]
 
 [package.metadata.docs.rs]

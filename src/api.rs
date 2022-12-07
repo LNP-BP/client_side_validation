@@ -16,8 +16,6 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
 use std::ops::AddAssign;
 
-use confined_encoding::{ConfinedDecode, ConfinedEncode};
-
 /// Result of client-side validation operation
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[repr(u8)]
@@ -48,11 +46,24 @@ impl Display for Validity {
     }
 }
 
+#[cfg(not(feature = "serde"))]
+/// Marker trait for all types of validation log entries (failures, trust
+/// issues, warnings, info messages) contained within a [`ValidationReport`]
+/// produced during client-side-validation.
+pub trait ValidationLog: Clone + Eq + Hash + Debug + Display {}
+
+#[cfg(feature = "serde")]
 /// Marker trait for all types of validation log entries (failures, trust
 /// issues, warnings, info messages) contained within a [`ValidationReport`]
 /// produced during client-side-validation.
 pub trait ValidationLog:
-    Clone + Eq + Hash + Debug + Display + ConfinedEncode + ConfinedDecode
+    Clone
+    + Eq
+    + Hash
+    + Debug
+    + Display
+    + serde::Serialize
+    + for<'de> serde::Deserialize<'de>
 {
 }
 
@@ -85,18 +96,47 @@ pub trait ValidationReport {
     /// reports
     type Failure: ValidationFailure;
 
+    #[cfg(not(feature = "serde"))]
     /// Issues which does not render client-side-validated data invalid, but
     /// which should be reported to the user anyway
     type Warning: Clone + Eq + Hash + Debug + Display;
 
+    #[cfg(feature = "serde")]
+    /// Issues which does not render client-side-validated data invalid, but
+    /// which should be reported to the user anyway
+    type Warning: Clone
+        + Eq
+        + Hash
+        + Debug
+        + Display
+        + serde::Serialize
+        + for<'de> serde::Deserialize<'de>;
+
+    #[cfg(not(feature = "serde"))]
     /// Information reports about client-side-validation, which do not affect
     /// data safety or validity and may not be presented to the user
     type Info: Clone + Eq + Hash + Debug + Display;
+
+    #[cfg(feature = "serde")]
+    /// Information reports about client-side-validation, which do not affect
+    /// data safety or validity and may not be presented to the user
+    type Info: Clone
+        + Eq
+        + Hash
+        + Debug
+        + Display
+        + serde::Serialize
+        + for<'de> serde::Deserialize<'de>;
 }
 
 /// Client-side-validation status containing all reports from the validation
 /// process
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct Status<R>
 where
     R: ValidationReport,

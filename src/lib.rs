@@ -35,6 +35,10 @@ pub extern crate commit_verify;
 pub extern crate confined_encoding;
 pub extern crate single_use_seals;
 
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde_crate as serde;
+
 mod api;
 
 pub use api::{

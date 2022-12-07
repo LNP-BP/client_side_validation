@@ -191,6 +191,7 @@ dependencies = [
  "async-trait",
  "commit_verify",
  "confined_encoding",
+ "serde",
  "single_use_seals",
 ]
 
