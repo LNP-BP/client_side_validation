@@ -36,6 +36,7 @@
 //! [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
 
 use std::io;
+use std::io::Write;
 
 use bitcoin_hashes::HashEngine;
 
@@ -47,7 +48,7 @@ use crate::{CommitVerify, PrehashedProtocol};
 pub trait CommitEncode {
     /// Encodes the data for the commitment by writing them directly into a
     /// [`io::Write`] writer instance
-    fn commit_encode<E: io::Write>(&self, e: E) -> usize;
+    fn commit_encode(&self, e: &mut impl Write);
 
     /// Serializes data for the commitment in-memory into a newly allocated
     /// array
@@ -114,7 +115,7 @@ pub mod strategies {
     where
         T: confined_encoding::ConfinedEncode,
     {
-        fn commit_encode<E: io::Write>(&self, e: E) -> usize {
+        fn commit_encode(&self, e: &mut impl Write) {
             self.as_inner().confined_encode(e).expect(
                 "Strict encoding must not fail for types using \
                  `strategy::UsingStrict`",
@@ -127,7 +128,7 @@ pub mod strategies {
         T: CommitConceal,
         <T as CommitConceal>::ConcealedCommitment: CommitEncode,
     {
-        fn commit_encode<E: io::Write>(&self, e: E) -> usize {
+        fn commit_encode(&self, e: &mut impl Write) {
             self.as_inner().commit_conceal().commit_encode(e)
         }
     }
@@ -137,14 +138,18 @@ pub mod strategies {
         H: Hash + confined_encoding::ConfinedEncode,
         T: confined_encoding::ConfinedEncode,
     {
-        fn commit_encode<E: io::Write>(&self, e: E) -> usize {
+        fn commit_encode(&self, e: &mut impl Write) {
             let mut engine = H::engine();
-            engine.input(
-                &confined_encoding::confined_serialize(self.as_inner()).expect(
+            // TODO: Use engine as Write once a new hash library will be used
+
+            let data = self
+                .as_inner()
+                .confined_serialize::<{ usize::MAX }>()
+                .expect(
                     "Strict encoding of hash strategy-based commitment data \
                      must not fail",
-                ),
-            );
+                );
+            engine.input(&data);
             let hash = H::from_engine(engine);
             hash.confined_encode(e).expect(
                 "Strict encoding must not fail for types using \
@@ -158,8 +163,9 @@ pub mod strategies {
         K: CommitEncode,
         V: CommitEncode,
     {
-        fn commit_encode<E: io::Write>(&self, mut e: E) -> usize {
-            self.0.commit_encode(e) + self.1.commit_encode(e)
+        fn commit_encode(&self, e: &mut impl Write) {
+            self.0.commit_encode(e);
+            self.1.commit_encode(e);
         }
     }
 
@@ -169,10 +175,10 @@ pub mod strategies {
         B: CommitEncode,
         C: CommitEncode,
     {
-        fn commit_encode<E: io::Write>(&self, mut e: E) -> usize {
-            self.0.commit_encode(e)
-                + self.1.commit_encode(e)
-                + self.2.commit_encode(e)
+        fn commit_encode(&self, e: &mut impl Write) {
+            self.0.commit_encode(e);
+            self.1.commit_encode(e);
+            self.2.commit_encode(e);
         }
     }
 
@@ -181,7 +187,7 @@ pub mod strategies {
         T: Strategy + Clone,
         amplify::Holder<T, <T as Strategy>::Strategy>: CommitEncode,
     {
-        fn commit_encode<E: io::Write>(&self, e: E) -> usize {
+        fn commit_encode(&self, e: &mut impl Write) {
             amplify::Holder::new(self.clone()).commit_encode(e)
         }
     }
@@ -228,12 +234,12 @@ pub mod strategies {
 
     #[cfg(feature = "grin_secp256k1zkp")]
     impl Strategy for secp256k1zkp::pedersen::Commitment {
-        type Strategy = strategies::UsingStrict;
+        type Strategy = UsingStrict;
     }
 
     #[cfg(feature = "grin_secp256k1zkp")]
     impl Strategy for secp256k1zkp::pedersen::RangeProof {
-        type Strategy = strategies::UsingHash<bitcoin_hashes::sha256::Hash>;
+        type Strategy = UsingHash<bitcoin_hashes::sha256::Hash>;
     }
 
     impl<T> Strategy for &T

@@ -48,6 +48,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::io::Write;
 
+use amplify::confinement::{SmallOrdMap, SmallVec};
 use amplify::num::u256;
 use amplify::{Bytes32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
@@ -172,7 +173,7 @@ impl Default for MultiSource {
 }
 
 /// Map from protocol ids to commitment messages.
-pub type MessageMap = BTreeMap<ProtocolId, Message>;
+pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
 
 /// Errors generated during multi-message commitment process by
 /// [`MerkleTree::try_commit`]
@@ -272,11 +273,11 @@ impl CommitConceal for MerkleTree {
 }
 
 impl CommitEncode for MerkleTree {
-    fn commit_encode<E: Write>(&self, e: E) -> usize {
+    fn commit_encode(&self, e: &mut impl Write) {
         let commitment = self.commit_conceal();
         commitment
             .confined_encode(e)
-            .expect("memory encoder failure")
+            .expect("memory encoder failure");
     }
 }
 
@@ -486,7 +487,7 @@ pub struct MerkleBlock {
 
     /// Tree cross-section.
     #[getter(skip)]
-    cross_section: Vec<TreeNode>,
+    cross_section: SmallVec<TreeNode>,
 
     /// Entropy used for placeholders. May be unknown if the message is not
     /// constructed via [`MerkleTree::try_commit`] method but is provided
@@ -503,23 +504,19 @@ impl From<&MerkleTree> for MerkleBlock {
             .ordered_map()
             .expect("internal MerkleTree inconsistency");
 
-        let cross_section = (0..tree.width())
-            .into_iter()
-            .map(|pos| {
-                map.get(&pos)
-                    .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
-                        protocol_id: *protocol_id,
-                        message: *message,
-                    })
-                    .unwrap_or_else(|| TreeNode::ConcealedNode {
-                        depth: tree.depth,
-                        hash: MerkleNode::with_entropy(
-                            tree.entropy,
-                            pos as u16,
-                        ),
-                    })
-            })
-            .collect();
+        let iter = (0..tree.width()).into_iter().map(|pos| {
+            map.get(&pos)
+                .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
+                    protocol_id: *protocol_id,
+                    message: *message,
+                })
+                .unwrap_or_else(|| TreeNode::ConcealedNode {
+                    depth: tree.depth,
+                    hash: MerkleNode::with_entropy(tree.entropy, pos as u16),
+                })
+        });
+        let cross_section = SmallVec::try_from_iter(iter)
+            .expect("tree width guarantees are broken");
 
         MerkleBlock {
             depth: tree.depth,
@@ -548,7 +545,7 @@ impl CommitConceal for MerkleBlock {
 }
 
 impl CommitEncode for MerkleBlock {
-    fn commit_encode<E: Write>(&self, e: E) -> usize {
+    fn commit_encode(&self, e: &mut impl Write) {
         let commitment = self.commit_conceal();
         commitment
             .confined_encode(e)
@@ -631,6 +628,8 @@ impl MerkleBlock {
             message,
         });
         cross_section.extend(rev.into_iter().rev());
+        let cross_section = SmallVec::try_from(cross_section)
+            .expect("tree width guarantees are broken");
 
         Ok(MerkleBlock {
             depth: path.len() as u8,
@@ -724,7 +723,9 @@ impl MerkleBlock {
                                 depth,
                                 offset_at_depth,
                             );
-                            self.cross_section.remove(pos + 1);
+                            self.cross_section
+                                .remove(pos + 1)
+                                .expect("we allow 0 elements");
                             count += 1;
                             offset += pow;
                             len -= 1;
@@ -831,7 +832,8 @@ impl MerkleBlock {
             }
         }
 
-        self.cross_section = cross_section;
+        self.cross_section = SmallVec::try_from(cross_section)
+            .expect("tree width guarantees are broken");
 
         Ok(self.cross_section.len() as u16)
     }
@@ -863,7 +865,8 @@ impl MerkleBlock {
         );
         Ok(MerkleProof {
             pos: self.protocol_id_pos(protocol_id),
-            path: map.into_values().collect(),
+            path: SmallVec::try_from_iter(map.into_values())
+                .expect("tree width guarantees are broken"),
         })
     }
 
@@ -903,7 +906,7 @@ pub struct MerkleProof {
 
     /// Merkle proof path consisting of node hashing partners.
     #[getter(skip)]
-    path: Vec<MerkleNode>,
+    path: SmallVec<MerkleNode>,
 }
 
 impl Proof for MerkleProof {}
@@ -916,10 +919,10 @@ impl MerkleProof {
     pub fn width(&self) -> usize { 2usize.pow(self.depth() as u32) }
 
     /// Converts the proof into inner merkle path representation
-    pub fn into_path(self) -> Vec<MerkleNode> { self.path }
+    pub fn into_path(self) -> SmallVec<MerkleNode> { self.path }
 
     /// Constructs the proof into inner merkle path representation
-    pub fn to_path(&self) -> Vec<MerkleNode> { self.path.clone() }
+    pub fn to_path(&self) -> SmallVec<MerkleNode> { self.path.clone() }
 
     /// Returns inner merkle path representation
     pub fn as_path(&self) -> &[MerkleNode] { &self.path }

@@ -20,6 +20,7 @@
 use std::io;
 
 use bitcoin_hashes::{sha256, Hash, HashEngine};
+use confined_encoding::hash_encoding;
 
 use crate::{
     commit_encode, CommitEncode, CommitVerify, ConsensusCommit,
@@ -45,9 +46,7 @@ hash_newtype!(
     false // We do not reverse displaying MerkleNodes in hexadecimal
 );
 
-impl confined_encoding::Strategy for MerkleNode {
-    type Strategy = confined_encoding::strategies::HashFixedBytes;
-}
+hash_encoding!(MerkleNode);
 
 impl commit_encode::Strategy for MerkleNode {
     type Strategy = commit_encode::strategies::UsingStrict;
@@ -245,9 +244,9 @@ impl<L> CommitEncode for MerkleSource<L>
 where
     L: ConsensusMerkleCommit,
 {
-    fn commit_encode<E: io::Write>(&self, e: E) -> usize {
+    fn commit_encode(&self, e: &mut impl io::Write) {
         let leafs = self.0.iter().map(L::consensus_commit);
-        merklize(L::MERKLE_NODE_PREFIX, leafs).0.commit_encode(e)
+        merklize(L::MERKLE_NODE_PREFIX, leafs).0.commit_encode(e);
     }
 }
 

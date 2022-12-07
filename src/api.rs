@@ -87,37 +87,16 @@ pub trait ValidationReport {
 
     /// Issues which does not render client-side-validated data invalid, but
     /// which should be reported to the user anyway
-    type Warning: Clone
-        + Eq
-        + Hash
-        + Debug
-        + Display
-        + ConfinedEncode
-        + ConfinedDecode;
+    type Warning: Clone + Eq + Hash + Debug + Display;
 
     /// Information reports about client-side-validation, which do not affect
     /// data safety or validity and may not be presented to the user
-    type Info: Clone
-        + Eq
-        + Hash
-        + Debug
-        + Display
-        + ConfinedEncode
-        + ConfinedDecode;
+    type Info: Clone + Eq + Hash + Debug + Display;
 }
 
 /// Client-side-validation status containing all reports from the validation
 /// process
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Debug,
-    Default,
-    ConfinedEncode,
-    ConfinedDecode
-)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct Status<R>
 where
     R: ValidationReport,

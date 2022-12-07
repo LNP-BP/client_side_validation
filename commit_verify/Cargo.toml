@@ -17,7 +17,7 @@ name = "commit_verify"
 path = "src/lib.rs"
 
 [dependencies]
-amplify = { version = "4.0.0-alpha.3", features = ["hex"] }
+amplify = { version = "4.0.0-beta.2", features = ["hex"] }
 bitcoin_hashes = "0.11.0"
 confined_encoding = { version = "0.9.0-alpha.1", path = "../confined_encoding" }
 rand = { version = "0.8.5", optional = true }

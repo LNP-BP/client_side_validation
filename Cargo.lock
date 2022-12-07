@@ -24,9 +24,9 @@ dependencies = [
 
 [[package]]
 name = "amplify"
-version = "4.0.0-beta.1"
+version = "4.0.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d9bf71f7c341022e54a81b61ec8184282cc2e542a99d1fcb1a7de5b76ae9949"
+checksum = "55912f3b8407b77b80da9393b8a890b612caf1406e92df93d4779669b175a07e"
 dependencies = [
  "amplify_apfloat",
  "amplify_derive 4.0.0-alpha.1",
@@ -207,7 +207,7 @@ dependencies = [
 name = "commit_verify"
 version = "0.9.0-alpha.1"
 dependencies = [
- "amplify 4.0.0-beta.1",
+ "amplify 4.0.0-beta.2",
  "bitcoin_hashes",
  "confined_encoding",
  "grin_secp256k1zkp",
@@ -241,7 +241,7 @@ dependencies = [
 name = "confined_encoding"
 version = "0.9.0-alpha.4"
 dependencies = [
- "amplify 4.0.0-beta.1",
+ "amplify 4.0.0-beta.2",
  "bitcoin",
  "confined_encoding_derive",
  "confined_encoding_test",
@@ -254,7 +254,7 @@ dependencies = [
 name = "confined_encoding_derive"
 version = "0.9.0-alpha.2"
 dependencies = [
- "amplify 4.0.0-beta.1",
+ "amplify 4.0.0-beta.2",
  "amplify_syn",
  "compiletest_rs",
  "confined_encoding",
@@ -268,7 +268,7 @@ dependencies = [
 name = "confined_encoding_test"
 version = "0.9.0-alpha.1"
 dependencies = [
- "amplify 4.0.0-beta.1",
+ "amplify 4.0.0-beta.2",
  "confined_encoding",
 ]
 
@@ -770,7 +770,7 @@ dependencies = [
 name = "single_use_seals"
 version = "0.9.0-alpha.1"
 dependencies = [
- "amplify_derive 2.11.3",
+ "amplify_derive 4.0.0-alpha.1",
  "async-trait",
 ]
 
