@@ -48,7 +48,7 @@ To use the library, you just need to reference a latest version, in
 `[dependencies]` section of your project `Cargo.toml`.
 
 ```toml
-confined_encoding = "2.0"
+confined_encoding = "0.9"
 ```
 
 If you are using other client-side-validation libraries, consider importing

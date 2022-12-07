@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -23,13 +23,6 @@
 //! serialization of data with a known internal data structure. Strict encoding
 //! is a schema-less encoding.
 //!
-//! As a part of strict encoding, crate also includes implementation of
-//! network address **uniform encoding** standard
-//! ([LMPBP-42]([LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md))),
-//! which allows representation of any kind of network address as a fixed-size
-//! byte string occupying 37 bytes. This standard is used for the strict
-//! encoding of networking addresses.
-//!
 //! Library defines two main traits, [`ConfinedEncode`] and [`ConfinedDecode`],
 //! which should be implemented on each type that requires to be represented
 //! for client-side-validation. It also defines possible encoding error cases
@@ -40,17 +33,9 @@
 //! defined by rust standard library and frequently used crates; the latter
 //! increases the number of dependencies and thus can be controlled with
 //! feature flags:
-//! - `chrono` (used by default): date & time types from `chrono` crate
-//! - `miniscript`: types defined in bitcoin Miniscript
-//! - `crypto`: non-bitcoin cryptographic primitives, which include Ed25519
-//!   curve, X25519 signatures from `ed25519-dalek` library and pedersen
-//!   commitments + bulletproofs from `grin_secp256k1zkp` library. Encodings for
-//!   other cryptography-related types, such as Secp256k1 and hashes, are always
-//!   included as a part of the library - see NB below.
-//!
-//! NB: this crate requires `bitcoin` as an upstream dependency since many of
-//!     strict-encoded formats are standardized as using *bitcoin consensus
-//!     encoding*.
+//! - `derive`: adds derivation macros
+//! - `bulletproofs`: pedersen commitments + bulletproofs from
+//!   `lnpbp_secp256k1zkp` library.
 
 #[cfg(feature = "derive")]
 pub extern crate confined_encoding_derive as derive;

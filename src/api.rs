@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
