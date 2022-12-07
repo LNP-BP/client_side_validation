@@ -43,6 +43,8 @@ macro_rules! confined_decode_self {
 macro_rules! hash_encoding {
     ($ty:ty) => {
         impl $crate::ConfinedEncode for $ty {
+            const TYPE_NAME: &'static str = stringify!($ty);
+
             fn confined_encode(
                 &self,
                 e: &mut impl ::std::io::Write,

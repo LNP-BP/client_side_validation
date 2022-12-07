@@ -22,6 +22,8 @@ use half::bf16;
 use crate::{ConfinedDecode, ConfinedEncode, Error};
 
 impl ConfinedEncode for () {
+    const TYPE_NAME: &'static str = "()";
+
     fn confined_encode(&self, _: &mut impl io::Write) -> Result<(), Error> {
         Ok(())
     }
@@ -32,6 +34,8 @@ impl ConfinedDecode for () {
 }
 
 impl ConfinedEncode for bool {
+    const TYPE_NAME: &'static str = "Bool";
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         (*self as u8).confined_encode(e)
     }
@@ -50,6 +54,8 @@ impl ConfinedDecode for bool {
 macro_rules! encoding_int {
     ($ty:ty, $l:literal) => {
         impl ConfinedEncode for $ty {
+            const TYPE_NAME: &'static str = stringify!($ty);
+
             fn confined_encode(
                 &self,
                 e: &mut impl io::Write,
@@ -91,6 +97,8 @@ encoding_int!(i512, 64);
 encoding_int!(i1024, 128);
 
 impl ConfinedEncode for bf16 {
+    const TYPE_NAME: &'static str = "F16b";
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.to_bits().confined_encode(e)
     }
@@ -105,6 +113,8 @@ impl ConfinedDecode for bf16 {
 macro_rules! encoding_float {
     ($ty:ty, $l:literal) => {
         impl ConfinedEncode for $ty {
+            const TYPE_NAME: &'static str = stringify!($ty);
+
             fn confined_encode(
                 &self,
                 e: &mut impl io::Write,

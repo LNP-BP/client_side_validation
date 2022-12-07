@@ -30,6 +30,8 @@ impl<T> ConfinedEncode for Option<T>
 where
     T: ConfinedEncode,
 {
+    const TYPE_NAME: &'static str = "Option";
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         Ok(match self {
             None => confined_encode_list!(e; 0u8),
@@ -58,6 +60,8 @@ where
 }
 
 impl ConfinedEncode for TinyString {
+    const TYPE_NAME: &'static str = "String";
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         e.write_all(self.as_bytes())?;
         Ok(())
@@ -81,6 +85,8 @@ impl<T> ConfinedEncode for TinyVec<T>
 where
     T: ConfinedEncode,
 {
+    const TYPE_NAME: &'static str = "TinyVec";
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.len_u8().confined_encode(e)?;
         for elem in self.iter() {
@@ -109,6 +115,8 @@ impl<T> ConfinedEncode for SmallVec<T>
 where
     T: ConfinedEncode,
 {
+    const TYPE_NAME: &'static str = stringify!("Vec<", T, ">");
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.len_u16().confined_encode(e)?;
         for elem in self.iter() {
@@ -142,6 +150,8 @@ impl<T> ConfinedEncode for SmallOrdSet<T>
 where
     T: ConfinedEncode + Eq + Ord,
 {
+    const TYPE_NAME: &'static str = stringify!("Set<", T, ">");
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.len_u16().confined_encode(e)?;
         for elem in self.iter() {
@@ -192,6 +202,8 @@ impl<T, const MIN: usize> ConfinedEncode
 where
     T: ConfinedEncode + Eq + Ord,
 {
+    const TYPE_NAME: &'static str = stringify!("Set<", T, ", ", MIN, ">");
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.len_u8().confined_encode(e)?;
         for elem in self.iter() {
@@ -248,6 +260,8 @@ where
     K: ConfinedEncode + Ord + Hash,
     V: ConfinedEncode,
 {
+    const TYPE_NAME: &'static str = stringify!("Map<", K, ", ", V, ">");
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.len_u16().confined_encode(e)?;
         for (key, val) in self.iter() {
@@ -303,6 +317,8 @@ where
     K: ConfinedEncode + Clone,
     V: ConfinedEncode + Clone,
 {
+    const TYPE_NAME: &'static str = stringify!(K, " | ", V);
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         self.0.confined_encode(e)?;
         self.1.confined_encode(e)?;

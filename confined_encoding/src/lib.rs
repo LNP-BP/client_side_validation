@@ -69,6 +69,7 @@ use std::{fmt, io};
 pub use ::bitcoin::consensus::encode::{ReadExt, WriteExt};
 use amplify::confinement::{Confined, MediumVec, SmallVec};
 use amplify::{ascii, confinement, IoError};
+pub use encodings::ConfinedTag;
 
 /// Binary encoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications;
@@ -79,6 +80,9 @@ use amplify::{ascii, confinement, IoError};
 /// utilize `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits  
 /// from `commit_verify` module.
 pub trait ConfinedEncode {
+    /// Type name for the schema
+    const TYPE_NAME: &'static str;
+
     /// Encode with the given [`std::io::Write`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.

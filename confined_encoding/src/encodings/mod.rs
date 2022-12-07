@@ -18,3 +18,5 @@ mod bitcoin;
 mod bulletproofs;
 mod collections;
 mod primitives;
+
+pub use self::bitcoin::ConfinedTag;

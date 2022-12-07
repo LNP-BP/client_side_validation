@@ -16,27 +16,9 @@ use std::io;
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
 
-impl ConfinedEncode for secp256k1zkp::Error {
-    #[inline]
-    fn confined_encode(&self, _: &mut impl io::Write) -> Result<(), Error> {
-        unreachable!(
-            "rust compiler requires confined encoding due to derivation \
-             macros, but its code must be unreachable"
-        )
-    }
-}
-
-impl ConfinedDecode for secp256k1zkp::Error {
-    #[inline]
-    fn confined_decode(_: &mut impl io::Read) -> Result<Self, Error> {
-        unreachable!(
-            "rust compiler requires confined encoding due to derivation \
-             macros, but its code must be unreachable"
-        )
-    }
-}
-
 impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
+    const TYPE_NAME: &'static str = "PedersenCommitment";
+
     #[inline]
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         e.write_all(&self[..])?;
@@ -54,6 +36,8 @@ impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
 }
 
 impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
+    const TYPE_NAME: &'static str = "BulletProof";
+
     #[inline]
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         (self.plen as u16).confined_encode(e)?;

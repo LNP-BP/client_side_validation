@@ -21,6 +21,8 @@ use bitcoin::hashes::{sha256, Hash};
 use crate::{ConfinedDecode, ConfinedEncode, Error};
 
 impl ConfinedEncode for Bytes32 {
+    const TYPE_NAME: &'static str = "Bytes32";
+
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         // We use the same encoding as used by hashes - and ensure this by
         // cross-converting with hash
@@ -36,6 +38,8 @@ impl ConfinedDecode for Bytes32 {
 }
 
 impl ConfinedEncode for FlagVec {
+    const TYPE_NAME: &'static str = "FlagVec";
+
     #[inline]
     fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
         // to_inner does the shrunk operation internally

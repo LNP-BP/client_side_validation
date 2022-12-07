@@ -52,7 +52,7 @@ use amplify::confinement::{SmallOrdMap, SmallVec};
 use amplify::num::u256;
 use amplify::{Bytes32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
-use confined_encoding::{ConfinedDecode, ConfinedEncode};
+use confined_encoding::{ConfinedDecode, ConfinedEncode, ConfinedTag};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
@@ -120,6 +120,10 @@ impl sha256t::Tag for Lnpbp4Tag {
         let midstate = sha256::Midstate::from_inner(MIDSTATE_LNPBP4);
         sha256::HashEngine::from_midstate(midstate, 64)
     }
+}
+
+impl ConfinedTag for Lnpbp4Tag {
+    const TYPE_NAME: &'static str = "Lnpbp4";
 }
 
 /// Final [LNPBP-4] commitment value.
