@@ -215,6 +215,10 @@ pub enum Error {
     /// a repeated value for `{0}` found during set collection deserialization
     RepeatedValue(String),
 
+    /// encoded values are not deterministically ordered: value `{0}` should go
+    /// before `{1}`
+    BrokenOrder(String, String),
+
     /// Returned by the convenience method [`ConfinedDecode::confined_decode`]
     /// if not all provided data were consumed during decoding process
     #[display(

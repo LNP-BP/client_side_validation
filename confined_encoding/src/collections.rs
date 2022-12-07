@@ -166,12 +166,10 @@ where
             let val = T::confined_decode(d)?;
             if let Some(max) = data.iter().max() {
                 if max > &val {
-                    // TODO: Introduce new error type on 2.0 release
-                    return Err(Error::DataIntegrityError(format!(
-                        "encoded values are not deterministically ordered: \
-                         value `{:?}` should go before `{:?}`",
-                        val, max
-                    )));
+                    return Err(Error::BrokenOrder(
+                        format!("{:?}", val),
+                        format!("{:?}", max),
+                    ));
                 }
             }
             if data.contains(&val) {
@@ -219,12 +217,10 @@ where
             let val = T::confined_decode(d)?;
             if let Some(max) = data.iter().max() {
                 if max > &val {
-                    // TODO: Introduce new error type on 2.0 release
-                    return Err(Error::DataIntegrityError(format!(
-                        "encoded values are not deterministically ordered: \
-                         value `{:?}` should go before `{:?}`",
-                        val, max
-                    )));
+                    return Err(Error::BrokenOrder(
+                        format!("{:?}", val),
+                        format!("{:?}", max),
+                    ));
                 }
             }
             if data.contains(&val) {
@@ -284,12 +280,10 @@ where
             let val = V::confined_decode(d)?;
             if let Some(max) = map.keys().max() {
                 if max > &key {
-                    // TODO: Introduce new error type on 2.0 release
-                    return Err(Error::DataIntegrityError(format!(
-                        "encoded values are not deterministically ordered: \
-                         value `{:?}` should go before `{:?}`",
-                        key, max
-                    )));
+                    return Err(Error::BrokenOrder(
+                        format!("{:?}", key),
+                        format!("{:?}", max),
+                    ));
                 }
             }
             if map.contains_key(&key) {

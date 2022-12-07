@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "confined_encoding"
-version = "0.9.0-alpha.4"
+version = "0.9.0-alpha.5"
 dependencies = [
  "amplify 4.0.0-beta.2",
  "bitcoin",
