@@ -14,7 +14,7 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, missing_docs, warnings)]
+#![deny(dead_code, missing_docs)]
 
 //! Library providing primitives for cryptographic commit-verify schemes used in
 //! client-side-validation

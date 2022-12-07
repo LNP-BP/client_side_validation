@@ -19,7 +19,7 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, missing_docs, warnings)]
+#![deny(dead_code, missing_docs)]
 
 //! # Single-use-seals
 //!

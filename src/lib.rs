@@ -14,7 +14,7 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, missing_docs, warnings)]
+#![deny(dead_code, missing_docs)]
 
 //! The LNP/BP client-side-validation foundation libraries implementing LNPBP
 //! specifications & standards (LNPBP-4, 7, 8, 9, 42, 81).

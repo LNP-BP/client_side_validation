@@ -14,7 +14,7 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, missing_docs, warnings)]
+#![deny(dead_code, missing_docs)]
 
 //! Library implementing **strict encoding** standard, defined by
 //! [LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md).
@@ -135,7 +135,7 @@ pub trait ConfinedDecode: Sized {
     /// construct an instance or return implementation-specific error type.
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error>;
 
-    /// Tries to deserialize byte array into the current type using
+    /// Tries to deserializesuper byte array into the current type using
     /// [`ConfinedDecode::confined_decode`]. If there are some data remains in
     /// the buffer once deserialization is completed, fails with
     /// [`Error::DataNotEntirelyConsumed`].
