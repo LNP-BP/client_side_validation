@@ -71,12 +71,7 @@ extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 #[macro_use]
 mod macros;
 
-mod amplify_types;
-mod bitcoin;
-#[cfg(feature = "bulletproofs")]
-mod bulletproofs;
-mod collections;
-mod primitives;
+mod encodings;
 pub mod schema;
 
 use std::ops::Range;
