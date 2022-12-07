@@ -77,6 +77,7 @@ mod bitcoin;
 mod bulletproofs;
 mod collections;
 mod primitives;
+pub mod schema;
 
 use std::ops::Range;
 use std::string::FromUtf8Error;
