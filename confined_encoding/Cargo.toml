@@ -1,6 +1,6 @@
 [package]
 name = "confined_encoding"
-version = "0.9.0-alpha.4"
+version = "0.9.0-alpha.5"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Confined encoding: deterministic binary serialization for client-side validation"

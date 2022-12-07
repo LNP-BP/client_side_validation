@@ -12,12 +12,13 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io;
 
 use amplify::confinement::{
-    SmallOrdMap, SmallOrdSet, SmallVec, TinyString, TinyVec,
+    Confined, SmallOrdMap, SmallOrdSet, SmallVec, TinyString, TinyVec,
 };
 
 use crate::{ConfinedDecode, ConfinedEncode, Error};
@@ -179,6 +180,60 @@ where
             data.push(val)
                 .expect("SmallOrdSet must have up to 2^16-1 items");
         }
+        Ok(data)
+    }
+}
+
+/// Strict encoding for a unique value collection represented by a rust
+/// `BTreeSet` type is performed in the same way as `Vec` encoding.
+/// NB: Array members must are ordered with the sort operation, so type
+/// `T` must implement `Ord` trait in such a way that it produces
+/// deterministically-sorted result
+impl<T, const MIN: usize> ConfinedEncode
+    for Confined<BTreeSet<T>, MIN, { u8::MAX as usize }>
+where
+    T: ConfinedEncode + Eq + Ord,
+{
+    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
+        self.len_u8().confined_encode(e)?;
+        for elem in self.iter() {
+            elem.confined_encode(e)?;
+        }
+        Ok(())
+    }
+}
+
+/// Strict decoding of a unique value collection represented by a rust
+/// `BTreeSet` type is performed alike `Vec` decoding with the only
+/// exception: if the repeated value met a [Error::RepeatedValue] is
+/// returned.
+impl<T, const MIN: usize> ConfinedDecode
+    for Confined<BTreeSet<T>, MIN, { u8::MAX as usize }>
+where
+    T: ConfinedDecode + Eq + Ord + Debug,
+{
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let len = u8::confined_decode(d)?;
+        let mut data = BTreeSet::new();
+        for _ in 0..len {
+            let val = T::confined_decode(d)?;
+            if let Some(max) = data.iter().max() {
+                if max > &val {
+                    // TODO: Introduce new error type on 2.0 release
+                    return Err(Error::DataIntegrityError(format!(
+                        "encoded values are not deterministically ordered: \
+                         value `{:?}` should go before `{:?}`",
+                        val, max
+                    )));
+                }
+            }
+            if data.contains(&val) {
+                return Err(Error::RepeatedValue(format!("{:?}", val)));
+            }
+            data.insert(val);
+        }
+        let data = Confined::try_from(data)
+            .expect("collection must have up to 2^8-1 items");
         Ok(data)
     }
 }
