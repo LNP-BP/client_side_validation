@@ -23,7 +23,7 @@ use bitcoin::{schnorr as bip340, secp256k1, OutPoint, Txid, XOnlyPublicKey};
 use crate::schema::Ty;
 use crate::{
     fields, ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
-    StructBuilder,
+    StructWriter,
 };
 
 hash_encoding!(sha256::Hash, "Sha256");
@@ -211,7 +211,7 @@ impl ConfinedType for OutPoint {
 impl ConfinedEncode for OutPoint {
     #[inline]
     fn confined_encode(&self, e: impl ConfinedWrite) -> Result<(), Error> {
-        StructBuilder::start(e)
+        StructWriter::start(e)
             .field("txid", &self.txid)?
             .field("vout", &self.vout)?
             .finish();

@@ -115,7 +115,7 @@ pub trait ConfinedWrite: Sized {
         K: ConfinedEncode + Hash + Ord,
         V: ConfinedEncode;
 
-    fn build_struct(self) -> StructBuilder<Self>;
+    fn write_struct(self) -> StructWriter<Self>;
 }
 
 impl<'w, W> ConfinedWrite for &'w mut W
@@ -276,7 +276,7 @@ where
         W::write_map(self, data)
     }
 
-    fn build_struct(self) -> StructBuilder<Self> { StructBuilder::start(self) }
+    fn write_struct(self) -> StructWriter<Self> { StructWriter::start(self) }
 }
 
 pub struct Writer<W: io::Write>(W);
@@ -494,13 +494,13 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
         Ok(())
     }
 
-    fn build_struct(self) -> StructBuilder<Self> { StructBuilder::start(self) }
+    fn write_struct(self) -> StructWriter<Self> { StructWriter::start(self) }
 }
 
-pub struct StructBuilder<W: ConfinedWrite>(W);
+pub struct StructWriter<W: ConfinedWrite>(W);
 
-impl<W: ConfinedWrite> StructBuilder<W> {
-    pub fn start(writer: W) -> Self { StructBuilder(writer) }
+impl<W: ConfinedWrite> StructWriter<W> {
+    pub fn start(writer: W) -> Self { StructWriter(writer) }
 
     pub fn field(
         mut self,

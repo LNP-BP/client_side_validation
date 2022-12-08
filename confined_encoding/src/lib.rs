@@ -77,7 +77,7 @@ pub use encodings::ConfinedTag;
 
 pub use crate::check::{CheckError, CheckedWriter};
 use crate::schema::{Fields, Ty, Variants};
-pub use crate::write::{ConfinedWrite, StructBuilder, Writer};
+pub use crate::write::{ConfinedWrite, StructWriter, Writer};
 
 pub trait ConfinedType {
     /// Type name for the schema

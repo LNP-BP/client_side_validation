@@ -27,7 +27,7 @@ use half::bf16;
 use crate::path::{Step, TyIter};
 use crate::schema::{Sizing, Ty};
 use crate::write::ConfinedWrite;
-use crate::{ConfinedEncode, Error, StructBuilder};
+use crate::{ConfinedEncode, Error, StructWriter};
 
 #[derive(Clone, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
@@ -273,5 +273,5 @@ impl<'a> ConfinedWrite for CheckedWriter {
         Ok(())
     }
 
-    fn build_struct(self) -> StructBuilder<Self> { todo!() }
+    fn write_struct(self) -> StructWriter<Self> { todo!() }
 }
