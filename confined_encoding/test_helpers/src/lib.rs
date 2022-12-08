@@ -554,9 +554,8 @@ pub fn test_object_encoding_roundtrip<T>(
 where
     T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
-    let mut encoded_object = SmallVec::new();
-    object
-        .confined_encode(&mut encoded_object)
+    let encoded_object = object
+        .confined_serialize_64kb()
         .map_err(DataEncodingTestFailure::EncoderFailure)?;
     let decoded_object =
         T::confined_deserialize(&encoded_object).map_err(|e| {

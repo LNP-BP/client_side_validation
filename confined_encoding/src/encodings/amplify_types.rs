@@ -72,7 +72,6 @@ impl ConfinedDecode for FlagVec {
 #[cfg(test)]
 mod test {
     use amplify::hex::FromHex;
-    use confined_encoding_test::test_encoding_roundtrip;
 
     use super::*;
 
@@ -83,7 +82,7 @@ mod test {
         let slice32 = Bytes32::from_hex(s).unwrap();
         let ser = slice32.confined_serialize().unwrap();
 
-        let data = [
+        let data = small_vec![
             0xa3, 0x40, 0x1b, 0xcc, 0xeb, 0x26, 0x20, 0x1b, 0x55, 0x97, 0x8f,
             0xf7, 0x05, 0xfe, 0xcf, 0x7d, 0x8a, 0x0a, 0x03, 0x59, 0x8e, 0xbe,
             0xcc, 0xf2, 0xa9, 0x47, 0x03, 0x0b, 0x91, 0xa0, 0xff, 0x53,
@@ -91,13 +90,7 @@ mod test {
 
         assert_eq!(ser.len(), 32);
         assert_eq!(&ser, &data);
-        assert_eq!(Bytes32::confined_deserialize(&ser), Ok(slice32));
-
-        assert_eq!(Bytes32::from_slice(data), Some(slice32));
-        assert_eq!(Bytes32::from_slice(&data[..30]), None);
-        assert_eq!(&slice32.to_vec(), &data);
-        assert_eq!(&slice32.as_inner()[..], &data);
-        assert_eq!(slice32.to_inner(), data);
-        assert_eq!(slice32.into_inner(), data);
+        assert_eq!(Bytes32::confined_deserialize(&ser).unwrap(), slice32);
+        assert_eq!(&slice32[..], &data[..]);
     }
 }

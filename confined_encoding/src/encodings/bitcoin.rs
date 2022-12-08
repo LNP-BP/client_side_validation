@@ -231,9 +231,7 @@ impl ConfinedDecode for OutPoint {
 #[cfg(test)]
 pub(crate) mod test {
     use bitcoin::hashes::hex::FromHex;
-    use bitcoin::hashes::{
-        hash160, hmac, ripemd160, sha256, sha256d, sha256t, Hash,
-    };
+    use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d, Hash};
     use confined_encoding_test::*;
 
     use super::*;
@@ -250,23 +248,6 @@ pub(crate) mod test {
             0xeb, 0x11, 0x98, 0x4e, 0xdb, 0x25, 0xa0, 0xea, 0x1e,
         ];
 
-        const TEST_MIDSTATE: [u8; 32] = [
-            156, 224, 228, 230, 124, 17, 108, 57, 56, 179, 202, 242, 195, 15,
-            80, 137, 211, 243, 147, 108, 71, 99, 110, 96, 125, 179, 62, 234,
-            221, 198, 240, 201,
-        ];
-
-        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
-        pub struct TestHashTag;
-
-        impl sha256t::Tag for TestHashTag {
-            fn engine() -> sha256::HashEngine {
-                // The TapRoot TapLeaf midstate.
-                let midstate = sha256::Midstate::from_inner(TEST_MIDSTATE);
-                sha256::HashEngine::from_midstate(midstate, 64)
-            }
-        }
-
         test_encoding_roundtrip(
             &ripemd160::Hash::from_inner(HASH160_BYTES),
             HASH160_BYTES,
@@ -278,22 +259,12 @@ pub(crate) mod test {
         )
         .unwrap();
         test_encoding_roundtrip(
-            &hmac::Hmac::<sha256::Hash>::from_inner(HASH256_BYTES),
-            HASH256_BYTES,
-        )
-        .unwrap();
-        test_encoding_roundtrip(
             &sha256::Hash::from_inner(HASH256_BYTES),
             HASH256_BYTES,
         )
         .unwrap();
         test_encoding_roundtrip(
             &sha256d::Hash::from_inner(HASH256_BYTES),
-            HASH256_BYTES,
-        )
-        .unwrap();
-        test_encoding_roundtrip(
-            &sha256t::Hash::<TestHashTag>::from_inner(HASH256_BYTES),
             HASH256_BYTES,
         )
         .unwrap();
@@ -316,14 +287,6 @@ pub(crate) mod test {
             0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
             0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f, 0x46, 0x79, 0xef,
         ];
-        static PK_BYTES_04: [u8; 65] = [
-            0x04, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93, 0x82,
-            0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
-            0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f, 0x46, 0x79, 0xef,
-            0x87, 0x28, 0x8e, 0xd7, 0x3c, 0xe4, 0x7f, 0xc4, 0xf5, 0xc7, 0x9d,
-            0x19, 0xeb, 0xfa, 0x57, 0xda, 0x7c, 0xff, 0x3a, 0xff, 0x6e, 0x81,
-            0x9e, 0x4e, 0xe9, 0x71, 0xd8, 0x6b, 0x5e, 0x61, 0x87, 0x5d,
-        ];
         static PK_BYTES_ONEKEY: [u8; 32] = [
             0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62,
             0x95, 0xce, 0x87, 0x0b, 0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce,
@@ -339,7 +302,15 @@ pub(crate) mod test {
         test_encoding_roundtrip(&secp_pk_03, PK_BYTES_03).unwrap();
         test_encoding_roundtrip(&secp_pk_one, PK_BYTES_ONEKEY).unwrap();
         assert_eq!(
-            secp256k1::PublicKey::confined_deserialize(PK_BYTES_04),
+            secp256k1::PublicKey::confined_deserialize(&tiny_vec![
+                0x04, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93,
+                0x82, 0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28,
+                0x3e, 0xe9, 0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f,
+                0x46, 0x79, 0xef, 0x87, 0x28, 0x8e, 0xd7, 0x3c, 0xe4, 0x7f,
+                0xc4, 0xf5, 0xc7, 0x9d, 0x19, 0xeb, 0xfa, 0x57, 0xda, 0x7c,
+                0xff, 0x3a, 0xff, 0x6e, 0x81, 0x9e, 0x4e, 0xe9, 0x71, 0xd8,
+                0x6b, 0x5e, 0x61, 0x87, 0x5d,
+            ]),
             Err(Error::DataIntegrityError(s!("invalid public key data: \
                                               uncompressed Secp256k1 \
                                               public key format is not \
@@ -360,7 +331,7 @@ pub(crate) mod test {
     #[test]
     #[should_panic(expected = "DataIntegrityError")]
     fn test_garbagedata_pubkey() {
-        secp256k1::PublicKey::confined_decode(&mut [
+        secp256k1::PublicKey::confined_deserialize(&tiny_vec![
             0x04, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93, 0x82,
             0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
             0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f, 0x46, 0x79, 0xef,
@@ -374,39 +345,10 @@ pub(crate) mod test {
     #[test]
     #[should_panic(expected = "DataIntegrityError")]
     fn test_grabagedata_pubkey2() {
-        secp256k1::PublicKey::confined_decode(&mut [
+        secp256k1::PublicKey::confined_deserialize(&tiny_vec![
             0xa5, 0x9b, 0x63, 0x47, 0x39, 0x85, 0x05, 0xf5, 0xec, 0x93, 0x82,
             0x6d, 0xc6, 0x1c, 0x19, 0xf4, 0x7c, 0x66, 0xc0, 0x28, 0x3e, 0xe9,
             0xbe, 0x98, 0x0e, 0x29, 0xce, 0x32, 0x5a, 0x0f, 0x46, 0x79, 0xef,
-        ])
-        .unwrap();
-    }
-
-    #[test]
-    fn test_encoding_network(
-    ) -> Result<(), DataEncodingTestFailure<bitcoin::Network>> {
-        test_encoding_roundtrip(&bitcoin::Network::Bitcoin, [
-            0xF9, 0xBE, 0xB4, 0xD9,
-        ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Testnet, [
-            0x0B, 0x11, 0x09, 0x07,
-        ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Signet, [
-            0x0A, 0x03, 0xCF, 0x40,
-        ])?;
-        test_encoding_roundtrip(&bitcoin::Network::Regtest, [
-            0xFA, 0xBF, 0xB5, 0xDA,
-        ])
-    }
-
-    #[test]
-    #[should_panic(
-        expected = r#"ValueOutOfRange("bitcoin::Network", 0..0, 2762187425)"#
-    )]
-    fn test_encoding_network_failure() {
-        // Bitcoin Network structure do not support "Other" networks
-        bitcoin::Network::confined_decode(&mut [
-            0xA1u8, 0xA2u8, 0xA3u8, 0xA4u8,
         ])
         .unwrap();
     }
@@ -444,7 +386,7 @@ pub(crate) mod test {
     #[test]
     #[should_panic(expected = "UnexpectedEof")]
     fn test_garbagedata_outpoint() {
-        OutPoint::confined_decode(&mut [
+        OutPoint::confined_deserialize(&tiny_vec![
             0x53, 0xc6, 0x31, 0x13, 0xed, 0x18, 0x68, 0xfc, 0xa, 0xdf, 0x8e,
             0xcd, 0xfd, 0x1f, 0x4d, 0xd6, 0xe5, 0xe3, 0x85, 0x83, 0xa4, 0x9d,
             0xb, 0x14, 0xe7, 0xf8, 0x87, 0xa4, 0xd1, 0x61, 0x78, 0x21,

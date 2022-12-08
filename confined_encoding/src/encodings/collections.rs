@@ -324,7 +324,6 @@ where
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::confined_serialize;
 
     /// Test for checking the following rule from LNPBP-5:
     ///
@@ -337,17 +336,17 @@ pub mod test {
         let o1: Option<u8> = None;
         let o2: Option<u64> = None;
 
-        let two_zero_bytes = &small_vec![0u8][..];
+        let two_zero_bytes = small_vec![0u8];
 
-        assert_eq!(confined_serialize(&o1).unwrap(), two_zero_bytes);
-        assert_eq!(confined_serialize(&o2).unwrap(), two_zero_bytes);
+        assert_eq!(o1.confined_serialize_64kb().unwrap(), two_zero_bytes);
+        assert_eq!(o2.confined_serialize_64kb().unwrap(), two_zero_bytes);
 
         assert_eq!(
-            Option::<u8>::confined_deserialize(two_zero_bytes).unwrap(),
+            Option::<u8>::confined_deserialize(&two_zero_bytes).unwrap(),
             None
         );
         assert_eq!(
-            Option::<u64>::confined_deserialize(two_zero_bytes).unwrap(),
+            Option::<u64>::confined_deserialize(&two_zero_bytes).unwrap(),
             None
         );
     }
@@ -365,50 +364,60 @@ pub mod test {
         let o4: Option<u64> = Some(13);
         let o5: Option<u64> = Some(0x1FF);
         let o6: Option<u64> = Some(0xFFFFFFFFFFFFFFFF);
-        let o7: Option<usize> = Some(13);
-        let o8: Option<usize> = Some(0xFFFFFFFFFFFFFFFF);
+        let o7: Option<u32> = Some(13);
+        let o8: Option<u64> = Some(0xFFFFFFFFFFFFFFFF);
 
-        let byte_0 = &[1u8, 0u8][..];
-        let byte_13 = &[1u8, 13u8][..];
-        let byte_255 = &[1u8, 0xFFu8][..];
-        let word_13 = &[1u8, 13u8, 0u8][..];
-        let qword_13 = &[1u8, 13u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8][..];
+        let byte_0 = small_vec![1u8, 0u8];
+        let byte_13 = small_vec![1u8, 13u8];
+        let byte_255 = small_vec![1u8, 0xFFu8];
+        let word_13 = small_vec![1u8, 13u8, 0u8];
+        let qword_13 = small_vec![1u8, 13u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
         let qword_256 =
-            &[1u8, 0xFFu8, 0x01u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8][..];
-        let qword_max = &[
-            1u8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
-        ][..];
+            small_vec![1u8, 0xFFu8, 0x01u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let qword_max = small_vec![
+            1u8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
+            0xFFu8,
+        ];
 
-        assert_eq!(confined_serialize(&o1).unwrap(), byte_0);
-        assert_eq!(confined_serialize(&o2).unwrap(), byte_13);
-        assert_eq!(confined_serialize(&o3).unwrap(), byte_255);
-        assert_eq!(confined_serialize(&o4).unwrap(), qword_13);
-        assert_eq!(confined_serialize(&o5).unwrap(), qword_256);
-        assert_eq!(confined_serialize(&o6).unwrap(), qword_max);
-        assert_eq!(confined_serialize(&o7).unwrap(), word_13);
-        assert!(confined_serialize(&o8).err().is_some());
+        assert_eq!(o1.confined_serialize_64kb().unwrap(), byte_0);
+        assert_eq!(o2.confined_serialize_64kb().unwrap(), byte_13);
+        assert_eq!(o3.confined_serialize_64kb().unwrap(), byte_255);
+        assert_eq!(o4.confined_serialize_64kb().unwrap(), qword_13);
+        assert_eq!(o5.confined_serialize_64kb().unwrap(), qword_256);
+        assert_eq!(o6.confined_serialize_64kb().unwrap(), qword_max);
+        assert_eq!(o7.confined_serialize_64kb().unwrap(), word_13);
+        assert!(o8.confined_serialize_64kb().err().is_some());
 
-        assert_eq!(Option::<u8>::confined_decode(byte_0).unwrap(), Some(0));
-        assert_eq!(Option::<u8>::confined_decode(byte_13).unwrap(), Some(13));
         assert_eq!(
-            Option::<u8>::confined_decode(byte_255).unwrap(),
-            Some(0xFF)
-        );
-        assert_eq!(Option::<u64>::confined_decode(qword_13).unwrap(), Some(13));
-        assert_eq!(
-            Option::<u64>::confined_decode(qword_256).unwrap(),
-            Some(0x1FF)
+            Option::<u8>::confined_deserialize(&byte_0).unwrap(),
+            Some(0)
         );
         assert_eq!(
-            Option::<u64>::confined_decode(qword_max).unwrap(),
-            Some(0xFFFFFFFFFFFFFFFF)
-        );
-        assert_eq!(
-            Option::<usize>::confined_decode(word_13).unwrap(),
+            Option::<u8>::confined_deserialize(&byte_13).unwrap(),
             Some(13)
         );
         assert_eq!(
-            Option::<usize>::confined_decode(qword_max).unwrap(),
+            Option::<u8>::confined_deserialize(&byte_255).unwrap(),
+            Some(0xFF)
+        );
+        assert_eq!(
+            Option::<u64>::confined_deserialize(&qword_13).unwrap(),
+            Some(13)
+        );
+        assert_eq!(
+            Option::<u64>::confined_deserialize(&qword_256).unwrap(),
+            Some(0x1FF)
+        );
+        assert_eq!(
+            Option::<u64>::confined_deserialize(&qword_max).unwrap(),
+            Some(0xFFFFFFFFFFFFFFFF)
+        );
+        assert_eq!(
+            Option::<u32>::confined_deserialize(&word_13).unwrap(),
+            Some(13)
+        );
+        assert_eq!(
+            Option::<u64>::confined_deserialize(&qword_max).unwrap(),
             Some(0xFFFF)
         );
     }
@@ -417,15 +426,21 @@ pub mod test {
     /// which MUST fail with a specific error.
     #[test]
     fn test_option_decode_vec() {
-        assert!(Option::<u8>::confined_decode(&[2u8, 0u8, 0u8, 0u8][..])
-            .err()
-            .is_some());
-        assert!(Option::<u8>::confined_decode(&[3u8, 0u8, 0u8, 0u8][..])
-            .err()
-            .is_some());
-        assert!(Option::<u8>::confined_decode(&[0xFFu8, 0u8, 0u8, 0u8][..])
-            .err()
-            .is_some());
+        assert!(Option::<u8>::confined_deserialize(&tiny_vec![
+            2u8, 0u8, 0u8, 0u8
+        ])
+        .err()
+        .is_some());
+        assert!(Option::<u8>::confined_deserialize(&tiny_vec![
+            3u8, 0u8, 0u8, 0u8
+        ])
+        .err()
+        .is_some());
+        assert!(Option::<u8>::confined_deserialize(&tiny_vec![
+            0xFFu8, 0u8, 0u8, 0u8
+        ])
+        .err()
+        .is_some());
     }
 
     /// Test for checking the following rule from LNPBP-5:
@@ -436,27 +451,29 @@ pub mod test {
     /// of each of the items.
     #[test]
     fn test_vec_encode() {
-        let v1: Vec<u8> = vec![0, 13, 0xFF];
-        let v2: Vec<u8> = vec![13];
-        let v3: Vec<u64> = vec![0, 13, 13, 0x1FF, 0xFFFFFFFFFFFFFFFF];
-        let v4: Vec<u8> =
-            (0..0x1FFFF).map(|item| (item % 0xFF) as u8).collect();
+        let v1 = tiny_vec![0u8, 13, 0xFF];
+        let v2 = tiny_vec![13u8];
+        let v3 = tiny_vec![0u64, 13, 13, 0x1FF, 0xFFFFFFFFFFFFFFFF];
+        let v4 = TinyVec::try_from_iter(
+            (0u32..0x1FFFF).map(|item| (item % 0xFF) as u8),
+        )
+        .unwrap();
 
-        let s1 = &[3u8, 0u8, 0u8, 13u8, 0xFFu8][..];
-        let s2 = &[1u8, 0u8, 13u8][..];
-        let s3 = &[
+        let s1 = tiny_vec![3u8, 0u8, 0u8, 13u8, 0xFFu8];
+        let s2 = tiny_vec![1u8, 0u8, 13u8];
+        let s3 = tiny_vec![
             5u8, 0u8, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 13, 0,
             0, 0, 0, 0, 0, 0, 0xFF, 1, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF,
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        ][..];
+        ];
 
-        assert_eq!(confined_serialize(&v1).unwrap(), s1);
-        assert_eq!(confined_serialize(&v2).unwrap(), s2);
-        assert_eq!(confined_serialize(&v3).unwrap(), s3);
-        assert!(confined_serialize(&v4).err().is_some());
+        assert_eq!(v1.confined_serialize().unwrap(), s1);
+        assert_eq!(v2.confined_serialize().unwrap(), s2);
+        assert_eq!(v3.confined_serialize().unwrap(), s3);
+        assert!(v4.confined_serialize_64kb().err().is_some());
 
-        assert_eq!(Vec::<u8>::confined_decode(s1).unwrap(), v1);
-        assert_eq!(Vec::<u8>::confined_decode(s2).unwrap(), v2);
-        assert_eq!(Vec::<u64>::confined_decode(s3).unwrap(), v3);
+        assert_eq!(TinyVec::<u8>::confined_deserialize(&s1).unwrap(), v1);
+        assert_eq!(TinyVec::<u8>::confined_deserialize(&s2).unwrap(), v2);
+        assert_eq!(TinyVec::<u64>::confined_deserialize(&s3).unwrap(), v3);
     }
 }

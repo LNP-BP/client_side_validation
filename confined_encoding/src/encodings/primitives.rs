@@ -192,11 +192,9 @@ encoding_float!(ieee::Oct, 32, F256, write_f256);
 
 #[cfg(test)]
 pub mod test {
-    use chrono::{NaiveDateTime, Utc};
     use confined_encoding_test::test_encoding_roundtrip;
 
     use super::*;
-    use crate::confined_deserialize;
 
     #[test]
     fn test_u_encoding() {
@@ -207,8 +205,6 @@ pub mod test {
         test_encoding_roundtrip(&0xFF_u8, [0xFF]).unwrap();
         test_encoding_roundtrip(&54_u16, [54, 0]).unwrap();
         test_encoding_roundtrip(&0x45a6_u16, [0xa6, 0x45]).unwrap();
-        test_encoding_roundtrip(&54_usize, [54, 0]).unwrap();
-        test_encoding_roundtrip(&0x45a6_usize, [0xa6, 0x45]).unwrap();
         test_encoding_roundtrip(&54_u32, [54, 0, 0, 0]).unwrap();
         test_encoding_roundtrip(&0x45a6_u32, [0xa6, 0x45, 0, 0]).unwrap();
         test_encoding_roundtrip(&0x56fe45a6_u32, [0xa6, 0x45, 0xfe, 0x56])
@@ -303,8 +299,8 @@ pub mod test {
         test_encoding_roundtrip(&false, [0x00]).unwrap();
 
         assert_eq!(
-            bool::confined_decode(&[0x20][..]),
-            Err(Error::ValueOutOfRange("boolean", 0..1, 0x20))
+            bool::confined_deserialize(&tiny_vec![0x20]).unwrap_err(),
+            Error::ValueOutOfRange("boolean", 0..1, 0x20)
         );
     }
 

@@ -179,7 +179,7 @@ pub trait ConfinedDecode: ConfinedType + Sized {
 }
 
 /// Possible errors during strict encoding and decoding process
-#[derive(Clone, Debug, Display, From, Error)]
+#[derive(Clone, PartialEq, Eq, Debug, Display, From, Error)]
 #[display(doc_comments)]
 pub enum Error {
     /// I/O error during data strict encoding

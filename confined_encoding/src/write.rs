@@ -474,7 +474,7 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
         data: &Confined<AsciiString, MIN, MAX>,
     ) -> Result<(), Error> {
         self.write_len(data.len(), MAX)?;
-        self.0.write_all(data.as_ref()).map_err(Error::from)
+        self.0.write_all(data.as_bytes()).map_err(Error::from)
     }
 
     fn write_string<const MIN: usize, const MAX: usize>(
