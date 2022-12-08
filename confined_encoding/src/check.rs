@@ -69,7 +69,7 @@ macro_rules! write_float {
     };
 }
 
-impl ConfinedWrite for CheckedWriter {
+impl<'a> ConfinedWrite for CheckedWriter {
     type StructBuilder = CheckedStructBuilder;
 
     write_num!(u8, write_u8);
@@ -216,7 +216,7 @@ impl ConfinedWrite for CheckedWriter {
         self.count += if MAX < u8::MAX as usize { 1 } else { 2 };
         self.iter.step_in(Step::List);
         for item in data {
-            item.confined_encode(self)?;
+            item.confined_encode(&mut *self)?;
         }
         self.iter.step_out();
         Ok(())
@@ -238,7 +238,7 @@ impl ConfinedWrite for CheckedWriter {
         self.count += if MAX < u8::MAX as usize { 1 } else { 2 };
         self.iter.step_in(Step::Set);
         for item in data {
-            item.confined_encode(self)?;
+            item.confined_encode(&mut *self)?;
         }
         self.iter.step_out();
         Ok(())
@@ -264,8 +264,8 @@ impl ConfinedWrite for CheckedWriter {
         self.count += if MAX < u8::MAX as usize { 1 } else { 2 };
         self.iter.step_in(Step::Map);
         for (k, v) in data {
-            k.confined_encode(self)?;
-            v.confined_encode(self)?;
+            k.confined_encode(&mut *self)?;
+            v.confined_encode(&mut *self)?;
         }
         self.iter.step_out();
 

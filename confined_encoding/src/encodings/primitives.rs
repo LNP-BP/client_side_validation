@@ -33,7 +33,7 @@ impl ConfinedType for () {
 }
 
 impl ConfinedEncode for () {
-    fn confined_encode(&self, _: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, _: impl ConfinedWrite) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -54,7 +54,7 @@ impl ConfinedType for bool {
 }
 
 impl ConfinedEncode for bool {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_enum(*self as u8, Self::confined_type())
     }
 }
@@ -76,7 +76,7 @@ impl ConfinedType for AsciiChar {
 }
 
 impl ConfinedEncode for AsciiChar {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_u8(*self as u8)
     }
 }
@@ -99,7 +99,7 @@ macro_rules! encoding_int {
         impl ConfinedEncode for $ty {
             fn confined_encode(
                 &self,
-                e: &mut impl ConfinedWrite,
+                mut e: impl ConfinedWrite,
             ) -> Result<(), Error> {
                 e.$write(*self)
             }
@@ -143,7 +143,7 @@ impl ConfinedType for bf16 {
 }
 
 impl ConfinedEncode for bf16 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_f16b(*self)
     }
 }
@@ -165,7 +165,7 @@ macro_rules! encoding_float {
         impl ConfinedEncode for $ty {
             fn confined_encode(
                 &self,
-                e: &mut impl ConfinedWrite,
+                mut e: impl ConfinedWrite,
             ) -> Result<(), Error> {
                 e.$write(*self)
             }

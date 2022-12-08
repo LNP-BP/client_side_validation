@@ -12,7 +12,6 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-#![allow(missing_docs)]
 //! Module defining type system used by strict encoding
 
 use std::cmp::Ordering;

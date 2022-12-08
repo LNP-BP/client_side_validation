@@ -27,7 +27,7 @@ impl ConfinedType for secp256k1zkp::pedersen::Commitment {
 
 impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_byte_array(self.0)
     }
 }
@@ -49,7 +49,7 @@ impl ConfinedType for secp256k1zkp::pedersen::RangeProof {
 
 impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_bytes::<0, { u16::MAX as usize }>(&self.proof[..self.plen])
     }
 }

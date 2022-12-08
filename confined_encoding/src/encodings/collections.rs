@@ -39,7 +39,7 @@ impl<T> ConfinedEncode for Option<T>
 where
     T: ConfinedEncode,
 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_option(self.as_ref())
     }
 }
@@ -68,7 +68,7 @@ impl ConfinedType for TinyString {
 }
 
 impl ConfinedEncode for TinyString {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_string(self)
     }
 }
@@ -99,7 +99,7 @@ impl<T> ConfinedEncode for TinyVec<T>
 where
     T: ConfinedEncode,
 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_list(self)
     }
 }
@@ -132,7 +132,7 @@ impl<T> ConfinedEncode for SmallVec<T>
 where
     T: ConfinedEncode,
 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_list(self)
     }
 }
@@ -170,7 +170,7 @@ impl<T> ConfinedEncode for SmallOrdSet<T>
 where
     T: ConfinedEncode + Hash + Ord,
 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_set(self)
     }
 }
@@ -228,7 +228,7 @@ impl<T, const MIN: usize> ConfinedEncode
 where
     T: ConfinedEncode + Hash + Ord,
 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_set(self)
     }
 }
@@ -287,7 +287,7 @@ where
     K: ConfinedEncode + Ord + Hash,
     V: ConfinedEncode,
 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_map(self)
     }
 }

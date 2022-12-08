@@ -30,7 +30,7 @@ impl ConfinedType for Bytes32 {
 }
 
 impl ConfinedEncode for Bytes32 {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_byte_array(self.into_inner())
     }
 }
@@ -50,7 +50,7 @@ impl ConfinedType for FlagVec {
 
 impl ConfinedEncode for FlagVec {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_list(self.clone().as_inner())
     }
 }

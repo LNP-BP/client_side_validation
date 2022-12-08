@@ -14,7 +14,7 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, missing_docs)]
+#![deny(/*dead_code, missing_docs*/)]
 
 //! Library implementing **strict encoding** standard, defined by
 //! [LNPBP-7](https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md).
@@ -99,7 +99,7 @@ pub trait ConfinedEncode: ConfinedType {
     /// Encode with the given [`io::Write`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error>;
+    fn confined_encode(&self, e: impl ConfinedWrite) -> Result<(), Error>;
 
     fn confined_check(&self) -> u16 {
         let mut checker = CheckedWriter::new(Self::confined_type());

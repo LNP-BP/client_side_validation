@@ -36,13 +36,15 @@ macro_rules! hash_encoding {
         impl $crate::ConfinedType for $ty {
             const TYPE_NAME: &'static str = $name;
 
-            fn confined_type() -> Ty { Ty::byte_array(32) }
+            fn confined_type() -> $crate::schema::Ty {
+                $crate::schema::Ty::byte_array(32)
+            }
         }
 
         impl $crate::ConfinedEncode for $ty {
             fn confined_encode(
                 &self,
-                e: &mut impl $crate::ConfinedWrite,
+                mut e: impl $crate::ConfinedWrite,
             ) -> Result<(), $crate::Error> {
                 e.write_byte_array(self.into_inner())
             }

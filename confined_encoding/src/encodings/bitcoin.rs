@@ -49,7 +49,7 @@ impl<T: ConfinedTag> ConfinedType for sha256t::Hash<T> {
 }
 
 impl<T: ConfinedTag> ConfinedEncode for sha256t::Hash<T> {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_byte_array(self.into_inner())
     }
 }
@@ -70,7 +70,7 @@ impl ConfinedType for LeafVersion {
 }
 
 impl ConfinedEncode for LeafVersion {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_u8(self.to_consensus())
     }
 }
@@ -94,7 +94,7 @@ impl ConfinedType for FutureLeafVersion {
 }
 
 impl ConfinedEncode for FutureLeafVersion {
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_u8(self.to_consensus())
     }
 }
@@ -120,7 +120,7 @@ impl ConfinedType for secp256k1::PublicKey {
 
 impl ConfinedEncode for secp256k1::PublicKey {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_byte_array(self.serialize())
     }
 }
@@ -151,7 +151,7 @@ impl ConfinedType for XOnlyPublicKey {
 
 impl ConfinedEncode for XOnlyPublicKey {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_byte_array(self.serialize())
     }
 }
@@ -178,7 +178,7 @@ impl ConfinedType for bip340::TweakedPublicKey {
 
 impl ConfinedEncode for bip340::TweakedPublicKey {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, mut e: impl ConfinedWrite) -> Result<(), Error> {
         e.write_byte_array(self.serialize())
     }
 }
@@ -212,7 +212,7 @@ impl ConfinedType for OutPoint {
 
 impl ConfinedEncode for OutPoint {
     #[inline]
-    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+    fn confined_encode(&self, e: impl ConfinedWrite) -> Result<(), Error> {
         e.build_struct()
             .field("txid", &self.txid)?
             .field("vout", &self.vout)?

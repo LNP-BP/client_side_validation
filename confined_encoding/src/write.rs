@@ -125,6 +125,204 @@ pub trait ConfinedWrite: Sized {
     fn build_struct(self) -> Self::StructBuilder;
 }
 
+pub enum ImpossibleBuilder {}
+
+impl<'w, W: ConfinedWrite> StructBuild<&'w mut W> for ImpossibleBuilder {
+    fn field(
+        self,
+        _: &'static str,
+        _: &impl ConfinedEncode,
+    ) -> Result<Self, Error> {
+        unreachable!()
+    }
+
+    fn finish(self) -> &'w mut W { unreachable!() }
+}
+
+impl<'w, W> ConfinedWrite for &'w mut W
+where
+    W: ConfinedWrite,
+{
+    type StructBuilder = ImpossibleBuilder;
+
+    fn write_u8(&mut self, val: u8) -> Result<(), Error> {
+        W::write_u8(self, val)
+    }
+
+    fn write_u16(&mut self, val: u16) -> Result<(), Error> {
+        W::write_u16(self, val)
+    }
+
+    fn write_u24(&mut self, val: u24) -> Result<(), Error> {
+        W::write_u24(self, val)
+    }
+
+    fn write_u32(&mut self, val: u32) -> Result<(), Error> {
+        W::write_u32(self, val)
+    }
+
+    fn write_u64(&mut self, val: u64) -> Result<(), Error> {
+        W::write_u64(self, val)
+    }
+
+    fn write_u128(&mut self, val: u128) -> Result<(), Error> {
+        W::write_u128(self, val)
+    }
+
+    fn write_u256(&mut self, val: u256) -> Result<(), Error> {
+        W::write_u256(self, val)
+    }
+
+    fn write_u512(&mut self, val: u512) -> Result<(), Error> {
+        W::write_u512(self, val)
+    }
+
+    fn write_u1024(&mut self, val: u1024) -> Result<(), Error> {
+        W::write_u1024(self, val)
+    }
+
+    fn write_i8(&mut self, val: i8) -> Result<(), Error> {
+        W::write_i8(self, val)
+    }
+
+    fn write_i16(&mut self, val: i16) -> Result<(), Error> {
+        W::write_i16(self, val)
+    }
+
+    fn write_i32(&mut self, val: i32) -> Result<(), Error> {
+        W::write_i32(self, val)
+    }
+
+    fn write_i64(&mut self, val: i64) -> Result<(), Error> {
+        W::write_i64(self, val)
+    }
+
+    fn write_i128(&mut self, val: i128) -> Result<(), Error> {
+        W::write_i128(self, val)
+    }
+
+    fn write_i256(&mut self, val: i256) -> Result<(), Error> {
+        W::write_i256(self, val)
+    }
+
+    fn write_i512(&mut self, val: i512) -> Result<(), Error> {
+        W::write_i512(self, val)
+    }
+
+    fn write_i1024(&mut self, val: i1024) -> Result<(), Error> {
+        W::write_i1024(self, val)
+    }
+
+    fn write_f16b(&mut self, val: bf16) -> Result<(), Error> {
+        W::write_f16b(self, val)
+    }
+
+    fn write_f16(&mut self, val: Half) -> Result<(), Error> {
+        W::write_f16(self, val)
+    }
+
+    fn write_f32(&mut self, val: Single) -> Result<(), Error> {
+        W::write_f32(self, val)
+    }
+
+    fn write_f64(&mut self, val: Double) -> Result<(), Error> {
+        W::write_f64(self, val)
+    }
+
+    fn write_f80(&mut self, val: X87DoubleExtended) -> Result<(), Error> {
+        W::write_f80(self, val)
+    }
+
+    fn write_f128(&mut self, val: Quad) -> Result<(), Error> {
+        W::write_f128(self, val)
+    }
+
+    fn write_f256(&mut self, val: Oct) -> Result<(), Error> {
+        W::write_f256(self, val)
+    }
+
+    fn write_enum(&mut self, val: u8, ty: Ty) -> Result<(), Error> {
+        W::write_enum(self, val, ty)
+    }
+
+    fn write_union<T: ConfinedEncode>(
+        &mut self,
+        var: &'static str,
+        ty: Ty,
+        inner: &T,
+    ) -> Result<(), Error> {
+        W::write_union(self, var, ty, inner)
+    }
+
+    fn write_option<T: ConfinedEncode>(
+        &mut self,
+        val: Option<&T>,
+    ) -> Result<(), Error> {
+        W::write_option(self, val)
+    }
+
+    fn write_byte_array<const LEN: usize>(
+        &mut self,
+        array: [u8; LEN],
+    ) -> Result<(), Error> {
+        W::write_byte_array(self, array)
+    }
+
+    fn write_bytes<const MIN: usize, const MAX: usize>(
+        &mut self,
+        data: impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        W::write_bytes::<MIN, MAX>(self, data)
+    }
+
+    fn write_ascii<const MIN: usize, const MAX: usize>(
+        &mut self,
+        data: &Confined<AsciiString, MIN, MAX>,
+    ) -> Result<(), Error> {
+        W::write_ascii(self, data)
+    }
+
+    fn write_string<const MIN: usize, const MAX: usize>(
+        &mut self,
+        data: &Confined<String, MIN, MAX>,
+    ) -> Result<(), Error> {
+        W::write_string(self, data)
+    }
+
+    fn write_list<T, const MIN: usize, const MAX: usize>(
+        &mut self,
+        data: &Confined<Vec<T>, MIN, MAX>,
+    ) -> Result<(), Error>
+    where
+        T: ConfinedEncode,
+    {
+        W::write_list(self, data)
+    }
+
+    fn write_set<T, const MIN: usize, const MAX: usize>(
+        &mut self,
+        data: &Confined<BTreeSet<T>, MIN, MAX>,
+    ) -> Result<(), Error>
+    where
+        T: ConfinedEncode + Hash + Ord,
+    {
+        W::write_set(self, data)
+    }
+
+    fn write_map<K, V, const MIN: usize, const MAX: usize>(
+        &mut self,
+        data: &Confined<BTreeMap<K, V>, MIN, MAX>,
+    ) -> Result<(), Error>
+    where
+        K: ConfinedEncode + Hash + Ord,
+        V: ConfinedEncode,
+    {
+        W::write_map(self, data)
+    }
+
+    fn build_struct(self) -> Self::StructBuilder { unreachable!() }
+}
+
 pub struct Writer<W: io::Write>(W);
 
 impl<W: io::Write> Writer<W> {
@@ -296,7 +494,7 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
     {
         self.write_len(data.len(), MAX)?;
         for item in data {
-            item.confined_encode(self)?;
+            item.confined_encode(&mut *self)?;
         }
         Ok(())
     }
@@ -310,7 +508,7 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
     {
         self.write_len(data.len(), MAX)?;
         for item in data {
-            item.confined_encode(self)?;
+            item.confined_encode(&mut *self)?;
         }
         Ok(())
     }
@@ -325,8 +523,8 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
     {
         self.write_len(data.len(), MAX)?;
         for (k, v) in data {
-            k.confined_encode(self)?;
-            v.confined_encode(self)?;
+            k.confined_encode(&mut *self)?;
+            v.confined_encode(&mut *self)?;
         }
         Ok(())
     }

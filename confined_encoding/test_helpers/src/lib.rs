@@ -462,7 +462,7 @@ macro_rules! test_encoding_enum_u8_exhaustive {
 ///
 /// NB: These errors are specific for testing configuration and should not be
 /// used in non-test environment.
-#[derive(Clone, PartialEq, Eq, Debug, Display, Error)]
+#[derive(Clone, Debug, Display, Error)]
 pub enum DataEncodingTestFailure<T>
 where
     T: ConfinedEncode + ConfinedDecode + PartialEq + Debug + Clone,
