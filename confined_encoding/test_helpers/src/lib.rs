@@ -667,6 +667,9 @@ pub fn test_encoding_roundtrip<T>(
 where
     T: ConfinedEncode + ConfinedDecode + PartialEq + Clone + Debug,
 {
+    let _encoded_object = object
+        .confined_serialize_64kb()
+        .map_err(DataEncodingTestFailure::EncoderFailure)?;
     let test_vec = SmallVec::try_from(test_vec.as_ref().to_vec()).unwrap();
     let decoded_object = test_vec_decoding_roundtrip(&test_vec)?;
     if object != &decoded_object {

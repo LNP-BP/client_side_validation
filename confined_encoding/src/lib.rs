@@ -53,14 +53,12 @@ extern crate serde;
 #[cfg(feature = "bulletproofs")]
 extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 
-#[macro_use]
-mod macros;
-
 mod check;
 mod encodings;
 pub mod path;
 #[macro_use]
 pub mod schema;
+mod read;
 mod write;
 
 use std::ops::Range;
@@ -76,7 +74,8 @@ use amplify::{ascii, confinement, IoError};
 pub use encodings::ConfinedTag;
 
 pub use crate::check::{CheckError, CheckedWriter};
-use crate::schema::{Fields, Ty, Variants};
+pub use crate::read::{ConfinedRead, Reader};
+use crate::schema::{Alternatives, Ty, Variants};
 pub use crate::write::{ConfinedWrite, StructWriter, Writer};
 
 pub trait ConfinedType {
@@ -96,7 +95,7 @@ pub trait ConfinedType {
 /// utilize `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits  
 /// from `commit_verify` module.
 pub trait ConfinedEncode: ConfinedType {
-    /// Encode with the given [`io::Write`] instance; must return result
+    /// Encode with the given [`ConfinedWrite`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.
     fn confined_encode(&self, e: impl ConfinedWrite) -> Result<(), Error>;
@@ -141,20 +140,21 @@ pub trait ConfinedEncode: ConfinedType {
 /// commitment procedure for the revealed message and verify it against the
 /// provided commitment.
 pub trait ConfinedDecode: ConfinedType + Sized {
-    /// Decode with the given [`std::io::Read`] instance; must either
+    /// Decode with the given [`ConfinedRead`] instance; must either
     /// construct an instance or return implementation-specific error type.
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error>;
+    fn confined_decode(d: impl ConfinedRead) -> Result<Self, Error>;
 
-    /// Tries to deserializesuper byte array into the current type using
+    /// Tries to deserialize byte array into the current type using
     /// [`ConfinedDecode::confined_decode`]. If there are some data remains in
     /// the buffer once deserialization is completed, fails with
     /// [`Error::DataNotEntirelyConsumed`].
     fn confined_deserialize<const MIN: usize, const MAX: usize>(
         data: &Confined<Vec<u8>, MIN, MAX>,
     ) -> Result<Self, Error> {
-        let mut cursor = io::Cursor::new(data.as_inner());
-        let me = Self::confined_decode(&mut cursor)?;
-        if cursor.position() as usize != data.len() {
+        let cursor = io::Cursor::new(data.as_inner());
+        let mut reader = Reader::from(cursor);
+        let me = Self::confined_decode(&mut reader)?;
+        if reader.unbox().position() as usize != data.len() {
             return Err(Error::DataNotEntirelyConsumed);
         }
         Ok(me)
@@ -205,7 +205,7 @@ pub enum Error {
 
     /// unsupported value `{1}` for union `{0}` encountered during decode
     /// operation
-    UnionValueNotKnown(&'static str, u8, Fields),
+    UnionValueNotKnown(&'static str, u8, Alternatives),
 
     /// non-ASCII character {0:#04x}
     NonAsciiChar(u8),

@@ -13,6 +13,7 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 mod amplify_types;
+#[macro_use]
 mod bitcoin;
 #[cfg(feature = "bulletproofs")]
 mod bulletproofs;

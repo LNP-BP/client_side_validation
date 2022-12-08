@@ -14,9 +14,12 @@
 
 use std::io;
 
+use secp256k1zkp::constants::MAX_PROOF_SIZE;
+
 use crate::schema::Ty;
 use crate::{
-    ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+    ConfinedDecode, ConfinedEncode, ConfinedRead, ConfinedType, ConfinedWrite,
+    Error,
 };
 
 impl ConfinedType for secp256k1zkp::pedersen::Commitment {
@@ -34,10 +37,10 @@ impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
 
 impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let mut buf = [0u8; secp256k1zkp::constants::PEDERSEN_COMMITMENT_SIZE];
-        d.read_exact(&mut buf)?;
-        Ok(Self::from_vec(buf.to_vec()))
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        let buf: [u8; secp256k1zkp::constants::PEDERSEN_COMMITMENT_SIZE] =
+            d.read_byte_array()?;
+        Ok(Self(buf))
     }
 }
 
@@ -56,9 +59,9 @@ impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
 
 impl ConfinedDecode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        use secp256k1zkp::constants::MAX_PROOF_SIZE;
-        let len = u16::confined_decode(d)? as usize;
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        let proof = d.read_bytes::<0, { u16::MAX as usize }>()?;
+        let len = proof.len();
         if len as usize >= MAX_PROOF_SIZE {
             return Err(Error::DataIntegrityError(format!(
                 "Wrong bulletproof data size: expected no more than {}, got {}",
@@ -66,7 +69,7 @@ impl ConfinedDecode for secp256k1zkp::pedersen::RangeProof {
             )));
         }
         let mut buf = [0; MAX_PROOF_SIZE];
-        d.read_exact(&mut buf)?;
+        buf.copy_from_slice(proof.as_ref());
         Ok(Self {
             proof: buf,
             plen: len,

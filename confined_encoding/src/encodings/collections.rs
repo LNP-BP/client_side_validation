@@ -15,7 +15,6 @@
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::io;
 
 use amplify::confinement::{
     Confined, SmallOrdMap, SmallOrdSet, SmallVec, TinyString, TinyVec,
@@ -23,7 +22,8 @@ use amplify::confinement::{
 
 use crate::schema::{Sizing, Ty};
 use crate::{
-    ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+    ConfinedDecode, ConfinedEncode, ConfinedRead, ConfinedType, ConfinedWrite,
+    Error,
 };
 
 impl<T> ConfinedType for Option<T>
@@ -48,16 +48,8 @@ impl<T> ConfinedDecode for Option<T>
 where
     T: ConfinedDecode,
 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u8::confined_decode(d)?;
-        match len {
-            0 => Ok(None),
-            1 => Ok(Some(T::confined_decode(d)?)),
-            invalid => Err(Error::DataIntegrityError(format!(
-                "invalid optional value `{}`",
-                invalid
-            ))),
-        }
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_option()
     }
 }
 
@@ -74,15 +66,8 @@ impl ConfinedEncode for TinyString {
 }
 
 impl ConfinedDecode for TinyString {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u8::confined_decode(d)?;
-        let mut data = Vec::<u8>::with_capacity(len as usize);
-        d.read_exact(&mut data)?;
-        let s = String::from_utf8(data)?;
-        Ok(
-            TinyString::try_from(s)
-                .expect("amplify::TinyString type is broken"),
-        )
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_string()
     }
 }
 
@@ -108,14 +93,8 @@ impl<T> ConfinedDecode for TinyVec<T>
 where
     T: ConfinedDecode,
 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u8::confined_decode(d)?;
-        let mut data = TinyVec::<T>::with_capacity(len as usize);
-        for _ in 0..len {
-            data.push(T::confined_decode(d)?)
-                .expect("TinyVec must have up to 255 items");
-        }
-        Ok(data)
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_list()
     }
 }
 
@@ -141,14 +120,8 @@ impl<T> ConfinedDecode for SmallVec<T>
 where
     T: ConfinedDecode,
 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u16::confined_decode(d)?;
-        let mut data = SmallVec::<T>::with_capacity(len as usize);
-        for _ in 0..len {
-            data.push(T::confined_decode(d)?)
-                .expect("SmallVec must have up to 2^16-1 items");
-        }
-        Ok(data)
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_list()
     }
 }
 
@@ -183,26 +156,8 @@ impl<T> ConfinedDecode for SmallOrdSet<T>
 where
     T: ConfinedDecode + Hash + Ord + Debug,
 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u16::confined_decode(d)?;
-        let mut data = SmallOrdSet::<T>::new();
-        for _ in 0..len {
-            let val = T::confined_decode(d)?;
-            if let Some(max) = data.iter().max() {
-                if max > &val {
-                    return Err(Error::BrokenOrder(
-                        format!("{:?}", val),
-                        format!("{:?}", max),
-                    ));
-                }
-            }
-            if data.contains(&val) {
-                return Err(Error::RepeatedValue(format!("{:?}", val)));
-            }
-            data.push(val)
-                .expect("SmallOrdSet must have up to 2^16-1 items");
-        }
-        Ok(data)
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_set()
     }
 }
 
@@ -242,27 +197,8 @@ impl<T, const MIN: usize> ConfinedDecode
 where
     T: ConfinedDecode + Hash + Ord + Debug,
 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u8::confined_decode(d)?;
-        let mut data = BTreeSet::new();
-        for _ in 0..len {
-            let val = T::confined_decode(d)?;
-            if let Some(max) = data.iter().max() {
-                if max > &val {
-                    return Err(Error::BrokenOrder(
-                        format!("{:?}", val),
-                        format!("{:?}", max),
-                    ));
-                }
-            }
-            if data.contains(&val) {
-                return Err(Error::RepeatedValue(format!("{:?}", val)));
-            }
-            data.insert(val);
-        }
-        let data = Confined::try_from(data)
-            .expect("collection must have up to 2^8-1 items");
-        Ok(data)
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_set()
     }
 }
 
@@ -297,27 +233,8 @@ where
     K: ConfinedDecode + Ord + Hash + Debug,
     V: ConfinedDecode,
 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let len = u16::confined_decode(d)?;
-        let mut map = SmallOrdMap::<K, V>::new();
-        for _ in 0..len {
-            let key = K::confined_decode(d)?;
-            let val = V::confined_decode(d)?;
-            if let Some(max) = map.keys().max() {
-                if max > &key {
-                    return Err(Error::BrokenOrder(
-                        format!("{:?}", key),
-                        format!("{:?}", max),
-                    ));
-                }
-            }
-            if map.contains_key(&key) {
-                return Err(Error::RepeatedValue(format!("{:?}", key)));
-            }
-            map.insert(key, val)
-                .expect("SmallOrdMap must have up to 2^16-1 items");
-        }
-        Ok(map)
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_map()
     }
 }
 

@@ -12,15 +12,13 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use std::io;
-
 use amplify::flags::FlagVec;
 use amplify::{Bytes32, Wrapper};
-use bitcoin::hashes::{sha256, Hash};
 
 use crate::schema::Ty;
 use crate::{
-    ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+    ConfinedDecode, ConfinedEncode, ConfinedRead, ConfinedType, ConfinedWrite,
+    Error,
 };
 
 impl ConfinedType for Bytes32 {
@@ -36,9 +34,8 @@ impl ConfinedEncode for Bytes32 {
 }
 
 impl ConfinedDecode for Bytes32 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let hash = sha256::Hash::confined_decode(d)?;
-        Ok(Bytes32::from_inner(hash.into_inner()))
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_byte_array().map(Bytes32::from_inner)
     }
 }
 
@@ -57,9 +54,9 @@ impl ConfinedEncode for FlagVec {
 
 impl ConfinedDecode for FlagVec {
     #[inline]
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let tiny_vec = ConfinedDecode::confined_decode(d)?;
-        let mut flag_vec = FlagVec::from_inner(tiny_vec);
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        let inner = d.read_list()?;
+        let mut flag_vec = FlagVec::from_inner(inner);
         if flag_vec.shrink() {
             return Err(Error::DataIntegrityError(s!(
                 "FlagVec stored in a non-minimal format"

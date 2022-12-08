@@ -25,7 +25,7 @@ use amplify::num::apfloat::Float;
 use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
 use half::bf16;
 
-use crate::path::{Path, Step};
+use crate::path::Step;
 use crate::schema::Ty;
 use crate::{ConfinedEncode, ConfinedType, Error};
 
@@ -122,8 +122,8 @@ impl<'w, W> ConfinedWrite for &'w mut W
 where
     W: ConfinedWrite,
 {
-    fn step_in(&mut self, _step: Step) {}
-    fn step_out(&mut self) {}
+    fn step_in(&mut self, step: Step) { W::step_in(self, step) }
+    fn step_out(&mut self) { W::step_out(self) }
 
     fn write_u8(&mut self, val: u8) -> Result<(), Error> {
         W::write_u8(self, val)
@@ -383,16 +383,14 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
         ty: Ty,
         inner: &T,
     ) -> Result<(), Error> {
-        let Ty::Union(ref variants) = ty else {
+        let Ty::Union(ref alts) = ty else {
             panic!("write_union requires Ty::Union type")
         };
-        let Some(alt) = variants.get(name) else {
+        let Some(alt) = alts.get(name) else {
             panic!("invalid union alternative {}", name);
         };
-        let actual_ty = ty
-            .path(&Path::with(Step::Alt(name)))
-            .expect("unknown union alternative");
-        if alt.ty.as_ref() != actual_ty {
+        let actual_ty = T::confined_type();
+        if alt.ty.as_ref() != &actual_ty {
             panic!(
                 "wrong data type for union alternative {}; expected {:?}, \
                  found {:?}",

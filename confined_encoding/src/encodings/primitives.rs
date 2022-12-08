@@ -13,17 +13,16 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 //! Taking implementation of little-endian integer encoding
-use std::io;
 
 use amplify::ascii::AsciiChar;
-use amplify::num::apfloat::{ieee, Float};
+use amplify::num::apfloat::ieee;
 use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
 use half::bf16;
 
 use crate::schema::{self, Ty};
 use crate::{
-    variants, ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite,
-    Error,
+    variants, ConfinedDecode, ConfinedEncode, ConfinedRead, ConfinedType,
+    ConfinedWrite, Error,
 };
 
 impl ConfinedType for () {
@@ -39,7 +38,7 @@ impl ConfinedEncode for () {
 }
 
 impl ConfinedDecode for () {
-    fn confined_decode(_: &mut impl io::Read) -> Result<Self, Error> { Ok(()) }
+    fn confined_decode(_: impl ConfinedRead) -> Result<Self, Error> { Ok(()) }
 }
 
 impl ConfinedType for bool {
@@ -60,12 +59,12 @@ impl ConfinedEncode for bool {
 }
 
 impl ConfinedDecode for bool {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        match u8::confined_decode(d)? {
-            0 => Ok(false),
-            1 => Ok(true),
-            v => Err(Error::ValueOutOfRange("boolean", 0..1, v as u128)),
-        }
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        Ok(match d.read_enum(Self::TYPE_NAME, Self::confined_type())? {
+            0 => false,
+            1 => true,
+            _ => unreachable!("guaranteed by type system"),
+        })
     }
 }
 
@@ -82,14 +81,14 @@ impl ConfinedEncode for AsciiChar {
 }
 
 impl ConfinedDecode for AsciiChar {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let c = u8::confined_decode(d)?;
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        let c = d.read_u8()?;
         AsciiChar::from_ascii(c).map_err(|_| Error::NonAsciiChar(c))
     }
 }
 
 macro_rules! encoding_int {
-    ($ty:ty, $l:literal, $prim:ident, $write:ident) => {
+    ($ty:ty, $prim:ident, $read:ident, $write:ident) => {
         impl ConfinedType for $ty {
             const TYPE_NAME: &'static str = stringify!($prim);
 
@@ -106,35 +105,35 @@ macro_rules! encoding_int {
         }
 
         impl ConfinedDecode for $ty {
-            fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-                let mut buf = [0u8; $l];
-                d.read_exact(&mut buf)?;
-                Ok(Self::from_le_bytes(buf))
+            fn confined_decode(
+                mut d: impl ConfinedRead,
+            ) -> Result<Self, Error> {
+                d.$read()
             }
         }
     };
 }
 
-encoding_int!(u8, 1, U8, write_u8);
-encoding_int!(u16, 2, U16, write_u16);
-encoding_int!(u24, 3, U24, write_u24);
-encoding_int!(u32, 4, U32, write_u32);
-encoding_int!(u64, 8, U64, write_u64);
-encoding_int!(u128, 16, U128, write_u128);
-encoding_int!(u256, 32, U256, write_u256);
-encoding_int!(u512, 64, U512, write_u512);
-encoding_int!(u1024, 128, U1024, write_u1024);
+encoding_int!(u8, U8, read_u8, write_u8);
+encoding_int!(u16, U16, read_u16, write_u16);
+encoding_int!(u24, U24, read_u24, write_u24);
+encoding_int!(u32, U32, read_u32, write_u32);
+encoding_int!(u64, U64, read_u64, write_u64);
+encoding_int!(u128, U128, read_u128, write_u128);
+encoding_int!(u256, U256, read_u256, write_u256);
+encoding_int!(u512, U512, read_u512, write_u512);
+encoding_int!(u1024, U1024, read_u1024, write_u1024);
 
-encoding_int!(i8, 1, I8, write_i8);
-encoding_int!(i16, 2, I16, write_i16);
+encoding_int!(i8, I8, read_i8, write_i8);
+encoding_int!(i16, I16, read_i16, write_i16);
 // TODO: Add i24 encoding once the type will be in amplify::num
-//encoding_int!(i24, 3, I24, write_i24);
-encoding_int!(i32, 4, I32, write_i32);
-encoding_int!(i64, 8, I64, write_i64);
-encoding_int!(i128, 16, I128, write_i128);
-encoding_int!(i256, 32, I256, write_i256);
-encoding_int!(i512, 64, I512, write_i512);
-encoding_int!(i1024, 128, I1024, write_i1024);
+//encoding_int!(i24, I24, read_i24, write_i24);
+encoding_int!(i32, I32, read_i32, write_i32);
+encoding_int!(i64, I64, read_i64, write_i64);
+encoding_int!(i128, I128, read_i128, write_i128);
+encoding_int!(i256, I256, read_i256, write_i256);
+encoding_int!(i512, I512, read_i512, write_i512);
+encoding_int!(i1024, I1024, read_i1024, write_i1024);
 
 impl ConfinedType for bf16 {
     const TYPE_NAME: &'static str = "F16b";
@@ -149,13 +148,13 @@ impl ConfinedEncode for bf16 {
 }
 
 impl ConfinedDecode for bf16 {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        Ok(bf16::from_bits(u16::confined_decode(d)?))
+    fn confined_decode(mut d: impl ConfinedRead) -> Result<Self, Error> {
+        d.read_f16b()
     }
 }
 
 macro_rules! encoding_float {
-    ($ty:ty, $l:literal, $prim:ident, $write:ident) => {
+    ($ty:ty, $prim:ident, $read:ident, $write:ident) => {
         impl ConfinedType for $ty {
             const TYPE_NAME: &'static str = stringify!($prim);
 
@@ -172,29 +171,29 @@ macro_rules! encoding_float {
         }
 
         impl ConfinedDecode for $ty {
-            fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-                let mut buf = [0u8; 32];
-                d.read_exact(&mut buf[..$l])?;
-                // Constructing inner representation
-                let inner = u256::from_le_bytes(buf);
-                Ok(Self::from_bits(inner))
+            fn confined_decode(
+                mut d: impl ConfinedRead,
+            ) -> Result<Self, Error> {
+                d.$read()
             }
         }
     };
 }
 
-encoding_float!(ieee::Half, 2, F16, write_f16);
-encoding_float!(ieee::Single, 4, F32, write_f32);
-encoding_float!(ieee::Double, 8, F64, write_f64);
-encoding_float!(ieee::X87DoubleExtended, 10, F80, write_f80);
-encoding_float!(ieee::Quad, 16, F128, write_f128);
-encoding_float!(ieee::Oct, 32, F256, write_f256);
+encoding_float!(ieee::Half, F16, read_f16, write_f16);
+encoding_float!(ieee::Single, F32, read_f32, write_f32);
+encoding_float!(ieee::Double, F64, read_f64, write_f64);
+encoding_float!(ieee::X87DoubleExtended, F80, read_f80, write_f80);
+encoding_float!(ieee::Quad, F128, read_f128, write_f128);
+encoding_float!(ieee::Oct, F256, read_f256, write_f256);
 
 #[cfg(test)]
 pub mod test {
+    use amplify::confinement::Confined;
     use confined_encoding_test::test_encoding_roundtrip;
 
     use super::*;
+    use crate::schema::Variant;
 
     #[test]
     fn test_u_encoding() {
@@ -300,7 +299,14 @@ pub mod test {
 
         assert_eq!(
             bool::confined_deserialize(&tiny_vec![0x20]).unwrap_err(),
-            Error::ValueOutOfRange("boolean", 0..1, 0x20)
+            Error::EnumValueNotKnown(
+                "Bool",
+                32,
+                Confined::try_from(
+                    bset! { Variant::new("False", 0), Variant::new("True", 1)}
+                )
+                .unwrap()
+            )
         );
     }
 
