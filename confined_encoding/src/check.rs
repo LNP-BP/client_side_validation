@@ -26,8 +26,8 @@ use half::bf16;
 
 use crate::path::{Step, TyIter};
 use crate::schema::{Sizing, Ty};
-use crate::write::{ConfinedWrite, StructBuild};
-use crate::{ConfinedEncode, Error};
+use crate::write::ConfinedWrite;
+use crate::{ConfinedEncode, Error, StructBuilder};
 
 #[derive(Clone, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
@@ -70,7 +70,8 @@ macro_rules! write_float {
 }
 
 impl<'a> ConfinedWrite for CheckedWriter {
-    type StructBuilder = CheckedStructBuilder;
+    fn step_in(&mut self, step: Step) { self.iter.step_in(step) }
+    fn step_out(&mut self) { self.iter.step_out() }
 
     write_num!(u8, write_u8);
     write_num!(u16, write_u16);
@@ -214,11 +215,11 @@ impl<'a> ConfinedWrite for CheckedWriter {
             max: MAX,
         }));
         self.count += if MAX < u8::MAX as usize { 1 } else { 2 };
-        self.iter.step_in(Step::List);
+        self.step_in(Step::List);
         for item in data {
             item.confined_encode(&mut *self)?;
         }
-        self.iter.step_out();
+        self.step_out();
         Ok(())
     }
 
@@ -236,11 +237,11 @@ impl<'a> ConfinedWrite for CheckedWriter {
         self.iter
             .check(&Ty::set(T::confined_type(), Sizing { min: MIN, max: MAX }));
         self.count += if MAX < u8::MAX as usize { 1 } else { 2 };
-        self.iter.step_in(Step::Set);
+        self.step_in(Step::Set);
         for item in data {
             item.confined_encode(&mut *self)?;
         }
-        self.iter.step_out();
+        self.step_out();
         Ok(())
     }
 
@@ -262,31 +263,15 @@ impl<'a> ConfinedWrite for CheckedWriter {
             Sizing { min: MIN, max: MAX },
         ));
         self.count += if MAX < u8::MAX as usize { 1 } else { 2 };
-        self.iter.step_in(Step::Map);
+        self.step_in(Step::Map);
         for (k, v) in data {
             k.confined_encode(&mut *self)?;
             v.confined_encode(&mut *self)?;
         }
-        self.iter.step_out();
+        self.step_out();
 
         Ok(())
     }
 
-    fn build_struct(self) -> Self::StructBuilder { CheckedStructBuilder(self) }
-}
-
-pub struct CheckedStructBuilder(CheckedWriter);
-
-impl StructBuild<CheckedWriter> for CheckedStructBuilder {
-    fn field(
-        mut self,
-        name: &'static str,
-        data: &impl ConfinedEncode,
-    ) -> Result<Self, Error> {
-        self.0.iter.step_in(Step::Field(name));
-        data.confined_encode(&mut self.0)?;
-        Ok(self)
-    }
-
-    fn finish(self) -> CheckedWriter { self.0 }
+    fn build_struct(self) -> StructBuilder<Self> { todo!() }
 }

@@ -75,9 +75,9 @@ use amplify::confinement::{Confined, MediumVec, SmallVec};
 use amplify::{ascii, confinement, IoError};
 pub use encodings::ConfinedTag;
 
-pub use crate::check::{CheckError, CheckedStructBuilder, CheckedWriter};
+pub use crate::check::{CheckError, CheckedWriter};
 use crate::schema::{Fields, Ty, Variants};
-pub use crate::write::{Builder, ConfinedWrite, StructBuild, Writer};
+pub use crate::write::{ConfinedWrite, StructBuilder, Writer};
 
 pub trait ConfinedType {
     /// Type name for the schema

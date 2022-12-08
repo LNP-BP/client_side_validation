@@ -25,20 +25,13 @@ use amplify::num::apfloat::Float;
 use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
 use half::bf16;
 
+use crate::path::Step;
 use crate::schema::Ty;
 use crate::{ConfinedEncode, ConfinedType, Error};
 
-pub trait StructBuild<W: ConfinedWrite + Sized>: Sized {
-    fn field(
-        self,
-        name: &'static str,
-        data: &impl ConfinedEncode,
-    ) -> Result<Self, Error>;
-    fn finish(self) -> W;
-}
-
 pub trait ConfinedWrite: Sized {
-    type StructBuilder: StructBuild<Self>;
+    fn step_in(&mut self, step: Step);
+    fn step_out(&mut self);
 
     fn write_u8(&mut self, val: u8) -> Result<(), Error>;
     fn write_u16(&mut self, val: u16) -> Result<(), Error>;
@@ -122,125 +115,88 @@ pub trait ConfinedWrite: Sized {
         K: ConfinedEncode + Hash + Ord,
         V: ConfinedEncode;
 
-    fn build_struct(self) -> Self::StructBuilder;
-}
-
-pub enum ImpossibleBuilder {}
-
-impl<'w, W: ConfinedWrite> StructBuild<&'w mut W> for ImpossibleBuilder {
-    fn field(
-        self,
-        _: &'static str,
-        _: &impl ConfinedEncode,
-    ) -> Result<Self, Error> {
-        unreachable!()
-    }
-
-    fn finish(self) -> &'w mut W { unreachable!() }
+    fn build_struct(self) -> StructBuilder<Self>;
 }
 
 impl<'w, W> ConfinedWrite for &'w mut W
 where
     W: ConfinedWrite,
 {
-    type StructBuilder = ImpossibleBuilder;
+    fn step_in(&mut self, _step: Step) {}
+    fn step_out(&mut self) {}
 
     fn write_u8(&mut self, val: u8) -> Result<(), Error> {
         W::write_u8(self, val)
     }
-
     fn write_u16(&mut self, val: u16) -> Result<(), Error> {
         W::write_u16(self, val)
     }
-
     fn write_u24(&mut self, val: u24) -> Result<(), Error> {
         W::write_u24(self, val)
     }
-
     fn write_u32(&mut self, val: u32) -> Result<(), Error> {
         W::write_u32(self, val)
     }
-
     fn write_u64(&mut self, val: u64) -> Result<(), Error> {
         W::write_u64(self, val)
     }
-
     fn write_u128(&mut self, val: u128) -> Result<(), Error> {
         W::write_u128(self, val)
     }
-
     fn write_u256(&mut self, val: u256) -> Result<(), Error> {
         W::write_u256(self, val)
     }
-
     fn write_u512(&mut self, val: u512) -> Result<(), Error> {
         W::write_u512(self, val)
     }
-
     fn write_u1024(&mut self, val: u1024) -> Result<(), Error> {
         W::write_u1024(self, val)
     }
-
     fn write_i8(&mut self, val: i8) -> Result<(), Error> {
         W::write_i8(self, val)
     }
-
     fn write_i16(&mut self, val: i16) -> Result<(), Error> {
         W::write_i16(self, val)
     }
-
     fn write_i32(&mut self, val: i32) -> Result<(), Error> {
         W::write_i32(self, val)
     }
-
     fn write_i64(&mut self, val: i64) -> Result<(), Error> {
         W::write_i64(self, val)
     }
-
     fn write_i128(&mut self, val: i128) -> Result<(), Error> {
         W::write_i128(self, val)
     }
-
     fn write_i256(&mut self, val: i256) -> Result<(), Error> {
         W::write_i256(self, val)
     }
-
     fn write_i512(&mut self, val: i512) -> Result<(), Error> {
         W::write_i512(self, val)
     }
-
     fn write_i1024(&mut self, val: i1024) -> Result<(), Error> {
         W::write_i1024(self, val)
     }
-
     fn write_f16b(&mut self, val: bf16) -> Result<(), Error> {
         W::write_f16b(self, val)
     }
-
     fn write_f16(&mut self, val: Half) -> Result<(), Error> {
         W::write_f16(self, val)
     }
-
     fn write_f32(&mut self, val: Single) -> Result<(), Error> {
         W::write_f32(self, val)
     }
-
     fn write_f64(&mut self, val: Double) -> Result<(), Error> {
         W::write_f64(self, val)
     }
-
     fn write_f80(&mut self, val: X87DoubleExtended) -> Result<(), Error> {
         W::write_f80(self, val)
     }
-
     fn write_f128(&mut self, val: Quad) -> Result<(), Error> {
         W::write_f128(self, val)
     }
-
     fn write_f256(&mut self, val: Oct) -> Result<(), Error> {
         W::write_f256(self, val)
     }
-
     fn write_enum(&mut self, val: u8, ty: Ty) -> Result<(), Error> {
         W::write_enum(self, val, ty)
     }
@@ -320,7 +276,7 @@ where
         W::write_map(self, data)
     }
 
-    fn build_struct(self) -> Self::StructBuilder { unreachable!() }
+    fn build_struct(self) -> StructBuilder<Self> { StructBuilder::start(self) }
 }
 
 pub struct Writer<W: io::Write>(W);
@@ -368,7 +324,9 @@ macro_rules! write_float {
 }
 
 impl<W: io::Write> ConfinedWrite for Writer<W> {
-    type StructBuilder = Builder<W>;
+    fn step_in(&mut self, _step: Step) {}
+
+    fn step_out(&mut self) {}
 
     fn write_u8(&mut self, val: u8) -> Result<(), Error> {
         self.0.write_all(&[val]).map_err(Error::from)
@@ -529,22 +487,26 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
         Ok(())
     }
 
-    fn build_struct(self) -> Self::StructBuilder { Builder(self) }
+    fn build_struct(self) -> StructBuilder<Self> { StructBuilder::start(self) }
 }
 
-pub struct Builder<W: io::Write>(Writer<W>);
+pub struct StructBuilder<W: ConfinedWrite>(W);
 
-impl<W: io::Write> StructBuild<Writer<W>> for Builder<W> {
-    fn field(
+impl<W: ConfinedWrite> StructBuilder<W> {
+    pub fn start(writer: W) -> Self { StructBuilder(writer) }
+
+    pub fn field(
         mut self,
-        _name: &'static str,
+        name: &'static str,
         data: &impl ConfinedEncode,
     ) -> Result<Self, Error> {
+        self.0.step_in(Step::Field(name));
         data.confined_encode(&mut self.0)?;
+        self.0.step_out();
         Ok(self)
     }
 
-    fn finish(self) -> Writer<W> {
+    pub fn finish(self) -> W {
         // Do nothing
         self.0
     }
