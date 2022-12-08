@@ -16,11 +16,51 @@
 //! Module defining type system used by strict encoding
 
 use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign};
 
-use amplify::confinement::TinyVec;
+use amplify::confinement::Confined;
 use amplify::num::u5;
+
+#[macro_export]
+macro_rules! fields {
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = ::std::collections::BTreeMap::new();
+            $(
+                m.insert($key, Box::new($value)).expect("repeated field");
+            )+
+            $crate::schema::Fields::try_from(m).expect("too many fields")
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! alternatives {
+    { $($key:expr => $val:expr => $ty:expr),+ } => {
+        {
+            let mut m = ::std::collections::BTreeMap::new();
+            $(
+                m.insert($key, $crate::schema::Alternative::new($val, $ty)).expect("repeated union alternative");
+            )+
+            $crate::schema::Alternatives::try_from(m).expect("too many union alternatives")
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! variants {
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = ::std::collections::BTreeSet::new();
+            $(
+                assert!(m.insert($crate::schema::Variant::new($key, $value)), "repeated enum variant");
+            )+
+            $crate::schema::Variants::try_from(m).expect("too many enum variants")
+        }
+    }
+}
 
 pub const U8: u8 = 0x01;
 pub const U16: u8 = 0x02;
@@ -32,6 +72,7 @@ pub const U128: u8 = 0x10;
 pub const U160: u8 = 0x14;
 pub const U256: u8 = 0x20;
 pub const U512: u8 = 0x22;
+pub const U1024: u8 = 0x36;
 pub const I8: u8 = 0x41;
 pub const I16: u8 = 0x42;
 pub const I24: u8 = 0x43;
@@ -39,6 +80,9 @@ pub const I32: u8 = 0x44;
 pub const I48: u8 = 0x46;
 pub const I64: u8 = 0x48;
 pub const I128: u8 = 0x50;
+pub const I256: u8 = 0x60;
+pub const I512: u8 = 0x62;
+pub const I1024: u8 = 0x76;
 pub const N8: u8 = 0x81;
 pub const N16: u8 = 0x82;
 pub const N24: u8 = 0x83;
@@ -139,22 +183,179 @@ impl NumTy {
     pub fn into_code(self) -> u8 { self as u8 }
 }
 
-#[derive(Clone, Debug)]
-pub enum Ty {
-    Primitive(&'static str, u8),
-    Composed(&'static str, Comp, TinyVec<Field>),
-}
+pub type Alternatives =
+    Confined<BTreeMap<&'static str, Alternative>, 1, { u8::MAX as usize }>;
 
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub enum Comp {
-    Union,
-    Product,
-}
-
-#[derive(Clone, Debug)]
-pub struct Field {
-    pub name: &'static str,
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Alternative {
+    pub id: u8,
     pub ty: Box<Ty>,
+}
+
+impl Alternative {
+    pub fn new(id: u8, ty: Ty) -> Alternative {
+        Alternative {
+            id,
+            ty: Box::new(ty),
+        }
+    }
+}
+
+pub type Fields =
+    Confined<BTreeMap<&'static str, Box<Ty>>, 1, { u8::MAX as usize }>;
+
+pub type Variants = Confined<BTreeSet<Variant>, 1, { u8::MAX as usize }>;
+
+#[derive(Copy, Clone, Eq, Debug)]
+pub struct Variant {
+    pub name: &'static str,
+    pub value: u8,
+}
+
+impl Variant {
+    pub fn new(name: &'static str, value: u8) -> Variant {
+        Variant { name, value }
+    }
+}
+
+impl PartialEq for Variant {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name || self.value == other.value
+    }
+}
+
+impl PartialOrd for Variant {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Variant {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self == other {
+            return Ordering::Equal;
+        }
+        self.value.cmp(&other.value)
+    }
+}
+
+/// Lexicographically sortable types which may serve as map keys.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum KeyTy {
+    Primitive(u8),
+    Enum(Variants),
+    Array(Box<Ty>, u16),
+    Ascii(Sizing),
+    Unicode(Sizing),
+    Bytes(Sizing),
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct Sizing {
+    pub min: usize,
+    pub max: usize,
+}
+
+impl Sizing {
+    pub const U8: Sizing = Sizing {
+        min: 0,
+        max: u8::MAX as usize,
+    };
+
+    pub const U16: Sizing = Sizing {
+        min: 0,
+        max: u16::MAX as usize,
+    };
+
+    pub const U8_NONEMPTY: Sizing = Sizing {
+        min: 1,
+        max: u8::MAX as usize,
+    };
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Ty {
+    Primitive(u8),
+    Enum(Variants),
+    Union(Alternatives),
+    Struct(Fields),
+    Array(Box<Ty>, u16),
+    Ascii(Sizing),
+    Unicode(Sizing),
+    List(Box<Ty>, Sizing),
+    Set(Box<Ty>, Sizing),
+    Map(KeyTy, Box<Ty>, Sizing),
+}
+
+impl Ty {
+    pub fn unit() -> Ty { Ty::Primitive(UNIT) }
+    pub fn byte() -> Ty { Ty::Primitive(BYTE) }
+    pub fn char() -> Ty { Ty::Primitive(CHAR) }
+
+    pub fn u8() -> Ty { Ty::Primitive(U8) }
+    pub fn u16() -> Ty { Ty::Primitive(U16) }
+    pub fn u24() -> Ty { Ty::Primitive(U24) }
+    pub fn u32() -> Ty { Ty::Primitive(U32) }
+    pub fn u64() -> Ty { Ty::Primitive(U64) }
+    pub fn u128() -> Ty { Ty::Primitive(U128) }
+    pub fn u256() -> Ty { Ty::Primitive(U256) }
+    pub fn u512() -> Ty { Ty::Primitive(U512) }
+    pub fn u1024() -> Ty { Ty::Primitive(U1024) }
+
+    pub fn i8() -> Ty { Ty::Primitive(I8) }
+    pub fn i16() -> Ty { Ty::Primitive(I16) }
+    pub fn i24() -> Ty { Ty::Primitive(I24) }
+    pub fn i32() -> Ty { Ty::Primitive(I32) }
+    pub fn i64() -> Ty { Ty::Primitive(I64) }
+    pub fn i128() -> Ty { Ty::Primitive(I128) }
+    pub fn i256() -> Ty { Ty::Primitive(I256) }
+    pub fn i512() -> Ty { Ty::Primitive(I512) }
+    pub fn i1024() -> Ty { Ty::Primitive(I1024) }
+
+    pub fn f16b() -> Ty { Ty::Primitive(F16B) }
+    pub fn f16() -> Ty { Ty::Primitive(F16) }
+    pub fn f32() -> Ty { Ty::Primitive(F32) }
+    pub fn f64() -> Ty { Ty::Primitive(F64) }
+    pub fn f80() -> Ty { Ty::Primitive(F80) }
+    pub fn f128() -> Ty { Ty::Primitive(F128) }
+    pub fn f256() -> Ty { Ty::Primitive(F256) }
+
+    pub fn enumerate(variants: Variants) -> Ty { Ty::Enum(variants) }
+
+    pub fn byte_array(len: u16) -> Ty {
+        Ty::Array(Box::new(Ty::Primitive(BYTE)), len)
+    }
+
+    pub fn bytes() -> Ty {
+        Ty::List(Box::new(Ty::Primitive(BYTE)), Sizing::U16)
+    }
+    pub fn list(ty: Ty, sizing: Sizing) -> Ty { Ty::List(Box::new(ty), sizing) }
+    pub fn set(ty: Ty, sizing: Sizing) -> Ty { Ty::Set(Box::new(ty), sizing) }
+    pub fn map(key: KeyTy, val: Ty, sizing: Sizing) -> Ty {
+        Ty::Map(key, Box::new(val), sizing)
+    }
+
+    pub fn option(ty: Ty) -> Ty {
+        Ty::Union(alternatives![
+            "None" => 0 => Ty::unit(),
+            "Some" => 1 => ty
+        ])
+    }
+
+    pub fn try_into_ty(self) -> Result<KeyTy, Ty> {
+        Ok(match self {
+            Ty::Primitive(code) => KeyTy::Primitive(code),
+            Ty::Enum(vars) => KeyTy::Enum(vars),
+            Ty::Array(ty, len) => KeyTy::Array(ty, len),
+            Ty::Ascii(sizing) => KeyTy::Ascii(sizing),
+            Ty::Unicode(sizing) => KeyTy::Unicode(sizing),
+            me @ Ty::Union(_)
+            | me @ Ty::Struct(_)
+            | me @ Ty::List(_, _)
+            | me @ Ty::Set(_, _)
+            | me @ Ty::Map(_, _, _) => return Err(me),
+        })
+    }
 }
 
 /// Measure of a type size in bytes
@@ -214,21 +415,26 @@ impl Sum for Size {
 impl Ty {
     pub fn size(&self) -> Size {
         match self {
-            Ty::Primitive(_, UNIT)
-            | Ty::Primitive(_, BYTE)
-            | Ty::Primitive(_, CHAR) => Size::Fixed(1),
-            Ty::Primitive(_, F16B) => Size::Fixed(2),
-            Ty::Primitive(_, code) => {
+            Ty::Primitive(UNIT) | Ty::Primitive(BYTE) | Ty::Primitive(CHAR) => {
+                Size::Fixed(1)
+            }
+            Ty::Primitive(F16B) => Size::Fixed(2),
+            Ty::Primitive(code) => {
                 Size::Fixed(NumInfo::from_code(*code).size())
             }
-            Ty::Composed(_, Comp::Union, fields) => fields
-                .iter()
-                .map(|field| field.ty.size())
+            Ty::Union(fields) => fields
+                .values()
+                .map(|alt| alt.ty.size())
                 .max()
                 .unwrap_or(Size::Fixed(0)),
-            Ty::Composed(_, Comp::Product, fields) => {
-                fields.iter().map(|field| field.ty.size()).sum()
-            }
+            Ty::Struct(fields) => fields.values().map(|ty| ty.size()).sum(),
+            Ty::Enum(_) => Size::Fixed(1),
+            Ty::Array(_, len) => Size::Fixed(*len),
+            Ty::Unicode(..)
+            | Ty::Ascii(..)
+            | Ty::List(..)
+            | Ty::Set(..)
+            | Ty::Map(..) => Size::Variable,
         }
     }
 }

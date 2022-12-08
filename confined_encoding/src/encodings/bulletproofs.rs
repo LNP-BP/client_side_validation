@@ -14,15 +14,21 @@
 
 use std::io;
 
-use crate::{ConfinedDecode, ConfinedEncode, Error};
+use crate::schema::Ty;
+use crate::{
+    ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+};
 
-impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
+impl ConfinedType for secp256k1zkp::pedersen::Commitment {
     const TYPE_NAME: &'static str = "PedersenCommitment";
 
+    fn confined_type() -> Ty { Ty::byte_array(33) }
+}
+
+impl ConfinedEncode for secp256k1zkp::pedersen::Commitment {
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        e.write_all(&self[..])?;
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_byte_array(self.0)
     }
 }
 
@@ -35,14 +41,16 @@ impl ConfinedDecode for secp256k1zkp::pedersen::Commitment {
     }
 }
 
-impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
+impl ConfinedType for secp256k1zkp::pedersen::RangeProof {
     const TYPE_NAME: &'static str = "BulletProof";
 
+    fn confined_type() -> Ty { Ty::bytes() }
+}
+
+impl ConfinedEncode for secp256k1zkp::pedersen::RangeProof {
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        (self.plen as u16).confined_encode(e)?;
-        e.write_all(&self.proof[..self.plen])?;
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_bytes::<0, { u16::MAX as usize }>(&self.proof[..self.plen])
     }
 }
 

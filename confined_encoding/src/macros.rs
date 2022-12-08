@@ -12,18 +12,6 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-/// Macro simplifying encoding for a given list of items
-#[macro_export]
-macro_rules! confined_encode_list {
-    ( $encoder:ident; $($item:expr),+ ) => {
-        {
-            $(
-                $item.confined_encode($encoder)?;
-            )+
-        }
-    };
-}
-
 /// Macro simplifying decoding of a structure with a given list of fields
 #[macro_export]
 macro_rules! confined_decode_self {
@@ -42,17 +30,21 @@ macro_rules! confined_decode_self {
 /// Implements confined encoding for a hash type
 macro_rules! hash_encoding {
     ($ty:ty) => {
-        impl $crate::ConfinedEncode for $ty {
-            const TYPE_NAME: &'static str = stringify!($ty);
+        hash_encoding!($ty, stringify!($ty));
+    };
+    ($ty:ty, $name:expr) => {
+        impl $crate::ConfinedType for $ty {
+            const TYPE_NAME: &'static str = $name;
 
+            fn confined_type() -> Ty { Ty::byte_array(32) }
+        }
+
+        impl $crate::ConfinedEncode for $ty {
             fn confined_encode(
                 &self,
-                e: &mut impl ::std::io::Write,
+                e: &mut impl $crate::ConfinedWrite,
             ) -> Result<(), $crate::Error> {
-                let slice = &self[..];
-                debug_assert_eq!(slice.len(), Self::LEN);
-                e.write_all(slice)?;
-                Ok(())
+                e.write_byte_array(self.into_inner())
             }
         }
         impl $crate::ConfinedDecode for $ty {

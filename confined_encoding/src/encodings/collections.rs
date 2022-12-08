@@ -21,30 +21,29 @@ use amplify::confinement::{
     Confined, SmallOrdMap, SmallOrdSet, SmallVec, TinyString, TinyVec,
 };
 
-use crate::{ConfinedDecode, ConfinedEncode, Error};
+use crate::schema::{Sizing, Ty};
+use crate::{
+    ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+};
 
-/// In terms of strict encoding, `Option` (optional values) are  
-/// represented by a *significator byte*, which MUST be either `0` (for no
-/// value present) or `1`, followed by the value strict encoding.
+impl<T> ConfinedType for Option<T>
+where
+    T: ConfinedType,
+{
+    const TYPE_NAME: &'static str = stringify!(T::TYPE_NAME, "?");
+
+    fn confined_type() -> Ty { Ty::option(T::confined_type()) }
+}
+
 impl<T> ConfinedEncode for Option<T>
 where
     T: ConfinedEncode,
 {
-    const TYPE_NAME: &'static str = "Option";
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        Ok(match self {
-            None => confined_encode_list!(e; 0u8),
-            Some(val) => confined_encode_list!(e; 1u8, val),
-        })
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_option(self.as_ref())
     }
 }
 
-/// In terms of strict encoding, `Option` (optional values) are  
-/// represented by a *significator byte*, which MUST be either `0` (for no
-/// value present) or `1`, followed by the value strict encoding.
-/// For decoding an attempt to read `Option` from a encoded non-0
-/// or non-1 length Vec will result in `Error::WrongOptionalEncoding`.
 impl<T> ConfinedDecode for Option<T>
 where
     T: ConfinedDecode,
@@ -54,17 +53,23 @@ where
         match len {
             0 => Ok(None),
             1 => Ok(Some(T::confined_decode(d)?)),
-            invalid => Err(Error::WrongOptionalEncoding(invalid)),
+            invalid => Err(Error::DataIntegrityError(format!(
+                "invalid optional value `{}`",
+                invalid
+            ))),
         }
     }
 }
 
-impl ConfinedEncode for TinyString {
+impl ConfinedType for TinyString {
     const TYPE_NAME: &'static str = "String";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        e.write_all(self.as_bytes())?;
-        Ok(())
+    fn confined_type() -> Ty { Ty::Unicode(Sizing::U8) }
+}
+
+impl ConfinedEncode for TinyString {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_string(self)
     }
 }
 
@@ -81,18 +86,21 @@ impl ConfinedDecode for TinyString {
     }
 }
 
+impl<T> ConfinedType for TinyVec<T>
+where
+    T: ConfinedType,
+{
+    const TYPE_NAME: &'static str = stringify!("[", T::TYPE_NAME, "]");
+
+    fn confined_type() -> Ty { Ty::list(T::confined_type(), Sizing::U8) }
+}
+
 impl<T> ConfinedEncode for TinyVec<T>
 where
     T: ConfinedEncode,
 {
-    const TYPE_NAME: &'static str = "TinyVec";
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.len_u8().confined_encode(e)?;
-        for elem in self.iter() {
-            elem.confined_encode(e)?;
-        }
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_list(self)
     }
 }
 
@@ -111,18 +119,21 @@ where
     }
 }
 
+impl<T> ConfinedType for SmallVec<T>
+where
+    T: ConfinedType,
+{
+    const TYPE_NAME: &'static str = stringify!("[", T::TYPE_NAME, "]");
+
+    fn confined_type() -> Ty { Ty::list(T::confined_type(), Sizing::U16) }
+}
+
 impl<T> ConfinedEncode for SmallVec<T>
 where
     T: ConfinedEncode,
 {
-    const TYPE_NAME: &'static str = stringify!("Vec<", T, ">");
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.len_u16().confined_encode(e)?;
-        for elem in self.iter() {
-            elem.confined_encode(e)?;
-        }
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_list(self)
     }
 }
 
@@ -141,6 +152,15 @@ where
     }
 }
 
+impl<T> ConfinedType for SmallOrdSet<T>
+where
+    T: ConfinedType + Hash + Ord,
+{
+    const TYPE_NAME: &'static str = stringify!("{", T::TYPE_NAME, "}");
+
+    fn confined_type() -> Ty { Ty::set(T::confined_type(), Sizing::U16) }
+}
+
 /// Strict encoding for a unique value collection represented by a rust
 /// `BTreeSet` type is performed in the same way as `Vec` encoding.
 /// NB: Array members must are ordered with the sort operation, so type
@@ -148,16 +168,10 @@ where
 /// deterministically-sorted result
 impl<T> ConfinedEncode for SmallOrdSet<T>
 where
-    T: ConfinedEncode + Eq + Ord,
+    T: ConfinedEncode + Hash + Ord,
 {
-    const TYPE_NAME: &'static str = stringify!("Set<", T, ">");
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.len_u16().confined_encode(e)?;
-        for elem in self.iter() {
-            elem.confined_encode(e)?;
-        }
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_set(self)
     }
 }
 
@@ -167,7 +181,7 @@ where
 /// returned.
 impl<T> ConfinedDecode for SmallOrdSet<T>
 where
-    T: ConfinedDecode + Eq + Ord + Debug,
+    T: ConfinedDecode + Hash + Ord + Debug,
 {
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let len = u16::confined_decode(d)?;
@@ -192,6 +206,18 @@ where
     }
 }
 
+impl<T, const MIN: usize> ConfinedType
+    for Confined<BTreeSet<T>, MIN, { u8::MAX as usize }>
+where
+    T: ConfinedType + Hash + Ord,
+{
+    const TYPE_NAME: &'static str = stringify!("{", T::TYPE_NAME, "}");
+
+    fn confined_type() -> Ty {
+        Ty::set(T::confined_type(), Sizing::U8_NONEMPTY)
+    }
+}
+
 /// Strict encoding for a unique value collection represented by a rust
 /// `BTreeSet` type is performed in the same way as `Vec` encoding.
 /// NB: Array members must are ordered with the sort operation, so type
@@ -200,16 +226,10 @@ where
 impl<T, const MIN: usize> ConfinedEncode
     for Confined<BTreeSet<T>, MIN, { u8::MAX as usize }>
 where
-    T: ConfinedEncode + Eq + Ord,
+    T: ConfinedEncode + Hash + Ord,
 {
-    const TYPE_NAME: &'static str = stringify!("Set<", T, ", ", MIN, ">");
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.len_u8().confined_encode(e)?;
-        for elem in self.iter() {
-            elem.confined_encode(e)?;
-        }
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_set(self)
     }
 }
 
@@ -220,7 +240,7 @@ where
 impl<T, const MIN: usize> ConfinedDecode
     for Confined<BTreeSet<T>, MIN, { u8::MAX as usize }>
 where
-    T: ConfinedDecode + Eq + Ord + Debug,
+    T: ConfinedDecode + Hash + Ord + Debug,
 {
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let len = u8::confined_decode(d)?;
@@ -246,41 +266,32 @@ where
     }
 }
 
-/// LNP/BP library uses `BTreeMap<usize, T: ConfinedEncode>`s to encode
-/// ordered lists, where the position of the list item must be fixed, since
-/// the item is referenced from elsewhere by its index. Thus, the library
-/// does not supports and recommends not to support strict encoding
-/// of any other `BTreeMap` variants.
-///
-/// Strict encoding of the `BTreeMap<usize, T>` type is performed
-/// by converting into a fixed-order `Vec<T>` and serializing it according
-/// to the `Vec` strict encoding rules.
+impl<K, V> ConfinedType for SmallOrdMap<K, V>
+where
+    K: ConfinedType + Ord + Hash,
+    V: ConfinedType,
+{
+    const TYPE_NAME: &'static str = stringify!("{", T::TYPE_NAME, "}");
+
+    fn confined_type() -> Ty {
+        Ty::map(
+            K::confined_type().try_into_ty().expect("invalid key type"),
+            V::confined_type(),
+            Sizing::U16,
+        )
+    }
+}
+
 impl<K, V> ConfinedEncode for SmallOrdMap<K, V>
 where
     K: ConfinedEncode + Ord + Hash,
     V: ConfinedEncode,
 {
-    const TYPE_NAME: &'static str = stringify!("Map<", K, ", ", V, ">");
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.len_u16().confined_encode(e)?;
-        for (key, val) in self.iter() {
-            key.confined_encode(e)?;
-            val.confined_encode(e)?;
-        }
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_map(self)
     }
 }
 
-/// LNP/BP library uses `BTreeMap<usize, T: ConfinedEncode>`s to encode
-/// ordered lists, where the position of the list item must be fixed, since
-/// the item is referenced from elsewhere by its index. Thus, the library
-/// does not supports and recommends not to support strict encoding
-/// of any other `BTreeMap` variants.
-///
-/// Strict encoding of the `BTreeMap<usize, T>` type is performed
-/// by converting into a fixed-order `Vec<T>` and serializing it according
-/// to the `Vec` strict encoding rules.
 impl<K, V> ConfinedDecode for SmallOrdMap<K, V>
 where
     K: ConfinedDecode + Ord + Hash + Debug,
@@ -307,36 +318,6 @@ where
                 .expect("SmallOrdMap must have up to 2^16-1 items");
         }
         Ok(map)
-    }
-}
-
-/// Two-component tuples are encoded as they were fields in the parent
-/// data structure
-impl<K, V> ConfinedEncode for (K, V)
-where
-    K: ConfinedEncode + Clone,
-    V: ConfinedEncode + Clone,
-{
-    const TYPE_NAME: &'static str = stringify!(K, " | ", V);
-
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.0.confined_encode(e)?;
-        self.1.confined_encode(e)?;
-        Ok(())
-    }
-}
-
-/// Two-component tuples are decoded as they were fields in the parent
-/// data structure
-impl<K, V> ConfinedDecode for (K, V)
-where
-    K: ConfinedDecode + Clone,
-    V: ConfinedDecode + Clone,
-{
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let a = K::confined_decode(d)?;
-        let b = V::confined_decode(d)?;
-        Ok((a, b))
     }
 }
 

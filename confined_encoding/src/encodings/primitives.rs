@@ -15,16 +15,25 @@
 //! Taking implementation of little-endian integer encoding
 use std::io;
 
+use amplify::ascii::AsciiChar;
 use amplify::num::apfloat::{ieee, Float};
 use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
 use half::bf16;
 
-use crate::{ConfinedDecode, ConfinedEncode, Error};
+use crate::schema::{self, Ty};
+use crate::{
+    variants, ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite,
+    Error,
+};
 
-impl ConfinedEncode for () {
+impl ConfinedType for () {
     const TYPE_NAME: &'static str = "()";
 
-    fn confined_encode(&self, _: &mut impl io::Write) -> Result<(), Error> {
+    fn confined_type() -> Ty { Ty::unit() }
+}
+
+impl ConfinedEncode for () {
+    fn confined_encode(&self, _: &mut impl ConfinedWrite) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -33,11 +42,20 @@ impl ConfinedDecode for () {
     fn confined_decode(_: &mut impl io::Read) -> Result<Self, Error> { Ok(()) }
 }
 
-impl ConfinedEncode for bool {
+impl ConfinedType for bool {
     const TYPE_NAME: &'static str = "Bool";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        (*self as u8).confined_encode(e)
+    fn confined_type() -> Ty {
+        Ty::enumerate(variants! {
+            "False" => 0,
+            "True" => 1
+        })
+    }
+}
+
+impl ConfinedEncode for bool {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_enum(*self as u8, Self::confined_type())
     }
 }
 
@@ -51,17 +69,39 @@ impl ConfinedDecode for bool {
     }
 }
 
-macro_rules! encoding_int {
-    ($ty:ty, $l:literal) => {
-        impl ConfinedEncode for $ty {
-            const TYPE_NAME: &'static str = stringify!($ty);
+impl ConfinedType for AsciiChar {
+    const TYPE_NAME: &'static str = "AsciiChar";
 
+    fn confined_type() -> Ty { Ty::char() }
+}
+
+impl ConfinedEncode for AsciiChar {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_u8(*self as u8)
+    }
+}
+
+impl ConfinedDecode for AsciiChar {
+    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
+        let c = u8::confined_decode(d)?;
+        AsciiChar::from_ascii(c).map_err(|_| Error::NonAsciiChar(c))
+    }
+}
+
+macro_rules! encoding_int {
+    ($ty:ty, $l:literal, $prim:ident, $write:ident) => {
+        impl ConfinedType for $ty {
+            const TYPE_NAME: &'static str = stringify!($prim);
+
+            fn confined_type() -> Ty { Ty::Primitive(schema::$prim) }
+        }
+
+        impl ConfinedEncode for $ty {
             fn confined_encode(
                 &self,
-                e: &mut impl io::Write,
+                e: &mut impl ConfinedWrite,
             ) -> Result<(), Error> {
-                e.write_all(&self.to_le_bytes())?;
-                Ok(())
+                e.$write(*self)
             }
         }
 
@@ -75,32 +115,36 @@ macro_rules! encoding_int {
     };
 }
 
-encoding_int!(u8, 1);
-encoding_int!(u16, 2);
-encoding_int!(u24, 3);
-encoding_int!(u32, 4);
-encoding_int!(u64, 8);
-encoding_int!(u128, 16);
-encoding_int!(u256, 32);
-encoding_int!(u512, 64);
-encoding_int!(u1024, 128);
+encoding_int!(u8, 1, U8, write_u8);
+encoding_int!(u16, 2, U16, write_u16);
+encoding_int!(u24, 3, U24, write_u24);
+encoding_int!(u32, 4, U32, write_u32);
+encoding_int!(u64, 8, U64, write_u64);
+encoding_int!(u128, 16, U128, write_u128);
+encoding_int!(u256, 32, U256, write_u256);
+encoding_int!(u512, 64, U512, write_u512);
+encoding_int!(u1024, 128, U1024, write_u1024);
 
-encoding_int!(i8, 1);
-encoding_int!(i16, 2);
+encoding_int!(i8, 1, I8, write_i8);
+encoding_int!(i16, 2, I16, write_i16);
 // TODO: Add i24 encoding once the type will be in amplify::num
-//encoding_int!(i24, 3);
-encoding_int!(i32, 4);
-encoding_int!(i64, 8);
-encoding_int!(i128, 16);
-encoding_int!(i256, 32);
-encoding_int!(i512, 64);
-encoding_int!(i1024, 128);
+//encoding_int!(i24, 3, I24, write_i24);
+encoding_int!(i32, 4, I32, write_i32);
+encoding_int!(i64, 8, I64, write_i64);
+encoding_int!(i128, 16, I128, write_i128);
+encoding_int!(i256, 32, I256, write_i256);
+encoding_int!(i512, 64, I512, write_i512);
+encoding_int!(i1024, 128, I1024, write_i1024);
 
-impl ConfinedEncode for bf16 {
+impl ConfinedType for bf16 {
     const TYPE_NAME: &'static str = "F16b";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.to_bits().confined_encode(e)
+    fn confined_type() -> Ty { Ty::f16b() }
+}
+
+impl ConfinedEncode for bf16 {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_f16b(*self)
     }
 }
 
@@ -111,17 +155,19 @@ impl ConfinedDecode for bf16 {
 }
 
 macro_rules! encoding_float {
-    ($ty:ty, $l:literal) => {
-        impl ConfinedEncode for $ty {
-            const TYPE_NAME: &'static str = stringify!($ty);
+    ($ty:ty, $l:literal, $prim:ident, $write:ident) => {
+        impl ConfinedType for $ty {
+            const TYPE_NAME: &'static str = stringify!($prim);
 
+            fn confined_type() -> Ty { Ty::Primitive(schema::$prim) }
+        }
+
+        impl ConfinedEncode for $ty {
             fn confined_encode(
                 &self,
-                e: &mut impl io::Write,
+                e: &mut impl ConfinedWrite,
             ) -> Result<(), Error> {
-                let bytes = self.to_bits().to_le_bytes(); // this gives 32-byte slice
-                e.write_all(&bytes[..2])?;
-                Ok(())
+                e.$write(*self)
             }
         }
 
@@ -137,12 +183,12 @@ macro_rules! encoding_float {
     };
 }
 
-encoding_float!(ieee::Half, 2);
-encoding_float!(ieee::Single, 4);
-encoding_float!(ieee::Double, 8);
-encoding_float!(ieee::X87DoubleExtended, 10);
-encoding_float!(ieee::Quad, 16);
-encoding_float!(ieee::Oct, 32);
+encoding_float!(ieee::Half, 2, F16, write_f16);
+encoding_float!(ieee::Single, 4, F32, write_f32);
+encoding_float!(ieee::Double, 8, F64, write_f64);
+encoding_float!(ieee::X87DoubleExtended, 10, F80, write_f80);
+encoding_float!(ieee::Quad, 16, F128, write_f128);
+encoding_float!(ieee::Oct, 32, F256, write_f256);
 
 #[cfg(test)]
 pub mod test {

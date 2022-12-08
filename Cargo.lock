@@ -24,12 +24,12 @@ dependencies = [
 
 [[package]]
 name = "amplify"
-version = "4.0.0-beta.2"
+version = "4.0.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55912f3b8407b77b80da9393b8a890b612caf1406e92df93d4779669b175a07e"
+checksum = "62c3b7fe483c11f7a434ec6923a68749b3415c1328857f1a8e37bb2c792a25c0"
 dependencies = [
  "amplify_apfloat",
- "amplify_derive 4.0.0-alpha.1",
+ "amplify_derive 4.0.0-alpha.2",
  "amplify_num",
  "amplify_syn",
  "ascii",
@@ -65,9 +65,9 @@ dependencies = [
 
 [[package]]
 name = "amplify_derive"
-version = "4.0.0-alpha.1"
+version = "4.0.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6471f510180b7c9e0efd62108f604704c914ab20d5892299636b863955539a39"
+checksum = "2a258501c851f9dec1549e046d551b645b8b970e30aca85dbec2d6e36cda8e91"
 dependencies = [
  "amplify_syn",
  "proc-macro2",
@@ -116,6 +116,9 @@ name = "ascii"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "async-trait"
@@ -208,7 +211,7 @@ dependencies = [
 name = "commit_verify"
 version = "0.9.0-alpha.1"
 dependencies = [
- "amplify 4.0.0-beta.2",
+ "amplify 4.0.0-beta.4",
  "bitcoin_hashes",
  "confined_encoding",
  "grin_secp256k1zkp",
@@ -242,7 +245,7 @@ dependencies = [
 name = "confined_encoding"
 version = "0.9.0-alpha.5"
 dependencies = [
- "amplify 4.0.0-beta.2",
+ "amplify 4.0.0-beta.4",
  "bitcoin",
  "confined_encoding_derive",
  "confined_encoding_test",
@@ -255,7 +258,7 @@ dependencies = [
 name = "confined_encoding_derive"
 version = "0.9.0-alpha.2"
 dependencies = [
- "amplify 4.0.0-beta.2",
+ "amplify 4.0.0-beta.4",
  "amplify_syn",
  "compiletest_rs",
  "confined_encoding",
@@ -269,7 +272,7 @@ dependencies = [
 name = "confined_encoding_test"
 version = "0.9.0-alpha.1"
 dependencies = [
- "amplify 4.0.0-beta.2",
+ "amplify 4.0.0-beta.4",
  "confined_encoding",
 ]
 
@@ -771,7 +774,7 @@ dependencies = [
 name = "single_use_seals"
 version = "0.9.0-alpha.1"
 dependencies = [
- "amplify_derive 4.0.0-alpha.1",
+ "amplify_derive 4.0.0-alpha.2",
  "async-trait",
 ]
 

@@ -12,22 +12,24 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use std::io;
-use std::io::{Read, Write};
+use std::io::{self, Read};
 
 use bitcoin::hashes::{hash160, ripemd160, sha256, sha256d, sha256t, Hash};
 use bitcoin::util::taproot::{
     FutureLeafVersion, LeafVersion, TapBranchHash, TapLeafHash, TapTweakHash,
-    TaprootMerkleBranch,
 };
 use bitcoin::{schnorr as bip340, secp256k1, OutPoint, Txid, XOnlyPublicKey};
 
-use crate::{ConfinedDecode, ConfinedEncode, Error};
+use crate::schema::Ty;
+use crate::{
+    fields, ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+    StructBuild,
+};
 
-hash_encoding!(sha256::Hash);
-hash_encoding!(sha256d::Hash);
-hash_encoding!(ripemd160::Hash);
-hash_encoding!(hash160::Hash);
+hash_encoding!(sha256::Hash, "Sha256");
+hash_encoding!(sha256d::Hash, "Sha256D");
+hash_encoding!(ripemd160::Hash, "Ripemd160");
+hash_encoding!(hash160::Hash, "Hash160");
 
 hash_encoding!(Txid);
 hash_encoding!(TapBranchHash);
@@ -40,14 +42,15 @@ pub trait ConfinedTag: sha256t::Tag {
     const TYPE_NAME: &'static str;
 }
 
-impl<T: ConfinedTag> ConfinedEncode for sha256t::Hash<T> {
-    const TYPE_NAME: &'static str = stringify!("Hash", T::TYPE_NAME);
+impl<T: ConfinedTag> ConfinedType for sha256t::Hash<T> {
+    const TYPE_NAME: &'static str = stringify!(T::TYPE_NAME, "Hash");
 
-    fn confined_encode(&self, e: &mut impl Write) -> Result<(), Error> {
-        let slice = &self[..];
-        debug_assert_eq!(slice.len(), Self::LEN);
-        e.write_all(slice)?;
-        Ok(())
+    fn confined_type() -> Ty { Ty::byte_array(32) }
+}
+
+impl<T: ConfinedTag> ConfinedEncode for sha256t::Hash<T> {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_byte_array(self.into_inner())
     }
 }
 
@@ -60,11 +63,15 @@ impl<T: ConfinedTag> ConfinedDecode for sha256t::Hash<T> {
     }
 }
 
-impl ConfinedEncode for LeafVersion {
+impl ConfinedType for LeafVersion {
     const TYPE_NAME: &'static str = "LeafVersion";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.to_consensus().confined_encode(e)
+    fn confined_type() -> Ty { Ty::u8() }
+}
+
+impl ConfinedEncode for LeafVersion {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_u8(self.to_consensus())
     }
 }
 
@@ -80,11 +87,15 @@ impl ConfinedDecode for LeafVersion {
     }
 }
 
-impl ConfinedEncode for FutureLeafVersion {
+impl ConfinedType for FutureLeafVersion {
     const TYPE_NAME: &'static str = "FutureLeafVersion";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.to_consensus().confined_encode(e)
+    fn confined_type() -> Ty { Ty::u8() }
+}
+
+impl ConfinedEncode for FutureLeafVersion {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_u8(self.to_consensus())
     }
 }
 
@@ -101,48 +112,16 @@ impl ConfinedDecode for FutureLeafVersion {
     }
 }
 
-impl ConfinedEncode for TaprootMerkleBranch {
-    const TYPE_NAME: &'static str = "TaprootMerkleBranch";
+impl ConfinedType for secp256k1::PublicKey {
+    const TYPE_NAME: &'static str = "CompressedPubkey";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        let vec = self.as_inner();
-        // Merkle branch always has length less than 128
-        let count: u8 = vec.len().try_into().map_err(|_| {
-            Error::DataIntegrityError(s!(
-                "Taproot Merkle branch with more than 128 elements"
-            ))
-        })?;
-        count.confined_encode(e)?;
-        for elem in vec {
-            elem.confined_encode(e)?;
-        }
-        Ok(())
-    }
-}
-
-impl ConfinedDecode for TaprootMerkleBranch {
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let count = u8::confined_decode(d)?;
-        let mut vec = Vec::with_capacity(count as usize);
-        for _ in 0..count {
-            vec.push(sha256::Hash::confined_decode(d)?);
-        }
-        TaprootMerkleBranch::try_from(vec).map_err(|_| {
-            Error::DataIntegrityError(s!(
-                "taproot merkle branch length exceeds 128 consensus limit"
-            ))
-        })
-    }
+    fn confined_type() -> Ty { Ty::byte_array(32) }
 }
 
 impl ConfinedEncode for secp256k1::PublicKey {
-    const TYPE_NAME: &'static str = "CompressedPubkey";
-
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        let data = self.serialize();
-        e.write_all(&data[..])?;
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_byte_array(self.serialize())
     }
 }
 
@@ -164,13 +143,16 @@ impl ConfinedDecode for secp256k1::PublicKey {
     }
 }
 
-impl ConfinedEncode for XOnlyPublicKey {
+impl ConfinedType for XOnlyPublicKey {
     const TYPE_NAME: &'static str = "XOnlyPubkey";
 
+    fn confined_type() -> Ty { Ty::byte_array(32) }
+}
+
+impl ConfinedEncode for XOnlyPublicKey {
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        e.write_all(&self.serialize())?;
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_byte_array(self.serialize())
     }
 }
 
@@ -188,13 +170,16 @@ impl ConfinedDecode for XOnlyPublicKey {
     }
 }
 
-impl ConfinedEncode for bip340::TweakedPublicKey {
+impl ConfinedType for bip340::TweakedPublicKey {
     const TYPE_NAME: &'static str = "TweakedPublicKey";
 
+    fn confined_type() -> Ty { Ty::byte_array(32) }
+}
+
+impl ConfinedEncode for bip340::TweakedPublicKey {
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        e.write_all(&self.serialize())?;
-        Ok(())
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_byte_array(self.serialize())
     }
 }
 
@@ -214,12 +199,24 @@ impl ConfinedDecode for bip340::TweakedPublicKey {
     }
 }
 
-impl ConfinedEncode for OutPoint {
+impl ConfinedType for OutPoint {
     const TYPE_NAME: &'static str = "OutPoint";
 
+    fn confined_type() -> Ty {
+        Ty::Struct(fields![
+            "txid" => Txid::confined_type(),
+            "vout" => Ty::u16()
+        ])
+    }
+}
+
+impl ConfinedEncode for OutPoint {
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        confined_encode_list!(e; self.txid, self.vout);
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.build_struct()
+            .field("txid", &self.txid)?
+            .field("vout", &self.vout)?
+            .finish();
         Ok(())
     }
 }
@@ -228,24 +225,6 @@ impl ConfinedDecode for OutPoint {
     #[inline]
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         Ok(confined_decode_self!(d; txid, vout))
-    }
-}
-
-impl ConfinedEncode for bitcoin::Network {
-    const TYPE_NAME: &'static str = "BitcoinNetwork";
-
-    #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        self.magic().confined_encode(e)
-    }
-}
-
-impl ConfinedDecode for bitcoin::Network {
-    #[inline]
-    fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
-        let magic = u32::confined_decode(d)?;
-        Self::from_magic(magic)
-            .ok_or(Error::EnumValueNotKnown("bitcoin::Network", magic as usize))
     }
 }
 

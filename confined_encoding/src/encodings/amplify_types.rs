@@ -18,15 +18,20 @@ use amplify::flags::FlagVec;
 use amplify::{Bytes32, Wrapper};
 use bitcoin::hashes::{sha256, Hash};
 
-use crate::{ConfinedDecode, ConfinedEncode, Error};
+use crate::schema::Ty;
+use crate::{
+    ConfinedDecode, ConfinedEncode, ConfinedType, ConfinedWrite, Error,
+};
 
-impl ConfinedEncode for Bytes32 {
+impl ConfinedType for Bytes32 {
     const TYPE_NAME: &'static str = "Bytes32";
 
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        // We use the same encoding as used by hashes - and ensure this by
-        // cross-converting with hash
-        sha256::Hash::from_inner(self.to_inner()).confined_encode(e)
+    fn confined_type() -> Ty { Ty::byte_array(32) }
+}
+
+impl ConfinedEncode for Bytes32 {
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_byte_array(self.into_inner())
     }
 }
 
@@ -37,15 +42,16 @@ impl ConfinedDecode for Bytes32 {
     }
 }
 
-impl ConfinedEncode for FlagVec {
+impl ConfinedType for FlagVec {
     const TYPE_NAME: &'static str = "FlagVec";
 
+    fn confined_type() -> Ty { Ty::bytes() }
+}
+
+impl ConfinedEncode for FlagVec {
     #[inline]
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error> {
-        // to_inner does the shrunk operation internally
-        // TODO: Remove clone on amplify fix
-        let shrunk = self.clone().to_inner();
-        shrunk.confined_encode(e)
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error> {
+        e.write_list(self.clone().as_inner())
     }
 }
 
@@ -53,7 +59,13 @@ impl ConfinedDecode for FlagVec {
     #[inline]
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let tiny_vec = ConfinedDecode::confined_decode(d)?;
-        Ok(Self::from_inner(tiny_vec))
+        let mut flag_vec = FlagVec::from_inner(tiny_vec);
+        if flag_vec.shrink() {
+            return Err(Error::DataIntegrityError(s!(
+                "FlagVec stored in a non-minimal format"
+            )));
+        }
+        Ok(flag_vec)
     }
 }
 

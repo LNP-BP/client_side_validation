@@ -56,8 +56,12 @@ extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 #[macro_use]
 mod macros;
 
+mod check;
 mod encodings;
+pub mod path;
+#[macro_use]
 pub mod schema;
+mod write;
 
 use std::ops::Range;
 use std::string::FromUtf8Error;
@@ -71,6 +75,18 @@ use amplify::confinement::{Confined, MediumVec, SmallVec};
 use amplify::{ascii, confinement, IoError};
 pub use encodings::ConfinedTag;
 
+pub use crate::check::{CheckError, CheckedStructBuilder, CheckedWriter};
+use crate::schema::{Fields, Ty, Variants};
+pub use crate::write::{Builder, ConfinedWrite, StructBuild, Writer};
+
+pub trait ConfinedType {
+    /// Type name for the schema
+    const TYPE_NAME: &'static str;
+
+    /// Returns type representing confined encoding information
+    fn confined_type() -> Ty;
+}
+
 /// Binary encoding according to the strict rules that usually apply to
 /// consensus-critical data structures. May be used for network communications;
 /// in some circumstances may be used for commitment procedures; however it must
@@ -79,23 +95,28 @@ pub use encodings::ConfinedTag;
 /// applied. It is generally recommended for consensus-related commitments to
 /// utilize `CommitVerify`, `TryCommitVerify` and `EmbedCommitVerify` traits  
 /// from `commit_verify` module.
-pub trait ConfinedEncode {
-    /// Type name for the schema
-    const TYPE_NAME: &'static str;
-
-    /// Encode with the given [`std::io::Write`] instance; must return result
+pub trait ConfinedEncode: ConfinedType {
+    /// Encode with the given [`io::Write`] instance; must return result
     /// with either amount of bytes encoded – or implementation-specific
     /// error type.
-    fn confined_encode(&self, e: &mut impl io::Write) -> Result<(), Error>;
+    fn confined_encode(&self, e: &mut impl ConfinedWrite) -> Result<(), Error>;
+
+    fn confined_check(&self) -> u16 {
+        let mut checker = CheckedWriter::new(Self::confined_type());
+        self.confined_encode(&mut checker)
+            .expect("checker doesn't fail on encoding");
+        checker.size()
+    }
 
     /// Serializes data as a byte array not larger than 64kB (2^16-1 bytes)
     /// using [`ConfinedEncode::confined_encode`] function
     fn confined_serialize<const MAX: usize>(
         &self,
     ) -> Result<Confined<Vec<u8>, 0, MAX>, Error> {
-        let mut e = Confined::<Vec<u8>, 0, MAX>::new();
+        let buf = Confined::<Vec<u8>, 0, MAX>::new();
+        let mut e = Writer::from(buf);
         self.confined_encode(&mut e)?;
-        Ok(e)
+        Ok(e.unbox())
     }
 
     /// Serializes data as a byte array not larger than 64kB (2^16-1 bytes)
@@ -119,7 +140,7 @@ pub trait ConfinedEncode {
 /// instead of deserializing (nonce operation for commitments) repeat the
 /// commitment procedure for the revealed message and verify it against the
 /// provided commitment.
-pub trait ConfinedDecode: Sized {
+pub trait ConfinedDecode: ConfinedType + Sized {
     /// Decode with the given [`std::io::Read`] instance; must either
     /// construct an instance or return implementation-specific error type.
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error>;
@@ -158,7 +179,7 @@ pub trait ConfinedDecode: Sized {
 }
 
 /// Possible errors during strict encoding and decoding process
-#[derive(Clone, PartialEq, Eq, Debug, Display, From, Error)]
+#[derive(Clone, Debug, Display, From, Error)]
 #[display(doc_comments)]
 pub enum Error {
     /// I/O error during data strict encoding
@@ -178,20 +199,16 @@ pub enum Error {
     #[from]
     Confinement(confinement::Error),
 
-    /// In terms of strict encoding, we interpret `Option` as a zero-length
-    /// `Vec` (for `Optional::None`) or single-item `Vec` (for
-    /// `Optional::Some`). For decoding an attempt to read `Option` from a
-    /// encoded non-0 or non-1 length Vec will result in
-    /// `Error::WrongOptionalEncoding`.
-    #[display(
-        "invalid value {0} met as an optional type byte, which must be equal \
-         to either 0 (no value) or 1"
-    )]
-    WrongOptionalEncoding(u8),
-
-    /// unsupported value `{0}` for enum `{0}` encountered during decode
+    /// unsupported value `{1}` for enum `{0}` encountered during decode
     /// operation
-    EnumValueNotKnown(&'static str, usize),
+    EnumValueNotKnown(&'static str, u8, Variants),
+
+    /// unsupported value `{1}` for union `{0}` encountered during decode
+    /// operation
+    UnionValueNotKnown(&'static str, u8, Fields),
+
+    /// non-ASCII character {0:#04x}
+    NonAsciiChar(u8),
 
     /// decoding resulted in value `{2}` for type `{0}` that exceeds the
     /// supported range {1:#?}
