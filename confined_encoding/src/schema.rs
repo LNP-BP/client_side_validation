@@ -28,7 +28,7 @@ macro_rules! fields {
         {
             let mut m = ::std::collections::BTreeMap::new();
             $(
-                m.insert($key, Box::new($value)).expect("repeated field");
+                assert!(m.insert($key, Box::new($value)).is_none(), "repeated field");
             )+
             $crate::schema::Fields::try_from(m).expect("too many fields")
         }
@@ -41,7 +41,7 @@ macro_rules! alternatives {
         {
             let mut m = ::std::collections::BTreeMap::new();
             $(
-                m.insert($key, $crate::schema::Alternative::new($val, $ty)).expect("repeated union alternative");
+                assert!(m.insert($key, $crate::schema::Alternative::new($val, $ty)).is_none(), "repeated union alternative");
             )+
             $crate::schema::Alternatives::try_from(m).expect("too many union alternatives")
         }

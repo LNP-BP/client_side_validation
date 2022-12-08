@@ -19,7 +19,7 @@ use crate::schema::Ty;
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum Step {
     Field(&'static str),
-    Variant(&'static str),
+    Alt(&'static str),
     Index(u16),
     List,
     Set,
@@ -36,6 +36,8 @@ pub struct Path(SmallVec<Step>);
 
 impl Path {
     pub fn new() -> Path { Path::default() }
+
+    pub fn with(step: Step) -> Path { Path(small_vec!(step)) }
 }
 
 #[derive(Debug, Display, Error)]
@@ -58,23 +60,20 @@ impl Ty {
             path_so_far
                 .push(step)
                 .expect("confinement collection guarantees");
-            ty = match (self, path.first()) {
-                (_, None) => Some(self),
-                (Ty::Struct(fields), Some(Step::Field(name))) => {
+            ty = match (self, step) {
+                (Ty::Struct(fields), Step::Field(name)) => {
                     fields.get(name).map(Box::as_ref)
                 }
-                (Ty::Union(variants), Some(Step::Variant(name))) => {
+                (Ty::Union(variants), Step::Alt(name)) => {
                     variants.get(name).map(|alt| alt.ty.as_ref())
                 }
-                (Ty::Array(_, len), Some(Step::Index(index)))
-                    if index >= len =>
-                {
+                (Ty::Array(_, len), Step::Index(index)) if index >= *len => {
                     None
                 }
-                (Ty::Array(ty, _), Some(Step::Index(_))) => Some(ty.as_ref()),
-                (Ty::List(ty, _), Some(Step::List)) => Some(ty.as_ref()),
-                (Ty::Set(ty, _), Some(Step::Set)) => Some(ty.as_ref()),
-                (Ty::Map(_, ty, _), Some(Step::Map)) => Some(ty.as_ref()),
+                (Ty::Array(ty, _), Step::Index(_)) => Some(ty.as_ref()),
+                (Ty::List(ty, _), Step::List) => Some(ty.as_ref()),
+                (Ty::Set(ty, _), Step::Set) => Some(ty.as_ref()),
+                (Ty::Map(_, ty, _), Step::Map) => Some(ty.as_ref()),
                 (_, _) => None,
             }
             .ok_or_else(|| PathError::new(self, path_so_far.clone()))?;

@@ -130,12 +130,10 @@ impl ConfinedDecode for secp256k1::PublicKey {
     fn confined_decode(d: &mut impl io::Read) -> Result<Self, Error> {
         let mut buf = [0u8; secp256k1::constants::PUBLIC_KEY_SIZE];
         d.read_exact(&mut buf)?;
-        if buf[0] != 0x02 || buf[1] != 0x03 {
-            return Err(Error::DataIntegrityError(s!("invalid public key \
-                                                     data: only \
-                                                     compressed Secp256k1 \
-                                                     public keys are \
-                                                     allowed")));
+        if buf[0] != 0x02 && buf[0] != 0x03 {
+            return Err(Error::DataIntegrityError(s!("only compressed \
+                                                     Secp256k1 public \
+                                                     keys are allowed")));
         }
         Self::from_slice(&buf).map_err(|_| {
             Error::DataIntegrityError(s!("invalid public key data"))
@@ -311,11 +309,9 @@ pub(crate) mod test {
                 0xff, 0x3a, 0xff, 0x6e, 0x81, 0x9e, 0x4e, 0xe9, 0x71, 0xd8,
                 0x6b, 0x5e, 0x61, 0x87, 0x5d,
             ]),
-            Err(Error::DataIntegrityError(s!("invalid public key data: \
-                                              uncompressed Secp256k1 \
-                                              public key format is not \
-                                              allowed, use compressed \
-                                              form instead")))
+            Err(Error::DataIntegrityError(s!(
+                "only compressed Secp256k1 public keys are allowed"
+            )))
         );
 
         let xcoordonly_02 =

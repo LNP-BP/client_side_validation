@@ -25,7 +25,7 @@ use amplify::num::apfloat::Float;
 use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
 use half::bf16;
 
-use crate::path::Step;
+use crate::path::{Path, Step};
 use crate::schema::Ty;
 use crate::{ConfinedEncode, ConfinedType, Error};
 
@@ -387,10 +387,17 @@ impl<W: io::Write> ConfinedWrite for Writer<W> {
             panic!("write_union requires Ty::Union type")
         };
         let Some(alt) = variants.get(name) else {
-            panic!("invalid union variant {}", name);
+            panic!("invalid union alternative {}", name);
         };
-        if alt.ty.as_ref() != &ty {
-            panic!("wrong enum type for variant {}", name);
+        let actual_ty = ty
+            .path(&Path::with(Step::Alt(name)))
+            .expect("unknown union alternative");
+        if alt.ty.as_ref() != actual_ty {
+            panic!(
+                "wrong data type for union alternative {}; expected {:?}, \
+                 found {:?}",
+                name, alt.ty, actual_ty
+            );
         }
         self.0.write_all(&[alt.id])?;
         inner.confined_encode(self)
