@@ -10,7 +10,7 @@ keywords = ["lnp-bp", "strict-encoding", "networking", "internet2", "proc-macro"
 categories = ["encoding", "parsing"]
 readme = "../README.md"
 edition = "2021"
-rust-version = "1.59.0"
+rust-version = "1.60.0"
 
 [lib]
 proc-macro = true

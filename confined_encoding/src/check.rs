@@ -273,5 +273,5 @@ impl<'a> ConfinedWrite for CheckedWriter {
         Ok(())
     }
 
-    fn write_struct(self) -> StructWriter<Self> { todo!() }
+    fn write_struct(self) -> StructWriter<Self> { StructWriter::start(self) }
 }
