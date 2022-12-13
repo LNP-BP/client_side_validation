@@ -823,7 +823,7 @@ impl MerkleBlock {
                 }));
                 last_b = b.next();
             } else {
-                unreachable!("broken merkle block merge-reveal algorithm")
+                return Err(UnrelatedProof)
             }
         }
 
