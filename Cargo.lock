@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.8.0"
+version = "0.8.2"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.8.0"
+version = "0.8.2"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
