@@ -29,10 +29,6 @@ use crate::schema::{Sizing, Ty};
 use crate::write::ConfinedWrite;
 use crate::{ConfinedEncode, Error, StructWriter};
 
-#[derive(Clone, Hash, Debug, Display, Error)]
-#[display(doc_comments)]
-pub enum CheckError {}
-
 pub struct CheckedWriter {
     iter: TyIter,
     count: u16,
