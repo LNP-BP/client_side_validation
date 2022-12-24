@@ -228,7 +228,7 @@ fn decode_enum_impl(
         let ident = &variant.ident;
         let value = match (encoding.value, encoding.by_order) {
             (Some(val), _) => val.to_token_stream(),
-            (None, true) => Index::from(order as usize).to_token_stream(),
+            (None, true) => Index::from(order).to_token_stream(),
             (None, false) => quote! { Self::#ident as #repr },
         };
 

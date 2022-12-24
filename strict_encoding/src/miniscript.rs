@@ -183,8 +183,8 @@ where
                 let vec1 = Vec::<u8>::strict_decode(&mut d)?;
                 let vec2 = Vec::<u8>::strict_decode(&mut d)?;
                 Ok(TapTree::Tree(
-                    Arc::new(TapTree::strict_deserialize(&vec1)?),
-                    Arc::new(TapTree::strict_deserialize(&vec2)?),
+                    Arc::new(TapTree::strict_deserialize(vec1)?),
+                    Arc::new(TapTree::strict_deserialize(vec2)?),
                 ))
             }
             wrong => Err(Error::EnumValueNotKnown("TapTree", wrong as usize)),
