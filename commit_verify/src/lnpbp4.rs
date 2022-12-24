@@ -459,6 +459,10 @@ impl TreeNode {
         self.depth().unwrap_or(tree_depth)
     }
 
+    pub fn is_leaf(&self) -> bool {
+        matches!(self, TreeNode::CommitmentLeaf { .. })
+    }
+
     pub fn merkle_node_with(&self, depth: u8) -> MerkleNode {
         match self {
             TreeNode::ConcealedNode { hash, .. } => *hash,
@@ -798,8 +802,20 @@ impl MerkleBlock {
             let n1_depth = n1.depth_or(self.depth);
             let n2_depth = n2.depth_or(self.depth);
             match n1_depth.cmp(&n2_depth) {
-                Ordering::Equal => {
+                Ordering::Equal if n1 == n2 => {
                     cross_section.push(n1);
+                    last_a = a.next();
+                    last_b = b.next();
+                }
+                Ordering::Equal => {
+                    match (n1.is_leaf(), n2.is_leaf()) {
+                        (true, false) => cross_section.push(n1),
+                        (false, true) => cross_section.push(n2),
+                        // If two nodes are both leafs or concealed, but not
+                        // equal to each other it means that the provided blocks
+                        // are unrelated
+                        _ => return Err(UnrelatedProof),
+                    }
                     last_a = a.next();
                     last_b = b.next();
                 }
@@ -940,6 +956,7 @@ impl MerkleProof {
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
+
     use super::*;
     use crate::TryCommitVerify;
 
