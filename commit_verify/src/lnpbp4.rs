@@ -44,6 +44,7 @@
 //!
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::io::Write;
@@ -794,36 +795,40 @@ impl MerkleBlock {
         let mut last_a = a.next();
         let mut last_b = b.next();
         while let (Some(n1), Some(n2)) = (last_a, last_b) {
-            if n1.depth_or(self.depth) == n2.depth_or(self.depth) {
-                cross_section.push(n1);
-                last_a = a.next();
-                last_b = b.next();
-            } else if n1.depth_or(self.depth) < n2.depth_or(self.depth) {
-                cross_section.push(n2);
-                cross_section.extend(b.by_ref().take_while(|n| {
-                    if n.depth_or(self.depth) > n1.depth_or(self.depth) {
-                        last_b = None;
-                        true
-                    } else {
-                        last_b = Some(*n);
-                        false
-                    }
-                }));
-                last_a = a.next();
-            } else if n1.depth_or(self.depth) > n2.depth_or(self.depth) {
-                cross_section.push(n1);
-                cross_section.extend(a.by_ref().take_while(|n| {
-                    if n.depth_or(self.depth) > n2.depth_or(self.depth) {
-                        last_a = None;
-                        true
-                    } else {
-                        last_a = Some(*n);
-                        false
-                    }
-                }));
-                last_b = b.next();
-            } else {
-                unreachable!("broken merkle block merge-reveal algorithm")
+            let n1_depth = n1.depth_or(self.depth);
+            let n2_depth = n2.depth_or(self.depth);
+            match n1_depth.cmp(&n2_depth) {
+                Ordering::Equal => {
+                    cross_section.push(n1);
+                    last_a = a.next();
+                    last_b = b.next();
+                }
+                Ordering::Less => {
+                    cross_section.push(n2);
+                    cross_section.extend(b.by_ref().take_while(|n| {
+                        if n.depth_or(self.depth) > n1_depth {
+                            last_b = None;
+                            true
+                        } else {
+                            last_b = Some(*n);
+                            false
+                        }
+                    }));
+                    last_a = a.next();
+                }
+                Ordering::Greater => {
+                    cross_section.push(n1);
+                    cross_section.extend(a.by_ref().take_while(|n| {
+                        if n.depth_or(self.depth) > n2_depth {
+                            last_a = None;
+                            true
+                        } else {
+                            last_a = Some(*n);
+                            false
+                        }
+                    }));
+                    last_b = b.next();
+                }
             }
         }
 
