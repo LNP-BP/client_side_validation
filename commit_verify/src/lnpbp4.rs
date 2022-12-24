@@ -1225,8 +1225,31 @@ mod test {
             entropy: None,
         };
 
+        let expected = MerkleBlock {
+            depth: 3,
+            cross_section: vec![
+                TreeNode::CommitmentLeaf {
+                    protocol_id: ProtocolId::from_str("f0f2fc11fa38f3fd6132f46d8044612fc73e26b769025edabbe1290af9851897").unwrap(),
+                    message: Message::from_str("c0abbb938d4da7ce3a25e704b5b41dbacc762afe45a536e7d0a962fb1b34413e").unwrap()
+                },
+                TreeNode::CommitmentLeaf {
+                    protocol_id: ProtocolId::from_str("391cfae9f7b23562826b3260831e92698c7ec43c49e7afeed8e83a1bd75bbce9").unwrap(),
+                    message: Message::from_str("72c7278c8337a0480aa343dae2e6e6e1aee6c7b3df7d88f150a21c82f2b373ac").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 2,
+                    hash: MerkleNode::from_str("d42b5b6f1d6cc564fea2258e5147f4dd07735fac5aafa4a8394feb75ed8e366d").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 1,
+                    hash: MerkleNode::from_str("5009030a186d268e698e184cf9e32607951ab81c6e3b42ecaf6ccf73a5ca0f2e").unwrap()
+                },
+            ],
+            entropy: None,
+        };
+
         block1.merge_reveal(block2).unwrap();
 
-        println!("{:?}", block1);
+        assert_eq!(block1, expected);
     }
 }
