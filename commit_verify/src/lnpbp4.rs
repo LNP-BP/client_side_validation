@@ -794,7 +794,7 @@ impl MerkleBlock {
         let mut last_a = a.next();
         let mut last_b = b.next();
         while let (Some(n1), Some(n2)) = (last_a, last_b) {
-            if n1 == n2 {
+            if n1.depth_or(self.depth) == n2.depth_or(self.depth) {
                 cross_section.push(n1);
                 last_a = a.next();
                 last_b = b.next();
