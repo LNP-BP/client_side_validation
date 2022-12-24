@@ -1,6 +1,6 @@
 [package]
 name = "encoding_derive_helpers"
-version = "0.9.0"
+version = "0.8.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Helper functions for creating different encoding derivation macros"

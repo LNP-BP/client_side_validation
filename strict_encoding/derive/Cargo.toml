@@ -1,6 +1,6 @@
 [package]
 name = "strict_encoding_derive"
-version = "0.9.0"
+version = "0.8.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Strict encoding derivation macros"
@@ -18,7 +18,7 @@ proc-macro = true
 [dependencies]
 syn = "1"
 proc-macro2 = "1"
-encoding_derive_helpers = { version = "0.9.0", path = "../derive_helpers" }
+encoding_derive_helpers = { version = "0.8.1", path = "../derive_helpers" }
 amplify_syn = "1.1.6"
 
 [dev-dependencies]
