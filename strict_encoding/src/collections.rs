@@ -196,7 +196,7 @@ where
     T: StrictEncode,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
+        let len = self.len();
         // We handle oversize problems at the level of `usize` value
         // serializaton
         let mut encoded = len.strict_encode(&mut e)?;
@@ -504,7 +504,7 @@ where
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let len = usize::strict_decode(&mut d)?;
-        let mut data = Vec::<T>::with_capacity(len as usize);
+        let mut data = Vec::<T>::with_capacity(len);
         for _ in 0..len {
             data.push(T::strict_decode(&mut d)?);
         }
@@ -522,7 +522,7 @@ where
     T: StrictEncode + Eq + Ord + Hash + Debug,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
+        let len = self.len();
         let mut encoded = len.strict_encode(&mut e)?;
         let mut vec: Vec<&T> = self.iter().collect();
         vec.sort();
@@ -543,7 +543,7 @@ where
 {
     fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
         let len = usize::strict_decode(&mut d)?;
-        let mut data = HashSet::<T>::with_capacity(len as usize);
+        let mut data = HashSet::<T>::with_capacity(len);
         for _ in 0..len {
             let val = T::strict_decode(&mut d)?;
             if data.contains(&val) {
@@ -566,7 +566,7 @@ where
     T: StrictEncode + Eq + Ord + Debug,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
+        let len = self.len();
         let mut encoded = len.strict_encode(&mut e)?;
         let mut vec: Vec<&T> = self.iter().collect();
         vec.sort();
@@ -669,7 +669,7 @@ where
     V: StrictEncode + Clone,
 {
     fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        let len = self.len() as usize;
+        let len = self.len();
         let encoded = len.strict_encode(&mut e)?;
 
         self.iter().try_fold(encoded, |mut acc, (key, val)| {

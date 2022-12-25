@@ -160,7 +160,7 @@ pub mod test {
     fn test_encode_decode() {
         gen_strings().into_iter().for_each(|s| {
             let r = strict_serialize(&s).unwrap();
-            let p: String = strict_deserialize(&r).unwrap();
+            let p: String = strict_deserialize(r).unwrap();
             assert_eq!(s, p);
         })
     }
@@ -171,7 +171,7 @@ pub mod test {
         gen_strings().into_iter().for_each(|s| {
             let mut r = strict_serialize(&s).unwrap();
             r.extend_from_slice("data".as_ref());
-            let _: String = strict_deserialize(&r).unwrap();
+            let _: String = strict_deserialize(r).unwrap();
         })
     }
 
