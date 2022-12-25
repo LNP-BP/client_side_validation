@@ -44,9 +44,9 @@
 //! - `miniscript`: types defined in bitcoin Miniscript
 //! - `crypto`: non-bitcoin cryptographic primitives, which include Ed25519
 //!   curve, X25519 signatures from `ed25519-dalek` library and pedersen
-//!   commitments + bulletproofs from `lnpbp_secp256k1zkp` library. Encodings for
-//!   other cryptography-related types, such as Secp256k1 and hashes, are always
-//!   included as a part of the library - see NB below.
+//!   commitments + bulletproofs from `lnpbp_secp256k1zkp` library. Encodings
+//!   for other cryptography-related types, such as Secp256k1 and hashes, are
+//!   always included as a part of the library - see NB below.
 //!
 //! NB: this crate requires `bitcoin` as an upstream dependency since many of
 //!     strict-encoded formats are standardized as using *bitcoin consensus
