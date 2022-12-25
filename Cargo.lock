@@ -1054,6 +1054,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "strict_encoding_derive",
+ "strict_encoding_test",
 ]
 
 [[package]]
