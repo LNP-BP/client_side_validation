@@ -33,6 +33,8 @@ extern crate bitcoin_hashes;
 extern crate serde_crate as serde;
 #[cfg(feature = "serde")]
 extern crate serde_with;
+#[cfg(feature = "lnpbp_secp256k1zkp")]
+extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 
 pub mod commit_encode;
 pub mod commit_verify;

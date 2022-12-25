@@ -23,7 +23,7 @@ strict_encoding = { version = "0.9.0-rc.1", path = "../strict_encoding" }
 rand = { version = "0.8.5", optional = true }
 serde_crate = { version = "1.0", package = "serde", optional = true }
 serde_with = { version = "1.14.0", optional = true }
-grin_secp256k1zkp = { version = "0.7", optional = true }
+lnpbp_secp256k1zkp = { version = "0.9.0-alpha.1", optional = true }
 
 [dev-dependencies]
 rand = "0.8.5"
@@ -32,7 +32,7 @@ rand = "0.8.5"
 default = []
 all = ["rand", "serde", "bulletproofs"]
 serde = ["serde_crate", "serde_with", "bitcoin_hashes/serde", "amplify/serde"]
-bulletproofs = ["grin_secp256k1zkp"]
+bulletproofs = ["lnpbp_secp256k1zkp"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
