@@ -309,7 +309,7 @@ mod _chrono {
         #[inline]
         fn strict_decode<D: io::Read>(d: D) -> Result<Self, Error> {
             let secs = i64::strict_decode(d)?;
-            Self::from_timestamp_opt(secs, 0).ok_or(Error::DataIntegrityError(
+            Self::from_timestamp_opt(secs, 0).ok_or_else(|| Error::DataIntegrityError(
                 s!("number of seconds in timestamp exceeds UNIX limit"),
             ))
         }
