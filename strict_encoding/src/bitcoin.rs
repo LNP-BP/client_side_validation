@@ -15,14 +15,14 @@
 use std::io;
 use std::io::{Read, Write};
 
+use bitcoin::psbt::serialize::{Deserialize, Serialize};
 use bitcoin::psbt::{self, PsbtSighashType, TapTree};
 use bitcoin::secp256k1::{ecdsa, schnorr, Secp256k1};
 use bitcoin::util::address::{self, Address, WitnessVersion};
 use bitcoin::util::bip32;
 use bitcoin::util::taproot::{
     ControlBlock, FutureLeafVersion, LeafVersion, ScriptLeaf, TapBranchHash,
-    TapLeafHash, TapSighashHash, TapTweakHash, TaprootBuilder,
-    TaprootMerkleBranch,
+    TapLeafHash, TapSighashHash, TapTweakHash, TaprootMerkleBranch,
 };
 use bitcoin::{
     schnorr as bip340, secp256k1, Amount, BlockHash, EcdsaSig,
@@ -729,28 +729,14 @@ impl Strategy for psbt::PartiallySignedTransaction {
 
 impl StrictEncode for TapTree {
     fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
-        impl StrictEncode for &Script {
-            fn strict_encode<E: Write>(&self, e: E) -> Result<usize, Error> {
-                Script::strict_encode(self, e)
-            }
-        }
-        self.script_leaves()
-            .cloned()
-            .collect::<Vec<_>>()
-            .strict_encode(e)
+        self.serialize().strict_encode(e)
     }
 }
 
 impl StrictDecode for TapTree {
     fn strict_decode<D: Read>(d: D) -> Result<Self, Error> {
-        let builder = Vec::<(u8, Script)>::strict_decode(d)?
-            .into_iter()
-            .try_fold(TaprootBuilder::new(), |builder, (depth, script)| {
-                builder.add_leaf(depth, script)
-            })
-            .map_err(|err| Error::DataIntegrityError(err.to_string()))?;
-        TapTree::from_builder(builder)
-            .map_err(|_| Error::DataIntegrityError(s!("incomplete tree")))
+        Ok(TapTree::deserialize(&Vec::<u8>::strict_decode(d)?)
+            .expect("incomplete tree"))
     }
 }
 
