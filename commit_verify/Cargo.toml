@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.9.0-alpha.1"
+version = "0.9.0-rc.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Commit-verify API for client-side validation"
@@ -19,7 +19,7 @@ path = "src/lib.rs"
 [dependencies]
 amplify = { version = "3.13.0", features = ["hex"] }
 bitcoin_hashes = "0.11.0"
-strict_encoding = { version = "0.9.0-alpha.1", path = "../strict_encoding" }
+strict_encoding = { version = "0.9.0-rc.1", path = "../strict_encoding" }
 rand = { version = "0.8.5", optional = true }
 serde_crate = { version = "1.0", package = "serde", optional = true }
 serde_with = { version = "1.14.0", optional = true }

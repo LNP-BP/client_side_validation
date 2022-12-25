@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.9.0-alpha.1"
+version = "0.9.0-rc.1"
 dependencies = [
  "async-trait",
  "commit_verify",
@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.9.0-alpha.1"
+version = "0.9.0-rc.1"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -1114,7 +1114,7 @@ checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 
 [[package]]
 name = "single_use_seals"
-version = "0.9.0-alpha.1"
+version = "0.9.0-rc.1"
 dependencies = [
  "amplify_derive",
  "async-trait",
@@ -1128,7 +1128,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strict_encoding"
-version = "0.9.0-alpha.1"
+version = "0.9.0-rc.1"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -1161,7 +1161,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_test"
-version = "0.9.0-alpha.1"
+version = "0.9.0-rc.1"
 dependencies = [
  "amplify",
  "strict_encoding",
