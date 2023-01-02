@@ -44,6 +44,7 @@
 //!
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::io::Write;
@@ -458,6 +459,10 @@ impl TreeNode {
         self.depth().unwrap_or(tree_depth)
     }
 
+    pub fn is_leaf(&self) -> bool {
+        matches!(self, TreeNode::CommitmentLeaf { .. })
+    }
+
     pub fn merkle_node_with(&self, depth: u8) -> MerkleNode {
         match self {
             TreeNode::ConcealedNode { hash, .. } => *hash,
@@ -794,36 +799,52 @@ impl MerkleBlock {
         let mut last_a = a.next();
         let mut last_b = b.next();
         while let (Some(n1), Some(n2)) = (last_a, last_b) {
-            if n1 == n2 {
-                cross_section.push(n1);
-                last_a = a.next();
-                last_b = b.next();
-            } else if n1.depth_or(self.depth) < n2.depth_or(self.depth) {
-                cross_section.push(n2);
-                cross_section.extend(b.by_ref().take_while(|n| {
-                    if n.depth_or(self.depth) > n1.depth_or(self.depth) {
-                        last_b = None;
-                        true
-                    } else {
-                        last_b = Some(*n);
-                        false
+            let n1_depth = n1.depth_or(self.depth);
+            let n2_depth = n2.depth_or(self.depth);
+            match n1_depth.cmp(&n2_depth) {
+                Ordering::Equal if n1 == n2 => {
+                    cross_section.push(n1);
+                    last_a = a.next();
+                    last_b = b.next();
+                }
+                Ordering::Equal => {
+                    match (n1.is_leaf(), n2.is_leaf()) {
+                        (true, false) => cross_section.push(n1),
+                        (false, true) => cross_section.push(n2),
+                        // If two nodes are both leafs or concealed, but not
+                        // equal to each other it means that the provided blocks
+                        // are unrelated
+                        _ => return Err(UnrelatedProof),
                     }
-                }));
-                last_a = a.next();
-            } else if n1.depth_or(self.depth) > n2.depth_or(self.depth) {
-                cross_section.push(n1);
-                cross_section.extend(a.by_ref().take_while(|n| {
-                    if n.depth_or(self.depth) > n2.depth_or(self.depth) {
-                        last_a = None;
-                        true
-                    } else {
-                        last_a = Some(*n);
-                        false
-                    }
-                }));
-                last_b = b.next();
-            } else {
-                unreachable!("broken merkle block merge-reveal algorithm")
+                    last_a = a.next();
+                    last_b = b.next();
+                }
+                Ordering::Less => {
+                    cross_section.push(n2);
+                    cross_section.extend(b.by_ref().take_while(|n| {
+                        if n.depth_or(self.depth) > n1_depth {
+                            last_b = None;
+                            true
+                        } else {
+                            last_b = Some(*n);
+                            false
+                        }
+                    }));
+                    last_a = a.next();
+                }
+                Ordering::Greater => {
+                    cross_section.push(n1);
+                    cross_section.extend(a.by_ref().take_while(|n| {
+                        if n.depth_or(self.depth) > n2_depth {
+                            last_a = None;
+                            true
+                        } else {
+                            last_a = Some(*n);
+                            false
+                        }
+                    }));
+                    last_b = b.next();
+                }
             }
         }
 
@@ -934,6 +955,8 @@ impl MerkleProof {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use super::*;
     use crate::TryCommitVerify;
 
@@ -1170,5 +1193,81 @@ mod test {
             .conceal_except(src.messages.into_keys().collect::<Vec<_>>())
             .unwrap();
         assert_eq!(orig_block, new_block);
+    }
+
+    #[test]
+    fn test_merge_blocks() {
+        let mut block1 = MerkleBlock {
+            depth: 3,
+            cross_section: vec![
+                TreeNode::ConcealedNode {
+                    depth: 3,
+                    hash: MerkleNode::from_str("03e43c730e76e654a40fdc0b62940bb7382ed95d4e8124ba687b4ec470cd1f01").unwrap()
+                },
+                TreeNode::CommitmentLeaf {
+                    protocol_id: ProtocolId::from_str("391cfae9f7b23562826b3260831e92698c7ec43c49e7afeed8e83a1bd75bbce9").unwrap(),
+                    message: Message::from_str("72c7278c8337a0480aa343dae2e6e6e1aee6c7b3df7d88f150a21c82f2b373ac").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 2,
+                    hash: MerkleNode::from_str("d42b5b6f1d6cc564fea2258e5147f4dd07735fac5aafa4a8394feb75ed8e366d").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 1,
+                    hash: MerkleNode::from_str("5009030a186d268e698e184cf9e32607951ab81c6e3b42ecaf6ccf73a5ca0f2e").unwrap()
+                },
+            ],
+            entropy: None,
+        };
+
+        let block2 = MerkleBlock {
+            depth: 3,
+            cross_section: vec![
+                TreeNode::CommitmentLeaf {
+                    protocol_id: ProtocolId::from_str("f0f2fc11fa38f3fd6132f46d8044612fc73e26b769025edabbe1290af9851897").unwrap(),
+                    message: Message::from_str("c0abbb938d4da7ce3a25e704b5b41dbacc762afe45a536e7d0a962fb1b34413e").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 3,
+                    hash: MerkleNode::from_str("8fff224a68c261d62ab33d802182ff09d6332e9079fce71936ea414ed45ee782").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 2,
+                    hash: MerkleNode::from_str("d42b5b6f1d6cc564fea2258e5147f4dd07735fac5aafa4a8394feb75ed8e366d").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 1,
+                    hash: MerkleNode::from_str("5009030a186d268e698e184cf9e32607951ab81c6e3b42ecaf6ccf73a5ca0f2e").unwrap()
+                },
+            ],
+            entropy: None,
+        };
+
+        let expected = MerkleBlock {
+            depth: 3,
+            cross_section: vec![
+                TreeNode::CommitmentLeaf {
+                    protocol_id: ProtocolId::from_str("f0f2fc11fa38f3fd6132f46d8044612fc73e26b769025edabbe1290af9851897").unwrap(),
+                    message: Message::from_str("c0abbb938d4da7ce3a25e704b5b41dbacc762afe45a536e7d0a962fb1b34413e").unwrap()
+                },
+                TreeNode::CommitmentLeaf {
+                    protocol_id: ProtocolId::from_str("391cfae9f7b23562826b3260831e92698c7ec43c49e7afeed8e83a1bd75bbce9").unwrap(),
+                    message: Message::from_str("72c7278c8337a0480aa343dae2e6e6e1aee6c7b3df7d88f150a21c82f2b373ac").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 2,
+                    hash: MerkleNode::from_str("d42b5b6f1d6cc564fea2258e5147f4dd07735fac5aafa4a8394feb75ed8e366d").unwrap()
+                },
+                TreeNode::ConcealedNode {
+                    depth: 1,
+                    hash: MerkleNode::from_str("5009030a186d268e698e184cf9e32607951ab81c6e3b42ecaf6ccf73a5ca0f2e").unwrap()
+                },
+            ],
+            entropy: None,
+        };
+
+        block1.merge_reveal(block2).unwrap();
+
+        assert_eq!(block1, expected);
     }
 }

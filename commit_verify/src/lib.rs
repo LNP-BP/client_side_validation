@@ -31,6 +31,8 @@ extern crate bitcoin_hashes;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_crate as serde;
+#[cfg(feature = "lnpbp_secp256k1zkp")]
+extern crate lnpbp_secp256k1zkp as secp256k1zkp;
 #[cfg(feature = "serde")]
 extern crate serde_with;
 
