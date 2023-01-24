@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "client_side_validation"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
  "commit_verify",
  "single_use_seals",
@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -586,9 +586,9 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "lnpbp_secp256k1zkp"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c6ba83e1b29ed1aca515dab06bdb3a9537101790950847a771069e8e3cb1262"
+checksum = "64bd22bb15baf79b5ab2711d08650ea20ac08bb2a55a42c91dfc1db4d350ea55"
 dependencies = [
  "cc",
  "libc",
@@ -929,7 +929,7 @@ dependencies = [
 
 [[package]]
 name = "single_use_seals"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
  "amplify_derive",
  "async-trait",
@@ -943,7 +943,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strict_encoding"
-version = "0.9.0-rc.3"
+version = "0.9.0"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -975,7 +975,7 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_test"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
  "amplify",
  "strict_encoding",

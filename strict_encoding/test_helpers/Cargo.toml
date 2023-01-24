@@ -1,6 +1,6 @@
 [package]
 name = "strict_encoding_test"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Helper functions for testing strict encodings"
@@ -16,4 +16,4 @@ rust-version = "1.59.0"
 
 [dependencies]
 amplify = "3.13.0"
-strict_encoding = { version = "0.9.0-rc.1", path = ".." }
+strict_encoding = { version = "0.9.0", path = ".." }
