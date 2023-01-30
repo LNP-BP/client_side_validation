@@ -1,3 +1,15 @@
+[workspace]
+members = [
+    ".",
+    # "commit_verify",
+    "single_use_seals"
+]
+default-members = [
+    ".",
+    # "commit_verify",
+    "single_use_seals"
+]
+
 [package]
 name = "client_side_validation"
 version = "0.9.0"
@@ -18,22 +30,17 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-confined_encoding = { version = "0.9.0-alpha.5", path = "./confined_encoding" }
-commit_verify = { version = "0.9.0", path = "./commit_verify" }
+# commit_verify = { version = "0.9.0", path = "./commit_verify" }
 single_use_seals = { version = "0.9.0", path = "./single_use_seals" }
+serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
 [features]
 default = []
 all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
-rand = ["commit_verify/rand"]
-serde = ["commit_verify/serde"]
-bulletproofs = ["commit_verify/bulletproofs"]
+rand = [] # ["commit_verify/rand"]
+serde = ["serde_crate"] # ["commit_verify/serde"]
+bulletproofs = [] # ["commit_verify/bulletproofs"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
-
-[workspace]
-members = [".", "confined_encoding", "commit_verify", "single_use_seals",
-    "confined_encoding/derive", "confined_encoding/test_helpers"]
-default-members = ["."]

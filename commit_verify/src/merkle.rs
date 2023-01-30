@@ -20,7 +20,6 @@
 use std::io;
 
 use bitcoin_hashes::{sha256, Hash, HashEngine};
-use confined_encoding::hash_encoding;
 
 use crate::{
     commit_encode, CommitEncode, CommitVerify, ConsensusCommit,

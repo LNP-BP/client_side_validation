@@ -31,8 +31,7 @@
 //! standardizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in a wrong way.
 
-pub extern crate commit_verify;
-pub extern crate confined_encoding;
+// pub extern crate commit_verify;
 pub extern crate single_use_seals;
 
 #[cfg(feature = "serde")]
@@ -45,5 +44,4 @@ pub use api::{
     ClientData, ClientSideValidate, SealIssue, SealResolver, Status,
     ValidationFailure, ValidationLog, ValidationReport, Validity,
 };
-pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};
-pub use confined_encoding::derive::{ConfinedDecode, ConfinedEncode};
+// pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};

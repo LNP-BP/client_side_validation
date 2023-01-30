@@ -53,7 +53,6 @@ use amplify::confinement::{SmallOrdMap, SmallVec};
 use amplify::num::u256;
 use amplify::{Bytes32, Wrapper};
 use bitcoin_hashes::{sha256, sha256t, Hash, HashEngine};
-use confined_encoding::{ConfinedDecode, ConfinedEncode, ConfinedTag};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
