@@ -135,7 +135,7 @@ where
 ///
 /// ```
 /// # use bitcoin_hashes::sha256::Midstate;
-/// # use secp256k1zkp::Secp256k1;
+/// # use lnpbp_secp256k1zkp::Secp256k1;
 /// # use commit_verify::CommitmentProtocol;
 ///
 /// // Uninstantiable type

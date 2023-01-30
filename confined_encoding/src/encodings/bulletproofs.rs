@@ -12,8 +12,6 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use std::io;
-
 use secp256k1zkp::constants::MAX_PROOF_SIZE;
 
 use crate::schema::Ty;

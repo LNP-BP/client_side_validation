@@ -1,6 +1,6 @@
 [package]
 name = "client_side_validation"
-version = "0.9.0-alpha.1"
+version = "0.9.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Client-side validation foundation library"
@@ -18,21 +18,17 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-confined_encoding = { version = "0.9.0-alpha.1", path = "confined_encoding" }
-commit_verify = { version = "0.9.0-alpha.1", path = "./commit_verify" }
-single_use_seals = { version = "0.9.0-alpha.1", path = "./single_use_seals" }
-serde_crate = { package = "serde", version = "1", optional = true }
-
-[dev-dependencies]
-async-trait = "0.1.51"
+confined_encoding = { version = "0.9.0-alpha.5", path = "./confined_encoding" }
+commit_verify = { version = "0.9.0", path = "./commit_verify" }
+single_use_seals = { version = "0.9.0", path = "./single_use_seals" }
 
 [features]
 default = []
 all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
-serde = ["commit_verify/serde", "serde_crate"]
-bulletproofs = ["commit_verify/bulletproofs", "confined_encoding/bulletproofs"]
+serde = ["commit_verify/serde"]
+bulletproofs = ["commit_verify/bulletproofs"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]

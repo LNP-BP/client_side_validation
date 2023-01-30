@@ -232,12 +232,12 @@ pub mod strategies {
         type Strategy = UsingStrict;
     }
 
-    #[cfg(feature = "grin_secp256k1zkp")]
+    #[cfg(feature = "lnpbp_secp256k1zkp")]
     impl Strategy for secp256k1zkp::pedersen::Commitment {
         type Strategy = UsingStrict;
     }
 
-    #[cfg(feature = "grin_secp256k1zkp")]
+    #[cfg(feature = "lnpbp_secp256k1zkp")]
     impl Strategy for secp256k1zkp::pedersen::RangeProof {
         type Strategy = UsingHash<bitcoin_hashes::sha256::Hash>;
     }

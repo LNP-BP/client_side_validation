@@ -73,7 +73,7 @@ use amplify::confinement::{Confined, MediumVec, SmallVec};
 use amplify::{ascii, confinement, IoError};
 pub use encodings::ConfinedTag;
 
-pub use crate::check::{CheckError, CheckedWriter};
+pub use crate::check::CheckedWriter;
 pub use crate::read::{ConfinedRead, Reader};
 use crate::schema::{Alternatives, Ty, Variants};
 pub use crate::write::{ConfinedWrite, StructWriter, Writer};
