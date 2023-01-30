@@ -1,12 +1,12 @@
 [workspace]
 members = [
     ".",
-    # "commit_verify",
+    "commit_verify",
     "single_use_seals"
 ]
 default-members = [
     ".",
-    # "commit_verify",
+    "commit_verify",
     "single_use_seals"
 ]
 
@@ -23,14 +23,14 @@ categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
 readme = "README.md"
 edition = "2021"
 rust-version = "1.59.0"
-exclude = [".github", "commit_verify", "confined_encoding", "single_use_seals"]
+exclude = [".github", "commit_verify", "single_use_seals"]
 
 [lib]
 name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-# commit_verify = { version = "0.9.0", path = "./commit_verify" }
+commit_verify = { version = "0.9.0", path = "./commit_verify" }
 single_use_seals = { version = "0.9.0", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
@@ -38,9 +38,9 @@ serde_crate = { package = "serde", version = "1", features = ["derive"], optiona
 default = []
 all = ["serde", "rand", "async", "bulletproofs"]
 async = ["single_use_seals/async"]
-rand = [] # ["commit_verify/rand"]
-serde = ["serde_crate"] # ["commit_verify/serde"]
-bulletproofs = [] # ["commit_verify/bulletproofs"]
+rand = ["commit_verify/rand"]
+serde = ["serde_crate", "commit_verify/serde"]
+bulletproofs = ["commit_verify/bulletproofs"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
