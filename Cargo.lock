@@ -74,9 +74,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.63"
+version = "0.1.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eff18d764974428cf3a9328e23fc5c986f5fbed46e6cd4cdf42544df5d297ec1"
+checksum = "1cd7fce9ba8c3c042128ce72d8b2ddbf3a05747efb67ea0313c635e10bda47a2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -408,8 +408,7 @@ dependencies = [
 [[package]]
 name = "strict_encoding"
 version = "2.0.0-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9ea3038d229a4a31f751b0cd019aba72f5ada00ef082704004e56055725242b"
+source = "git+https://github.com/strict-types/strict-encoding#e1b8e2b176b77cef4180a9a62acbc718b1e31ad0"
 dependencies = [
  "amplify",
  "strict_encoding_derive",
@@ -418,8 +417,7 @@ dependencies = [
 [[package]]
 name = "strict_encoding_derive"
 version = "2.0.0-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cb9b35c9d7429212d20ae38bb86ecbc6cd3b3ccf5db6a12d1e2aafa7cedf5b0"
+source = "git+https://github.com/strict-types/strict-encoding#e1b8e2b176b77cef4180a9a62acbc718b1e31ad0"
 dependencies = [
  "amplify_syn 2.0.0-beta.1",
  "heck",

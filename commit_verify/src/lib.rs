@@ -11,3 +11,5 @@
 //
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
+
+mod encode;
