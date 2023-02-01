@@ -21,6 +21,7 @@ extern crate serde_crate as serde;
 pub(self) mod commit;
 mod conceal;
 mod convolve;
+pub(self) mod embed;
 mod encode;
 // mod merkle;
 pub mod mpc;
@@ -28,6 +29,7 @@ pub mod mpc;
 pub use commit::{CommitVerify, TryCommitVerify};
 pub use conceal::CommitConceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof};
+pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
 pub use encode::CommitEncode;
 
 /// Marker trait for specific commitment protocols.
@@ -60,7 +62,8 @@ impl CommitmentProtocol for PrehashedProtocol {
 pub mod test_helpers {
     use amplify::hex::FromHex;
 
-    pub use super::commit::test_helpers::commit_verify_suite;
+    pub use super::commit::test_helpers::*;
+    pub use super::embed::test_helpers::*;
     use super::*;
 
     /// Generates a set of messages for testing purposes

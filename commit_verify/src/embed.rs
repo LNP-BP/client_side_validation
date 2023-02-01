@@ -183,7 +183,7 @@ where
 
 /// Helpers for writing test functions working with embed-commit-verify scheme.
 #[cfg(test)]
-pub mod test_helpers {
+pub(crate) mod test_helpers {
     use core::fmt::Debug;
     use core::hash::Hash;
     use std::collections::HashSet;
@@ -191,7 +191,7 @@ pub mod test_helpers {
     use bitcoin_hashes::sha256::Midstate;
 
     use super::*;
-    use crate::convolve_commit::{ConvolveCommit, ConvolveCommitProof};
+    use crate::{ConvolveCommit, ConvolveCommitProof};
 
     pub enum TestProtocol {}
     impl CommitmentProtocol for TestProtocol {
@@ -321,8 +321,8 @@ mod test {
 
     use super::test_helpers::*;
     use super::*;
-    use crate::commit_verify::test_helpers::gen_messages;
-    use crate::convolve_commit::{ConvolveCommit, ConvolveCommitProof};
+    use crate::test_helpers::gen_messages;
+    use crate::{ConvolveCommit, ConvolveCommitProof};
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash, Error, Display)]
     #[display("error")]
