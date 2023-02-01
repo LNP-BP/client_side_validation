@@ -12,11 +12,13 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-#[macro_use]
-extern crate amplify;
-#[cfg(feature = "serde")]
-#[macro_use]
-extern crate serde_crate as serde;
+//! Multi-protocol commitments according to [LNPBP-4] standard.
+//!
+//! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
-// mod encode;
-pub mod mpc;
+/// Maximal depth of LNPBP-4 commitment tree.
+pub const MAX_TREE_DEPTH: u8 = 16;
+
+mod atoms;
+
+pub use atoms::{Commitment, Message, ProtocolId};
