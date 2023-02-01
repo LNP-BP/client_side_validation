@@ -14,9 +14,7 @@
 
 //! Base commit-verify scheme interface.
 
-use bitcoin_hashes::{
-    hash160, ripemd160, sha1, sha256, sha256d, sha256t, sha512, siphash24, Hash,
-};
+use bitcoin_hashes::{hash160, ripemd160, sha1, sha256, sha256d, sha256t, sha512, siphash24, Hash};
 
 use crate::{CommitmentProtocol, PrehashedProtocol};
 
@@ -62,42 +60,35 @@ where
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha1::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
     fn commit(msg: &Msg) -> sha1::Hash { sha1::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for ripemd160::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
-    fn commit(msg: &Msg) -> ripemd160::Hash {
-        ripemd160::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> ripemd160::Hash { ripemd160::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for hash160::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
     fn commit(msg: &Msg) -> hash160::Hash { hash160::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha256::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
     fn commit(msg: &Msg) -> sha256::Hash { sha256::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha256d::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
     fn commit(msg: &Msg) -> sha256d::Hash { sha256d::Hash::hash(msg.as_ref()) }
@@ -109,24 +100,18 @@ where
     T: sha256t::Tag,
 {
     #[inline]
-    fn commit(msg: &Msg) -> sha256t::Hash<T> {
-        sha256t::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> sha256t::Hash<T> { sha256t::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for siphash24::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
-    fn commit(msg: &Msg) -> siphash24::Hash {
-        siphash24::Hash::hash(msg.as_ref())
-    }
+    fn commit(msg: &Msg) -> siphash24::Hash { siphash24::Hash::hash(msg.as_ref()) }
 }
 
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha512::Hash
-where
-    Msg: AsRef<[u8]>,
+where Msg: AsRef<[u8]>
 {
     #[inline]
     fn commit(msg: &Msg) -> sha512::Hash { sha512::Hash::hash(msg.as_ref()) }
@@ -149,9 +134,9 @@ pub(crate) mod test_helpers {
         Msg: AsRef<[u8]> + Eq,
         Cmt: CommitVerify<Msg, PrehashedProtocol> + Eq + Hash + Debug,
     {
-        messages.iter().fold(
-            HashSet::<Cmt>::with_capacity(messages.len()),
-            |mut acc, msg| {
+        messages
+            .iter()
+            .fold(HashSet::<Cmt>::with_capacity(messages.len()), |mut acc, msg| {
                 let commitment = Cmt::commit(msg);
 
                 // Commitments MUST be deterministic: each message should
@@ -179,8 +164,7 @@ pub(crate) mod test_helpers {
                 assert!(acc.insert(commitment));
 
                 acc
-            },
-        );
+            });
     }
 }
 
@@ -201,28 +185,19 @@ mod test {
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     struct DummyHashCommitment(sha256d::Hash);
     impl<T> CommitVerify<T, PrehashedProtocol> for DummyHashCommitment
-    where
-        T: AsRef<[u8]>,
+    where T: AsRef<[u8]>
     {
-        fn commit(msg: &T) -> Self {
-            Self(bitcoin_hashes::Hash::hash(msg.as_ref()))
-        }
+        fn commit(msg: &T) -> Self { Self(bitcoin_hashes::Hash::hash(msg.as_ref())) }
     }
 
     #[test]
-    fn test_commit_verify() {
-        commit_verify_suite::<Vec<u8>, DummyHashCommitment>(gen_messages());
-    }
+    fn test_commit_verify() { commit_verify_suite::<Vec<u8>, DummyHashCommitment>(gen_messages()); }
 
     #[test]
-    fn test_sha256_commitment() {
-        commit_verify_suite::<Vec<u8>, sha256::Hash>(gen_messages());
-    }
+    fn test_sha256_commitment() { commit_verify_suite::<Vec<u8>, sha256::Hash>(gen_messages()); }
 
     #[test]
-    fn test_sha256d_commitment() {
-        commit_verify_suite::<Vec<u8>, sha256d::Hash>(gen_messages());
-    }
+    fn test_sha256d_commitment() { commit_verify_suite::<Vec<u8>, sha256d::Hash>(gen_messages()); }
 
     #[test]
     fn test_ripemd160_commitment() {
@@ -230,19 +205,13 @@ mod test {
     }
 
     #[test]
-    fn test_hash160_commitment() {
-        commit_verify_suite::<Vec<u8>, hash160::Hash>(gen_messages());
-    }
+    fn test_hash160_commitment() { commit_verify_suite::<Vec<u8>, hash160::Hash>(gen_messages()); }
 
     #[test]
-    fn test_sha1_commitment() {
-        commit_verify_suite::<Vec<u8>, sha1::Hash>(gen_messages());
-    }
+    fn test_sha1_commitment() { commit_verify_suite::<Vec<u8>, sha1::Hash>(gen_messages()); }
 
     #[test]
-    fn test_sha512_commitment() {
-        commit_verify_suite::<Vec<u8>, sha512::Hash>(gen_messages());
-    }
+    fn test_sha512_commitment() { commit_verify_suite::<Vec<u8>, sha512::Hash>(gen_messages()); }
 
     #[test]
     fn test_siphash24_commitment() {

@@ -135,8 +135,7 @@ pub mod strategies {
     pub enum Merklize<const MERKLE_ROOT_TAG: u128> {}
 
     impl<'a, T> CommitEncode for amplify::Holder<'a, T, IntoU8>
-    where
-        T: Copy + Into<u8>,
+    where T: Copy + Into<u8>
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
             e.write_all(&[(*(self.unbox())).into()])
@@ -145,20 +144,17 @@ pub mod strategies {
     }
 
     impl<'a, T> CommitEncode for amplify::Holder<'a, T, Strict>
-    where
-        T: StrictEncode,
+    where T: StrictEncode
     {
         fn commit_encode(&self, e: &mut impl io::Write) { todo!() }
     }
 
     impl<'a, T, const MERKLE_ROOT_TAG: u128> CommitEncode
         for amplify::Holder<'a, T, Merklize<MERKLE_ROOT_TAG>>
-    where
-        T: MerkleLeafs,
+    where T: MerkleLeafs
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
-            MerkleNode::merklize(MERKLE_ROOT_TAG.to_be_bytes(), self.unbox())
-                .commit_encode(e);
+            MerkleNode::merklize(MERKLE_ROOT_TAG.to_be_bytes(), self.unbox()).commit_encode(e);
         }
     }
 
@@ -204,8 +200,7 @@ pub mod strategies {
     }
 
     impl<T> CommitStrategy for &T
-    where
-        T: CommitStrategy,
+    where T: CommitStrategy
     {
         type Strategy = T::Strategy;
     }

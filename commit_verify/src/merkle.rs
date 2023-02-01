@@ -51,9 +51,7 @@ impl CommitStrategy for NodeBranching {
 /// procedure.
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
-#[derive(
-    Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From
-)]
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
 #[cfg_attr(
     feature = "serde",
@@ -70,47 +68,26 @@ const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
 
 impl MerkleNode {
     pub fn void(tag: [u8; 16], depth: u4, width: u16) -> Self {
-        Self::with(
-            NodeBranching::Void,
-            tag,
-            depth,
-            width,
-            VIRTUAL_LEAF,
-            VIRTUAL_LEAF,
-        )
+        let virt = VIRTUAL_LEAF;
+        Self::with(NodeBranching::Void, tag, depth, width, virt, virt)
     }
 
-    pub fn single(
+    pub fn single(tag: [u8; 16], depth: u4, width: u16, leaf: &impl CommitEncode) -> Self {
+        let single = NodeBranching::Single;
+        Self::with(single, tag, depth, width, Self::commit(leaf), VIRTUAL_LEAF)
+    }
+
+    pub fn couple<L: CommitEncode>(
         tag: [u8; 16],
         depth: u4,
         width: u16,
-        leaf: &impl CommitEncode,
+        leaf1: &L,
+        leaf2: &L,
     ) -> Self {
-        Self::with(
-            NodeBranching::Single,
-            tag,
-            depth,
-            width,
-            Self::commit(leaf),
-            VIRTUAL_LEAF,
-        )
-    }
-
-    pub fn couple(
-        tag: [u8; 16],
-        depth: u4,
-        width: u16,
-        leaf1: &impl CommitEncode,
-        leaf2: &impl CommitEncode,
-    ) -> Self {
-        Self::with(
-            NodeBranching::Couple,
-            tag,
-            depth,
-            width,
-            Self::commit(leaf1),
-            Self::commit(leaf2),
-        )
+        let couple = NodeBranching::Couple;
+        let branch1 = Self::commit(leaf1);
+        let branch2 = Self::commit(leaf2);
+        Self::with(couple, tag, depth, width, branch1, branch2)
     }
 
     pub fn branch(
@@ -176,9 +153,7 @@ impl MerkleNode {
         if len <= 2 {
             match (iter.next(), iter.next()) {
                 (None, None) => MerkleNode::void(tag, u4::ONE, width),
-                (Some(branch), None) => {
-                    MerkleNode::single(tag, u4::ONE, width, branch)
-                }
+                (Some(branch), None) => MerkleNode::single(tag, u4::ONE, width, branch),
                 (Some(branch1), Some(branch2)) => {
                     MerkleNode::couple(tag, u4::ONE, width, branch1, branch2)
                 }
@@ -201,17 +176,14 @@ pub trait MerkleIter<'leaf, Leaf: CommitEncode + 'leaf>:
 {
 }
 
-impl<'leaf, Leaf: CommitEncode + 'leaf, I> MerkleIter<'leaf, Leaf> for I where
-    I: ExactSizeIterator<Item = &'leaf Leaf>
-{
-}
+impl<'leaf, Leaf: CommitEncode + 'leaf, I> MerkleIter<'leaf, Leaf> for I where I: ExactSizeIterator<Item = &'leaf Leaf>
+{}
 
 pub trait MerkleLeafs {
     type Leaf: CommitEncode;
 
     type LeafIter<'leaf>: MerkleIter<'leaf, Self::Leaf>
-    where
-        Self: 'leaf;
+    where Self: 'leaf;
 
     fn merkle_leafs(&self) -> Self::LeafIter<'_>;
 }

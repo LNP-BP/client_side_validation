@@ -25,8 +25,7 @@ pub trait VerifyEq {
 }
 
 impl<T> VerifyEq for T
-where
-    T: Eq,
+where T: Eq
 {
     fn verify_eq(&self, other: &Self) -> bool { self == other }
 }
@@ -124,10 +123,7 @@ where
     ///
     /// Implementations must error with a dedicated error type enumerating
     /// commitment procedure mistakes.
-    fn embed_commit(
-        &mut self,
-        msg: &Msg,
-    ) -> Result<Self::Proof, Self::CommitError>;
+    fn embed_commit(&mut self, msg: &Msg) -> Result<Self::Proof, Self::CommitError>;
 
     /// Verifies commitment with commitment proof against the message.
     ///
@@ -153,11 +149,7 @@ where
     /// from an untrusted party, a proper form would be
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     #[inline]
-    fn verify(
-        &self,
-        msg: &Msg,
-        proof: Self::Proof,
-    ) -> Result<bool, Self::VerifyError>
+    fn verify(&self, msg: &Msg, proof: Self::Proof) -> Result<bool, Self::VerifyError>
     where
         Self: VerifyEq,
         Self::Proof: VerifyEq,
@@ -174,10 +166,7 @@ where
     /// Always panics when called.
     #[doc(hidden)]
     fn _phantom(_: Protocol) {
-        unimplemented!(
-            "EmbedCommitVerify::_phantom is a marker method which must not be \
-             used"
-        )
+        unimplemented!("EmbedCommitVerify::_phantom is a marker method which must not be used")
     }
 }
 
@@ -202,13 +191,10 @@ pub(crate) mod test_helpers {
 
     /// Runs round-trip of commitment-embed-verify for a given set of messages
     /// and provided container.
-    pub fn embed_commit_verify_suite<Msg, Container>(
-        messages: Vec<Msg>,
-        container: Container,
-    ) where
+    pub fn embed_commit_verify_suite<Msg, Container>(messages: Vec<Msg>, container: Container)
+    where
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
-        Container:
-            EmbedCommitVerify<Msg, TestProtocol> + Eq + Hash + Debug + Clone,
+        Container: EmbedCommitVerify<Msg, TestProtocol> + Eq + Hash + Debug + Clone,
         Container::Proof: Clone,
     {
         messages.iter().fold(
@@ -231,10 +217,7 @@ pub(crate) mod test_helpers {
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(
-                        commitment.clone().verify(m, proof.clone()).unwrap(),
-                        m == msg
-                    );
+                    assert_eq!(commitment.clone().verify(m, proof.clone()).unwrap(), m == msg);
                 });
 
                 acc.iter().for_each(|cmt| {
@@ -254,26 +237,17 @@ pub(crate) mod test_helpers {
 
     /// Runs round-trip of commitment-embed-verify for a given set of messages
     /// and provided container.
-    pub fn convolve_commit_verify_suite<Msg, Source>(
-        messages: Vec<Msg>,
-        container: Source,
-    ) where
+    pub fn convolve_commit_verify_suite<Msg, Source>(messages: Vec<Msg>, container: Source)
+    where
         Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
-        Source: ConvolveCommit<Msg, [u8; 32], TestProtocol>
-            + VerifyEq
-            + Eq
-            + Hash
-            + Debug
-            + Clone,
+        Source: ConvolveCommit<Msg, [u8; 32], TestProtocol> + VerifyEq + Eq + Hash + Debug + Clone,
         Source::Commitment: Clone + Debug + Hash + VerifyEq + Eq,
-        [u8; 32]:
-            ConvolveCommitProof<Msg, Source, TestProtocol, Suppl = [u8; 32]>,
+        [u8; 32]: ConvolveCommitProof<Msg, Source, TestProtocol, Suppl = [u8; 32]>,
     {
         messages.iter().fold(
             HashSet::<Source::Commitment>::with_capacity(messages.len()),
             |mut acc, msg| {
-                let (commitment, _) =
-                    container.convolve_commit(&SUPPLEMENT, msg).unwrap();
+                let (commitment, _) = container.convolve_commit(&SUPPLEMENT, msg).unwrap();
 
                 // Commitments MUST be deterministic: the same message must
                 // always produce the same commitment
@@ -289,18 +263,13 @@ pub(crate) mod test_helpers {
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(
-                        SUPPLEMENT.verify(m, commitment.clone()).unwrap(),
-                        m == msg
-                    );
+                    assert_eq!(SUPPLEMENT.verify(m, commitment.clone()).unwrap(), m == msg);
                 });
 
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!SUPPLEMENT
-                        .verify(msg, commitment.clone())
-                        .unwrap());
+                    assert!(!SUPPLEMENT.verify(msg, commitment.clone()).unwrap());
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -335,29 +304,21 @@ mod test {
     struct DummyProof(Vec<u8>);
 
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
-        fn restore_original_container(
-            &self,
-            _: &DummyVec,
-        ) -> Result<DummyVec, Error> {
+        fn restore_original_container(&self, _: &DummyVec) -> Result<DummyVec, Error> {
             Ok(DummyVec(self.0.clone()))
         }
     }
 
     impl<T> EmbedCommitVerify<T, TestProtocol> for DummyVec
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         type Proof = DummyProof;
         type CommitError = Error;
         type VerifyError = Error;
 
-        fn embed_commit(
-            &mut self,
-            msg: &T,
-        ) -> Result<Self::Proof, Self::CommitError> {
+        fn embed_commit(&mut self, msg: &T) -> Result<Self::Proof, Self::CommitError> {
             let proof = self.0.clone();
             let result = &mut self.0;
             result.extend(msg.as_ref());
@@ -366,8 +327,7 @@ mod test {
     }
 
     impl<T> ConvolveCommit<T, [u8; 32], TestProtocol> for DummyVec
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         type Commitment = sha256::Hash;
         type CommitError = Error;
@@ -386,31 +346,22 @@ mod test {
     }
 
     impl<T> ConvolveCommitProof<T, DummyVec, TestProtocol> for [u8; 32]
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         type Suppl = [u8; 32];
 
-        fn restore_original(&self, _: &sha256::Hash) -> DummyVec {
-            DummyVec(vec![])
-        }
+        fn restore_original(&self, _: &sha256::Hash) -> DummyVec { DummyVec(vec![]) }
 
         fn extract_supplement(&self) -> &Self::Suppl { self }
     }
 
     #[test]
     fn test_embed_commit() {
-        embed_commit_verify_suite::<Vec<u8>, DummyVec>(
-            gen_messages(),
-            DummyVec(vec![]),
-        );
+        embed_commit_verify_suite::<Vec<u8>, DummyVec>(gen_messages(), DummyVec(vec![]));
     }
 
     #[test]
     fn test_convolve_commit() {
-        convolve_commit_verify_suite::<Vec<u8>, DummyVec>(
-            gen_messages(),
-            DummyVec(vec![0xC0; 15]),
-        );
+        convolve_commit_verify_suite::<Vec<u8>, DummyVec>(gen_messages(), DummyVec(vec![0xC0; 15]));
     }
 }

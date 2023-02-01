@@ -22,9 +22,7 @@ pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
 /// procedure.
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
-#[derive(
-    Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From
-)]
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
 #[cfg_attr(
     feature = "serde",
@@ -36,9 +34,7 @@ pub struct ProtocolId(Bytes32);
 /// Original message participating in multi-message commitment.
 ///
 /// The message must be represented by a 32-byte hash.
-#[derive(
-    Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From
-)]
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
 #[cfg_attr(
     feature = "serde",
@@ -53,9 +49,7 @@ pub struct Message(Bytes32);
 /// [`MerkleBlock`].
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
-#[derive(
-    Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From
-)]
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
 #[cfg_attr(
     feature = "serde",

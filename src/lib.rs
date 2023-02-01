@@ -41,7 +41,7 @@ extern crate serde_crate as serde;
 mod api;
 
 pub use api::{
-    ClientData, ClientSideValidate, SealIssue, SealResolver, Status,
-    ValidationFailure, ValidationLog, ValidationReport, Validity,
+    ClientData, ClientSideValidate, SealIssue, SealResolver, Status, ValidationFailure,
+    ValidationLog, ValidationReport, Validity,
 };
 // pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};

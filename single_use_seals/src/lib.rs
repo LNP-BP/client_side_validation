@@ -246,8 +246,7 @@ pub trait MergeCloseSeal<Seal>: SealProtocol<Seal> {
 
 /// Adds support for the seal verify operation to [`SealProtocol`].
 pub trait VerifySeal<'seal, Seal>: SealProtocol<Seal>
-where
-    Seal: 'seal,
+where Seal: 'seal
 {
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
@@ -302,10 +301,7 @@ where
     type Error: std::error::Error;
 
     /// Checks the status for a given seal in proof-of-publication medium
-    async fn get_seal_status_async(
-        &self,
-        seal: &Seal,
-    ) -> Result<SealStatus, Self::Error>;
+    async fn get_seal_status_async(&self, seal: &Seal) -> Result<SealStatus, Self::Error>;
 
     /// Publishes witness data to the medium. Function has default
     /// implementation doing nothing and returning
@@ -343,8 +339,7 @@ where
 #[cfg(feature = "async")]
 #[async_trait]
 pub trait CloseSealAsync<Seal>: SealProtocolAsync<Seal>
-where
-    Seal: Sync + Send,
+where Seal: Sync + Send
 {
     /// Closes seal over a message, producing *witness*.
     ///
@@ -381,8 +376,7 @@ where
 #[cfg(feature = "async")]
 #[async_trait]
 pub trait MergeCloseSealAsync<Seal>: SealProtocolAsync<Seal>
-where
-    Seal: Sync + Send,
+where Seal: Sync + Send
 {
     /// Closes seal over a message, adding witness to some existing *witness*
     /// container.
@@ -420,8 +414,7 @@ where
 #[cfg(feature = "async")]
 #[async_trait]
 pub trait VerifySealAsync<'seal, Seal>: SealProtocol<Seal>
-where
-    Seal: 'seal + Sync + Send,
+where Seal: 'seal + Sync + Send
 {
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.

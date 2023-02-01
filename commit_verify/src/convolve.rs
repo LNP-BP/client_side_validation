@@ -188,9 +188,6 @@ where
     /// Always panics when called.
     #[doc(hidden)]
     fn _phantom(_: Protocol) {
-        unimplemented!(
-            "EmbedCommitVerify::_phantom is a marker method which must not be \
-             used"
-        )
+        unimplemented!("EmbedCommitVerify::_phantom is a marker method which must not be used")
     }
 }
