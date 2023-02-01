@@ -18,5 +18,8 @@ extern crate amplify;
 #[macro_use]
 extern crate serde_crate as serde;
 
+mod commit;
 // mod encode;
 pub mod mpc;
+
+pub use commit::CommitConceal;
