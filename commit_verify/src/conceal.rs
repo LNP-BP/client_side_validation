@@ -13,18 +13,17 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 /// Trait that should perform conversion of a given client-side-validated data
-/// type into its confidential version concealing all of its data.
+/// type into a concealed (private) form, for instance hiding some of the data
+/// behind hashed - or homomorphically-encrypted version.
 ///
 /// Since the resulting concealed version must be unequally derived from the
 /// original data with negligible risk of collisions, it is a form of
-/// *commitment* – thus the procedure called *commit-conceal* and not just a
-/// *conceal*.
-pub trait CommitConceal {
-    /// The resulting confidential type concealing and committing to the
-    /// original data
-    type ConcealedCommitment;
+/// *commitment*.
+pub trait Conceal {
+    /// The resulting confidential type concealing original data.
+    type Concealed;
 
-    /// Performs commit-conceal procedure returning confidential data
-    /// concealing and committing to the original data
-    fn commit_conceal(&self) -> Self::ConcealedCommitment;
+    /// Performs conceal procedure returning confidential data concealing
+    /// original data.
+    fn conceal(&self) -> Self::Concealed;
 }

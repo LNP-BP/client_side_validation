@@ -27,7 +27,7 @@ mod encode;
 pub mod mpc;
 
 pub use commit::{CommitVerify, TryCommitVerify};
-pub use conceal::CommitConceal;
+pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
 pub use encode::CommitEncode;
