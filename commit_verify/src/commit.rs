@@ -14,18 +14,18 @@
 
 //! Base commit-verify scheme interface.
 
-use bitcoin_hashes::{hash160, ripemd160, sha1, sha256, sha256d, sha256t, sha512, siphash24, Hash};
+use bitcoin_hashes::{hash160, ripemd160, sha1, sha256, sha256d, sha512, siphash24, Hash};
 
-use crate::{CommitmentProtocol, PrehashedProtocol};
+use crate::{CommitmentProtocol, UntaggedProtocol};
 
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements
 /// `AsRef<[u8]>`).
-pub trait CommitVerify<Msg, Protocol>
-where
-    Self: Eq + Sized,
-    Protocol: CommitmentProtocol,
+pub trait CommitVerify<Msg>
+where Self: Eq + Sized
 {
+    type Protocol: CommitmentProtocol;
+
     /// Creates a commitment to a byte representation of a given message
     fn commit(msg: &Msg) -> Self;
 
@@ -38,11 +38,11 @@ where
 /// Trait for a failable version of commit-verify scheme. A message for the
 /// commitment may be any structure that can be represented as a byte array
 /// (i.e. implements `AsRef<[u8]>`).
-pub trait TryCommitVerify<Msg, Protocol>
-where
-    Self: Eq + Sized,
-    Protocol: CommitmentProtocol,
+pub trait TryCommitVerify<Msg>
+where Self: Eq + Sized
 {
+    type Protocol: CommitmentProtocol;
+
     /// Error type that may be reported during [`TryCommitVerify::try_commit`]
     /// and [`TryCommitVerify::try_verify`] procedures
     type Error: std::error::Error;
@@ -59,63 +59,68 @@ where
     }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha1::Hash
+impl<Msg> CommitVerify<Msg> for sha1::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
     #[inline]
     fn commit(msg: &Msg) -> sha1::Hash { sha1::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for ripemd160::Hash
+impl<Msg> CommitVerify<Msg> for ripemd160::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
+
     #[inline]
     fn commit(msg: &Msg) -> ripemd160::Hash { ripemd160::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for hash160::Hash
+impl<Msg> CommitVerify<Msg> for hash160::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
+
     #[inline]
     fn commit(msg: &Msg) -> hash160::Hash { hash160::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha256::Hash
+impl<Msg> CommitVerify<Msg> for sha256::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
+
     #[inline]
     fn commit(msg: &Msg) -> sha256::Hash { sha256::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha256d::Hash
+impl<Msg> CommitVerify<Msg> for sha256d::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
+
     #[inline]
     fn commit(msg: &Msg) -> sha256d::Hash { sha256d::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg, T> CommitVerify<Msg, PrehashedProtocol> for sha256t::Hash<T>
-where
-    Msg: AsRef<[u8]>,
-    T: sha256t::Tag,
-{
-    #[inline]
-    fn commit(msg: &Msg) -> sha256t::Hash<T> { sha256t::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for siphash24::Hash
+impl<Msg> CommitVerify<Msg> for siphash24::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
+
     #[inline]
     fn commit(msg: &Msg) -> siphash24::Hash { siphash24::Hash::hash(msg.as_ref()) }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha512::Hash
+impl<Msg> CommitVerify<Msg> for sha512::Hash
 where Msg: AsRef<[u8]>
 {
+    type Protocol = UntaggedProtocol;
+
     #[inline]
     fn commit(msg: &Msg) -> sha512::Hash { sha512::Hash::hash(msg.as_ref()) }
 }
+
 /// Helpers for writing test functions working with commit-verify scheme
 #[cfg(test)]
 pub(crate) mod test_helpers {
@@ -132,7 +137,7 @@ pub(crate) mod test_helpers {
     pub fn commit_verify_suite<Msg, Cmt>(messages: Vec<Msg>)
     where
         Msg: AsRef<[u8]> + Eq,
-        Cmt: CommitVerify<Msg, PrehashedProtocol> + Eq + Hash + Debug,
+        Cmt: CommitVerify<Msg> + Eq + Hash + Debug,
     {
         messages
             .iter()
@@ -182,11 +187,14 @@ mod test {
     #[derive(Debug, Display, Error)]
     #[display(Debug)]
     struct Error;
+
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     struct DummyHashCommitment(sha256d::Hash);
-    impl<T> CommitVerify<T, PrehashedProtocol> for DummyHashCommitment
+    impl<T> CommitVerify<T> for DummyHashCommitment
     where T: AsRef<[u8]>
     {
+        type Protocol = UntaggedProtocol;
+
         fn commit(msg: &T) -> Self { Self(bitcoin_hashes::Hash::hash(msg.as_ref())) }
     }
 

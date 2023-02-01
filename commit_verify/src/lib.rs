@@ -23,7 +23,7 @@ mod conceal;
 mod convolve;
 pub(self) mod embed;
 mod encode;
-// mod id;
+mod id;
 
 pub mod merkle;
 pub mod mpc;
@@ -49,14 +49,14 @@ pub use encode::CommitEncode;
 /// part of tagged hashing of the message as a part of the commitment procedure.
 pub trait CommitmentProtocol {
     /// Midstate for the protocol-specific tagged hash.
-    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate>;
+    const HASH_TAG_MIDSTATE: Option<[u8; 32]>;
 }
 
 /// Protocol defining commits created by using externally created hash value
 /// *optionally pretagged).
-pub struct PrehashedProtocol;
-impl CommitmentProtocol for PrehashedProtocol {
-    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate> = None;
+pub struct UntaggedProtocol;
+impl CommitmentProtocol for UntaggedProtocol {
+    const HASH_TAG_MIDSTATE: Option<[u8; 32]> = None;
 }
 
 /// Helpers for writing test functions working with commit schemes

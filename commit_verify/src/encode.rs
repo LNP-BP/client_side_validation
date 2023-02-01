@@ -99,6 +99,7 @@ pub mod strategies {
     use strict_encoding::{StrictEncode, StrictWriter};
 
     use super::*;
+    use crate::id::CommitmentId;
     use crate::merkle::{MerkleLeafs, MerkleNode};
     use crate::Conceal;
 
@@ -164,6 +165,16 @@ pub mod strategies {
         fn commit_encode(&self, e: &mut impl io::Write) {
             let w = StrictWriter::with(u32::MAX as usize, e);
             self.unbox().conceal().strict_encode(w).ok();
+        }
+    }
+    impl<'a, T> CommitEncode for amplify::Holder<'a, T, Id>
+    where
+        T: CommitmentId,
+        T::Id: Into<[u8; 32]>,
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            e.write_all(&self.unbox().commitment_id().into())
+                .expect("hashers must not fail")
         }
     }
 
