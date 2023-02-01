@@ -14,8 +14,7 @@
 
 //! Convolved commitments (convolve-commit-verify scheme).
 
-use crate::embed_commit::VerifyEq;
-use crate::{CommitEncode, CommitmentProtocol};
+use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
 
 /// Proof type used by [`ConvolveCommitVerify`] protocol.
 pub trait ConvolveCommitProof<Msg, Source, Protocol>
