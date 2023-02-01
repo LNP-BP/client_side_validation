@@ -94,6 +94,7 @@ pub trait Strategy {
 /// Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 pub mod strategies {
     use super::*;
+    use crate::merkle::{MerkleLeafs, MerkleNode, MerkleRoot};
 
     /// Encodes by running strict *encoding procedure* on the raw data without
     /// any pre-processing.
@@ -123,8 +124,19 @@ pub mod strategies {
     /// Merkelizes data provided by this trait and serializes merkle root into
     /// the hasher.
     ///
-    /// Can apply only to types implementing [`ToMerkleSource`] trait.
-    pub enum MerkleId {}
+    /// Can apply only to types implementing [`MerkleLeafs`] trait.
+    pub enum MerkleId<const MERKLE_ROOT_TAG: u128> {}
+
+    impl<T, const MERKLE_ROOT_TAG: u128> CommitEncode
+        for amplify::Holder<T, MerkleId<MERKLE_ROOT_TAG>>
+    where
+        T: MerkleLeafs,
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            let leafs = self.as_inner().merkle_leafs().map(MerkleNode::commit);
+            MerkleRoot::merklize(MERKLE_ROOT_TAG, leafs).commit_encode(e);
+        }
+    }
 
     impl<T> CommitEncode for T
     where

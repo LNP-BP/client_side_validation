@@ -12,7 +12,12 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use std::io;
+
+use amplify::hex::ToHex;
+use amplify::num::u4;
 use amplify::Bytes32;
+use bitcoin_hashes::{sha256, Hash};
 
 use crate::CommitEncode;
 
@@ -29,193 +34,186 @@ use crate::CommitEncode;
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct MerkleNode(Bytes32);
-
-/// Converts given piece of client-side-validated data into a structure which
-/// can be used in merklization process.
-///
-/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-pub trait ToMerkleSource {
-    /// Defining type of the commitment produced during merlization process
-    type Leaf: CommitEncode;
-
-    /// Performs transformation of the data type into a merkilzable data
-    fn to_merkle_source(&self) -> MerkleSource<Self::Leaf>;
-}
-
-/// The source data for the [LNPBP-81] merklization process.
-///
-/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-pub struct MerkleSource<'leaf, T: CommitEncode>(
-    /// Array of references to the data which can be merklized.
-    Vec<&'leaf T>,
+pub struct MerkleNode(
+    #[from]
+    #[from([u8; 32])]
+    Bytes32,
 );
 
-impl<'leaf, Leaf, Iter> From<Iter> for MerkleSource<'leaf, Leaf>
-where
-    Iter: IntoIterator<Item = &'leaf Leaf>,
-    Leaf: CommitEncode,
-{
-    fn from(collection: Iter) -> Self { Self(collection.into_iter().collect()) }
-}
+impl MerkleNode {
+    pub fn empty_node() -> Self { MerkleNode([0xFF; 32].into()) }
 
-impl<'leaf, Leaf> FromIterator<&'leaf Leaf> for MerkleSource<'leaf, Leaf>
-where
-    Leaf: CommitEncode,
-{
-    fn from_iter<T: IntoIterator<Item = &'leaf Leaf>>(iter: T) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into()
+    pub fn commit(leaf: &impl CommitEncode) -> Self {
+        let mut engine = sha256::HashEngine::default();
+        leaf.commit_encode(&mut engine);
+        sha256::Hash::from_engine(engine).into_inner().into()
     }
 }
 
-/*
-impl<L> CommitEncode for MerkleSource<L>
+pub trait MerkleLeafs {
+    type Leaf: CommitEncode;
+
+    type LeafIter<'leaf>: Iterator<Item = &'leaf Self::Leaf> + ExactSizeIterator
     where
-        L: ConsensusMerkleCommit,
-{
+        Self: 'leaf;
+
+    fn merkle_leafs(&self) -> Self::LeafIter<'_>;
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
+pub struct MerkleRoot {
+    pub root: MerkleNode,
+    pub height: u4,
+}
+
+impl CommitEncode for MerkleRoot {
     fn commit_encode(&self, e: &mut impl io::Write) {
-        let leafs = self.0.iter().map(L::consensus_commit);
-        merklize(L::MERKLE_NODE_PREFIX, leafs).0.commit_encode(e);
+        e.write_all(self.root.as_slice())
+            .expect("hash encoders must not error");
     }
 }
 
 // Tag string: `urn:lnpbp:merkle:node?depth=0,height=A,width=AF16`
 
-/// Merklization procedure that uses tagged hashes with depth commitments
-/// according to [LNPBP-81] standard of client-side-validation merklization
-///
-/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-pub fn merklize<I>(prefix: &str, data: I) -> (MerkleNode, u8)
-where
-    I: IntoIterator<Item = MerkleNode>,
-    <I as IntoIterator>::IntoIter: ExactSizeIterator<Item = MerkleNode>,
-{
-    let mut tag_engine = sha256::Hash::engine();
-    tag_engine.input(prefix.as_bytes());
-    tag_engine.input(":merkle:".as_bytes());
+impl MerkleRoot {
+    /// Merklization procedure that uses tagged hashes with depth commitments
+    /// according to [LNPBP-81] standard of client-side-validation merklization
+    ///
+    /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
+    pub fn merklize<I>(tag: u128, data: I) -> Self
+    where
+        I: IntoIterator<Item = MerkleNode>,
+        <I as IntoIterator>::IntoIter: ExactSizeIterator<Item = MerkleNode>,
+    {
+        let iter = data.into_iter();
+        let width = iter.len();
 
-    let iter = data.into_iter();
-    let width = iter.len();
+        // Tagging merkle tree root
+        let prototype = Self::merklize_inner(tag, iter, 0, 0, false, None);
+        let height = prototype.height;
 
-    // Tagging merkle tree root
-    let (root, height) = merklize_inner(&tag_engine, iter, 0, false, None);
-    tag_engine.input("root:height=".as_bytes());
-    tag_engine.input(&height.to_string().into_bytes());
-    tag_engine.input(":width=".as_bytes());
-    tag_engine.input(&width.to_string().into_bytes());
-    let tag_hash = sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
-    let mut engine = MerkleNode::engine();
-    engine.input(&tag_hash[..]);
-    engine.input(&tag_hash[..]);
-    root.commit_encode(&mut engine);
-    let tagged_root = MerkleNode::from_engine(engine);
-
-    (tagged_root, height)
-}
-
-// TODO: Optimize to avoid allocations
-// In current rust generic iterators do not work with recursion :(
-fn merklize_inner(
-    engine_proto: &sha256::HashEngine,
-    mut iter: impl ExactSizeIterator<Item = MerkleNode>,
-    depth: u8,
-    extend: bool,
-    empty_node: Option<MerkleNode>,
-) -> (MerkleNode, u8) {
-    let len = iter.len() + extend as usize;
-    let empty_node = empty_node.unwrap_or_else(|| MerkleNode::hash(&[0xFF]));
-
-    // Computing tagged hash as per BIP-340
-    let mut tag_engine = engine_proto.clone();
-    tag_engine.input("depth=".as_bytes());
-    tag_engine.input(depth.to_string().as_bytes());
-    tag_engine.input(":width=".as_bytes());
-    tag_engine.input(len.to_string().as_bytes());
-    tag_engine.input(":height=".as_bytes());
-
-    let mut engine = MerkleNode::engine();
-    if len <= 2 {
-        tag_engine.input("0:".as_bytes());
-        let tag_hash =
-            sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
-        engine.input(&tag_hash[..]);
-        engine.input(&tag_hash[..]);
-
-        let mut leaf_tag_engine = engine_proto.clone();
-        leaf_tag_engine.input("leaf".as_bytes());
-        let leaf_tag =
-            sha256::Hash::hash(&sha256::Hash::from_engine(leaf_tag_engine));
-        let mut leaf_engine = MerkleNode::engine();
-        leaf_engine.input(&leaf_tag[..]);
-        leaf_engine.input(&leaf_tag[..]);
-
-        let mut leaf1 = leaf_engine.clone();
-        leaf1.input(
-            iter.next()
-                .as_ref()
-                .map(|d| d.as_ref())
-                .unwrap_or_else(|| empty_node.as_ref()),
+        let tagged = format!(
+            "urn:lnpbp:merkle:root?tag={tag:016X},height={height:01X},\
+             width={width:04X},node={}",
+            prototype.root.to_hex()
         );
-        MerkleNode::from_engine(leaf1).commit_encode(&mut engine);
+        let tagged_root = sha256::Hash::hash(tagged.as_bytes());
 
-        leaf_engine.input(
-            iter.next()
-                .as_ref()
-                .map(|d| d.as_ref())
-                .unwrap_or_else(|| empty_node.as_ref()),
-        );
-        MerkleNode::from_engine(leaf_engine).commit_encode(&mut engine);
+        MerkleRoot {
+            root: MerkleNode::from(tagged_root.into_inner()),
+            height,
+        }
+    }
 
-        (MerkleNode::from_engine(engine), 1)
-    } else {
-        let div = len / 2 + len % 2;
+    // TODO: Optimize to avoid allocations
+    // In current rust generic iterators do not work with recursion :(
+    fn merklize_inner(
+        tag: u128,
+        mut iter: impl ExactSizeIterator<Item = MerkleNode>,
+        depth: u8,
+        offset: u16,
+        extend: bool,
+        empty_node: Option<MerkleNode>,
+    ) -> Self {
+        let len = iter.len() + extend as usize;
+        let width = iter.len() as u16 + offset;
 
-        let (node1, height1) = merklize_inner(
-            engine_proto,
-            // Normally we should use `iter.by_ref().take(div)`, but currently
-            // rust compilers is unable to parse recursion with generic types
-            iter.by_ref().take(div).collect::<Vec<_>>().into_iter(),
-            depth + 1,
-            false,
-            Some(empty_node),
-        );
+        let (tagged, height) = match len {
+            0 => (
+                format!(
+                    "urn:lnpbp:merkle:void?tag={tag:016X},depth={depth:01X},\
+                     height=1,width={width:04X}"
+                ),
+                u4::ONE,
+            ),
+            1 => (
+                format!(
+                    "urn:lnpbp:merkle:single?tag={tag:016X},depth={depth:01X},\
+                     height=1,width={width:04X},branch={}",
+                    iter.next().expect("len >= 1").to_hex(),
+                ),
+                u4::ONE,
+            ),
+            2 => (
+                format!(
+                    "urn:lnpbp:merkle:node?tag={tag:016X},depth={depth:01X},\
+                     height=1,width={width:04X},branch1={},branch2={}",
+                    iter.next().expect("len >= 2").to_hex(),
+                    iter.next().expect("len >= 2").to_hex(),
+                ),
+                u4::ONE,
+            ),
+            len => {
+                let div = len / 2 + len % 2;
+                let empty_node =
+                    empty_node.unwrap_or_else(MerkleNode::empty_node);
 
-        let iter = if extend {
-            iter.chain(vec![empty_node]).collect::<Vec<_>>().into_iter()
-        } else {
-            iter.collect::<Vec<_>>().into_iter()
+                let slice1 =
+                    iter.by_ref().take(div).collect::<Vec<_>>().into_iter();
+                let MerkleRoot {
+                    root: node1,
+                    height: height1,
+                } = Self::merklize_inner(
+                    tag,
+                    // Normally we should use `iter.by_ref().take(div)`, but
+                    // currently rust compilers is unable to parse
+                    // recursion with generic types
+                    slice1,
+                    depth + 1,
+                    0,
+                    false,
+                    Some(empty_node),
+                );
+
+                let iter = if extend {
+                    iter.chain(vec![empty_node]).collect::<Vec<_>>().into_iter()
+                } else {
+                    iter.collect::<Vec<_>>().into_iter()
+                };
+
+                let MerkleRoot {
+                    root: node2,
+                    height: height2,
+                } = Self::merklize_inner(
+                    tag,
+                    iter,
+                    depth + 1,
+                    div as u16 + 1,
+                    (div % 2 + len % 2) / 2 == 1,
+                    Some(empty_node),
+                );
+
+                debug_assert_eq!(
+                    height1,
+                    height2,
+                    "merklization algorithm failure: height of subtrees is \
+                     not equal (width={len}, depth={depth}, \
+                     prev_extend={extend}, next_extend={})",
+                    div % 2 == 1 && len % 2 == 1
+                );
+
+                let height = height1 + 1;
+                let tagged = format!(
+                    "urn:lnpbp:merkle:node?tag={tag:016X},depth={depth:01X},\
+                     height={height:01X},width={width:04X},branch1={},\
+                     branch2={}",
+                    node1.to_hex(),
+                    node2.to_hex(),
+                );
+
+                (tagged, height)
+            }
         };
 
-        let (node2, height2) = merklize_inner(
-            engine_proto,
-            iter,
-            depth + 1,
-            (div % 2 + len % 2) / 2 == 1,
-            Some(empty_node),
-        );
-
-        assert_eq!(
-            height1,
-            height2,
-            "merklization algorithm failure: height of subtrees is not equal \
-             (width = {}, depth = {}, prev_extend = {}, next_extend = {})",
-            len,
-            depth,
-            extend,
-            div % 2 == 1 && len % 2 == 1
-        );
-
-        tag_engine.input(height1.to_string().as_bytes());
-        tag_engine.input(":".as_bytes());
-        let tag_hash =
-            sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
-        engine.input(&tag_hash[..]);
-        engine.input(&tag_hash[..]);
-        node1.commit_encode(&mut engine);
-        node2.commit_encode(&mut engine);
-
-        (MerkleNode::from_engine(engine), height1 + 1)
+        let tagged_node = sha256::Hash::hash(tagged.as_bytes());
+        MerkleRoot {
+            root: MerkleNode::from(tagged_node.into_inner()),
+            height,
+        }
     }
 }
-*/
