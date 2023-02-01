@@ -96,10 +96,11 @@ pub mod strategies {
     use amplify::confinement::{Collection, Confined};
     use amplify::num::apfloat::ieee;
     use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
-    use strict_encoding::StrictEncode;
+    use strict_encoding::{StrictEncode, StrictWriter};
 
     use super::*;
     use crate::merkle::{MerkleLeafs, MerkleNode};
+    use crate::Conceal;
 
     /// Encodes by converting into `u8` type. Useful for enum types..
     ///
@@ -149,7 +150,21 @@ pub mod strategies {
     impl<'a, T> CommitEncode for amplify::Holder<'a, T, Strict>
     where T: StrictEncode
     {
-        fn commit_encode(&self, e: &mut impl io::Write) { todo!() }
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            let w = StrictWriter::with(u32::MAX as usize, e);
+            self.unbox().strict_encode(w).ok();
+        }
+    }
+
+    impl<'a, T> CommitEncode for amplify::Holder<'a, T, ConcealStrict>
+    where
+        T: Conceal,
+        T::Concealed: StrictEncode,
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            let w = StrictWriter::with(u32::MAX as usize, e);
+            self.unbox().conceal().strict_encode(w).ok();
+        }
     }
 
     impl<'a, T, const MERKLE_ROOT_TAG: u128> CommitEncode
