@@ -23,7 +23,9 @@ mod conceal;
 mod convolve;
 pub(self) mod embed;
 mod encode;
-// mod merkle;
+// mod id;
+
+pub mod merkle;
 pub mod mpc;
 
 pub use commit::{CommitVerify, TryCommitVerify};
