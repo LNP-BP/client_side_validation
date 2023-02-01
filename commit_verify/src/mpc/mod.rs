@@ -20,5 +20,7 @@
 pub const MAX_TREE_DEPTH: u8 = 16;
 
 mod atoms;
+// mod iter;
 
-pub use atoms::{Commitment, Message, ProtocolId};
+pub use atoms::{Commitment, Message, MessageMap, ProtocolId};
+// pub use iter::MessageIter;

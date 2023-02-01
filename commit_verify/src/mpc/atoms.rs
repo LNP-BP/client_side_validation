@@ -12,7 +12,11 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use amplify::confinement::SmallOrdMap;
 use amplify::Bytes32;
+
+/// Map from protocol ids to commitment messages.
+pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
 /// procedure.
