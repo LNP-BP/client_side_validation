@@ -21,11 +21,13 @@ extern crate serde_crate as serde;
 pub(self) mod commit;
 mod conceal;
 // mod encode;
+mod encode;
 // mod merkle;
 pub mod mpc;
 
 pub use commit::{CommitVerify, TryCommitVerify};
 pub use conceal::CommitConceal;
+pub use encode::CommitEncode;
 
 /// Marker trait for specific commitment protocols.
 ///

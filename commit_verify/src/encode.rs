@@ -12,89 +12,156 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+//! Encoding and data preparation for commitment procedures in
+//! client-side-validation as defined by [LNPBP-9] standard.
+//!
+//! Client-side-validation commitment process requires special encoding of
+//! the data. While [`strict_encoding`] is the main standard for atomic data
+//! types in client-side-validation world and should be used during internal
+//! protocol-specific data validation, commitments may require processes of
+//! merklization arrays of data items, or hiding confidential parts of the
+//! data via hashing, pedersen commitments and so on. Thus, additionally to
+//! strict encoding, a set of different encodings and data convolution and
+//! hiding procedures are defined in `commit_verify` library. This includes:
+//! - **merklization** procedure, operating special types of tagged hashes and
+//!   committing to the depth of each node;
+//! - **conceal** procedure, making data confidential (transforming types into
+//!   confidential versions).
+//!
+//! [`CommitEncode`] is the main trait which should be implemented for all data
+//! types participating in client-side-validation. It takes [`io::Write`]
+//! encoder and serializes into it data which corresponds to the exact
+//! commitment. These data mus be concealed, if needed, merkelized etc. The
+//! encoder is usually a hash function of specific type, which may be keyed with
+//! a tag.
+//!
+//! Main patterns of [`CommitEncode`] implementation can be automatically
+//! applied to a type by using [`amplify::strategy`] adaptor. These patterns
+//! include:
+//! - [`strategy::Strict`], which serializes the type into the hasher using
+//!   [`strict_encode::StrictEncode`] implementation for the type.
+//! - [`strategy::ConcealStrict`] does the same, but runs [`Conceal::conceal`]
+//!   on the self first, and serializes the result using strict encoding.
+//! - [`strategy::Id`] can apply to types implementing [`CommitId`]. It computes
+//!   a single id for the type and then serializes it into the hasher.
+//! - [`strategy::MerkleId`] can apply to types implementing [`ToMerkleSource`].
+//!   It merkelizes data provided by this trait and serializes merkle root into
+//!   the hasher.
+//!
+//! - [`CommitId`] should be implemented for types which has external
+//!   identifiers
+//!
+//! [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
+
 use std::io;
 
-use amplify::confinement::{Collection, Confined};
-use strict_encoding::{
-    StrictEncode, StrictEnum, StrictStruct, StrictTuple, StrictUnion,
-    TypedWrite,
-};
-
-pub trait StrictCommit: StrictEncode {
-    const COMMITMENT_TAG: &'static [u8];
-
-    fn strict_commit(&self) -> [u8; 32];
+/// Prepares the data to the *consensus commit* procedure by first running
+/// necessary conceal and merklization procedures, and them performing strict
+/// encoding for the resulted data.
+pub trait CommitEncode {
+    /// Encodes the data for the commitment by writing them directly into a
+    /// [`io::Write`] writer instance
+    fn commit_encode(&self, e: &mut impl io::Write);
 }
 
-pub struct CommitEncoder {}
-
-impl TypedWrite for CommitEncoder {
-    type TupleWriter = ();
-    type StructWriter = ();
-    type UnionDefiner = ();
-
-    fn write_union<T: StrictUnion>(
-        self,
-        inner: impl FnOnce(Self::UnionDefiner) -> io::Result<Self>,
-    ) -> io::Result<Self> {
-        todo!()
+/// Convenience macro for commit-encoding list of the data
+#[macro_export]
+macro_rules! commit_encode_list {
+    ( $encoder:ident; $($item:expr),+ ) => {
+        {
+            let mut len = 0usize;
+            $(
+                len += $item.commit_encode(&mut $encoder);
+            )+
+            len
+        }
     }
+}
 
-    fn write_enum<T: StrictEnum>(self, value: T) -> io::Result<Self>
+/// Marker trait defining specific encoding strategy which should be used for
+/// automatic implementation of [`CommitEncode`].
+pub trait Strategy {
+    /// Specific strategy. List of supported strategies:
+    /// - [`strategies::Strict`]
+    /// - [`strategies::ConcealStrict`]
+    /// - [`strategies::Id`]
+    /// - [`strategies::MerkleId`]
+    type Strategy;
+}
+
+/// Strategies simplifying implementation of [`CommitEncode`] trait.
+///
+/// Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
+pub mod strategies {
+    use super::*;
+
+    /// Encodes by running strict *encoding procedure* on the raw data without
+    /// any pre-processing.
+    ///
+    /// Should not be used for array types (require manual [`CommitEncode`]
+    /// implementation involving merklization) or data which may contain
+    /// confidential or sensitive information (in such case use
+    /// [`ConcealStrict`]).
+    pub enum Strict {}
+
+    /// Encodes data by first converting them into confidential version
+    /// (*concealing*) by running [`CommitConceal::commit_conceal`] first and
+    /// returning its result serialized with strict encoding rules.
+    pub enum ConcealStrict {}
+
+    /// Computes a single id for the type and then serializes it into the
+    /// hasher. Can apply to types implementing [`CommitId`].
+    pub enum Id {}
+
+    /// Merkelizes data provided by this trait and serializes merkle root into
+    /// the hasher. Can apply to types implementing [`ToMerkleSource`].
+    pub enum MerkleId {}
+
+    impl<T> CommitEncode for T
     where
-        u8: From<T>,
+        T: Strategy + Clone,
+        amplify::Holder<T, <T as Strategy>::Strategy>: CommitEncode,
     {
-        todo!()
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            amplify::Holder::new(self.clone()).commit_encode(e)
+        }
     }
 
-    fn write_tuple<T: StrictTuple>(
-        self,
-        inner: impl FnOnce(Self::TupleWriter) -> io::Result<Self>,
-    ) -> io::Result<Self> {
-        todo!()
+    impl Strategy for u8 {
+        type Strategy = Strict;
+    }
+    impl Strategy for u16 {
+        type Strategy = Strict;
+    }
+    impl Strategy for u32 {
+        type Strategy = Strict;
+    }
+    impl Strategy for u64 {
+        type Strategy = Strict;
+    }
+    impl Strategy for u128 {
+        type Strategy = Strict;
+    }
+    impl Strategy for i8 {
+        type Strategy = Strict;
+    }
+    impl Strategy for i16 {
+        type Strategy = Strict;
+    }
+    impl Strategy for i32 {
+        type Strategy = Strict;
+    }
+    impl Strategy for i64 {
+        type Strategy = Strict;
+    }
+    impl Strategy for i128 {
+        type Strategy = Strict;
     }
 
-    fn write_struct<T: StrictStruct>(
-        self,
-        inner: impl FnOnce(Self::StructWriter) -> io::Result<Self>,
-    ) -> io::Result<Self> {
-        todo!()
-    }
-
-    // Fixed-length arrays and write_raw_bytes
-    unsafe fn _write_raw<const MAX_LEN: usize>(
-        self,
-        bytes: impl AsRef<[u8]>,
-    ) -> io::Result<Self> {
-        // Do not merklize
-        todo!()
-    }
-
-    /// Used by unicode strings, ASCII strings (excluding byte strings).
-    unsafe fn write_string<const MAX_LEN: usize>(
-        self,
-        bytes: impl AsRef<[u8]>,
-    ) -> io::Result<Self> {
-        todo!()
-    }
-
-    /// Vec and sets - excluding strings, written by [`Self::write_string`], but
-    /// including byte strings.
-    unsafe fn write_collection<
-        C: Collection,
-        const MIN_LEN: usize,
-        const MAX_LEN: usize,
-    >(
-        self,
-        col: &Confined<C, MIN_LEN, MAX_LEN>,
-    ) -> io::Result<Self>
+    impl<T> Strategy for &T
     where
-        for<'a> &'a C: IntoIterator,
-        for<'a> <&'a C as IntoIterator>::Item: StrictEncode,
+        T: Strategy,
     {
-        todo!()
+        type Strategy = T::Strategy;
     }
-
-    // TODO: Move logic of encoding BTreeMap to TypedWrite trait in
-    //       strict-encode
 }
