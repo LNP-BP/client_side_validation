@@ -8,6 +8,7 @@ version = "4.0.0-beta.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25153a0cb47f8165fa879b7cacaac485f8c9f86a4461665dc9b3063f29051a94"
 dependencies = [
+ "amplify_apfloat",
  "amplify_derive",
  "amplify_num",
  "amplify_syn 1.1.6",
@@ -18,6 +19,16 @@ dependencies = [
  "stringly_conversions",
  "toml",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "amplify_apfloat"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a958199f6993a34e74b9d22b22709e5c6e527e901d7083b24f0a532445dbfc84"
+dependencies = [
+ "amplify_num",
+ "bitflags",
 ]
 
 [[package]]
@@ -97,6 +108,12 @@ checksum = "90064b8dee6815a6470d60bad07bbbaee885c0e12d04177138fa3291a01b7bc4"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "bitflags"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bumpalo"

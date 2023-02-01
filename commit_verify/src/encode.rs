@@ -93,6 +93,9 @@ pub trait CommitStrategy {
 ///
 /// Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 pub mod strategies {
+    use amplify::confinement::{Collection, Confined};
+    use amplify::num::apfloat::ieee;
+    use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
     use strict_encoding::StrictEncode;
 
     use super::*;
@@ -174,6 +177,9 @@ pub mod strategies {
     impl CommitStrategy for u16 {
         type Strategy = Strict;
     }
+    impl CommitStrategy for u24 {
+        type Strategy = Strict;
+    }
     impl CommitStrategy for u32 {
         type Strategy = Strict;
     }
@@ -181,6 +187,15 @@ pub mod strategies {
         type Strategy = Strict;
     }
     impl CommitStrategy for u128 {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for u256 {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for u512 {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for u1024 {
         type Strategy = Strict;
     }
     impl CommitStrategy for i8 {
@@ -196,6 +211,50 @@ pub mod strategies {
         type Strategy = Strict;
     }
     impl CommitStrategy for i128 {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for i256 {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for i512 {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for i1024 {
+        type Strategy = Strict;
+    }
+
+    impl CommitStrategy for ieee::Half {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for ieee::Single {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for ieee::Double {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for ieee::X87DoubleExtended {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for ieee::Quad {
+        type Strategy = Strict;
+    }
+    impl CommitStrategy for ieee::Oct {
+        type Strategy = Strict;
+    }
+
+    impl<T> CommitStrategy for Box<T>
+    where T: StrictEncode
+    {
+        type Strategy = Strict;
+    }
+    impl<T> CommitStrategy for Option<T>
+    where T: StrictEncode
+    {
+        type Strategy = Strict;
+    }
+    impl<C, const MIN: usize, const MAX: usize> CommitStrategy for Confined<C, MIN, MAX>
+    where C: Collection + StrictEncode
+    {
         type Strategy = Strict;
     }
 
