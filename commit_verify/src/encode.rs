@@ -80,12 +80,12 @@ macro_rules! commit_encode_list {
 
 /// Marker trait defining specific encoding strategy which should be used for
 /// automatic implementation of [`CommitEncode`].
-pub trait Strategy {
+pub trait CommitStrategy {
     /// Specific strategy. List of supported strategies:
     /// - [`strategies::Strict`]
     /// - [`strategies::ConcealStrict`]
     /// - [`strategies::Id`]
-    /// - [`strategies::MerkleId`]
+    /// - [`strategies::Merklize`]
     type Strategy;
 }
 
@@ -93,8 +93,15 @@ pub trait Strategy {
 ///
 /// Implemented after concept by Martin Habovštiak <martin.habovstiak@gmail.com>
 pub mod strategies {
+    use strict_encoding::StrictEncode;
+
     use super::*;
-    use crate::merkle::{MerkleLeafs, MerkleNode, MerkleRoot};
+    use crate::merkle::{MerkleLeafs, MerkleNode};
+
+    /// Encodes by converting into `u8` type. Useful for enum types..
+    ///
+    /// Can apply only to types implementing `Into<u8>`.
+    pub enum IntoU8 {}
 
     /// Encodes by running strict *encoding procedure* on the raw data without
     /// any pre-processing.
@@ -125,63 +132,80 @@ pub mod strategies {
     /// the hasher.
     ///
     /// Can apply only to types implementing [`MerkleLeafs`] trait.
-    pub enum MerkleId<const MERKLE_ROOT_TAG: u128> {}
+    pub enum Merklize<const MERKLE_ROOT_TAG: u128> {}
 
-    impl<T, const MERKLE_ROOT_TAG: u128> CommitEncode
-        for amplify::Holder<T, MerkleId<MERKLE_ROOT_TAG>>
+    impl<'a, T> CommitEncode for amplify::Holder<'a, T, IntoU8>
+    where
+        T: Copy + Into<u8>,
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            e.write_all(&[(*(self.unbox())).into()])
+                .expect("hashers must not fail")
+        }
+    }
+
+    impl<'a, T> CommitEncode for amplify::Holder<'a, T, Strict>
+    where
+        T: StrictEncode,
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) { todo!() }
+    }
+
+    impl<'a, T, const MERKLE_ROOT_TAG: u128> CommitEncode
+        for amplify::Holder<'a, T, Merklize<MERKLE_ROOT_TAG>>
     where
         T: MerkleLeafs,
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
-            let leafs = self.as_inner().merkle_leafs().map(MerkleNode::commit);
-            MerkleRoot::merklize(MERKLE_ROOT_TAG, leafs).commit_encode(e);
+            MerkleNode::merklize(MERKLE_ROOT_TAG.to_be_bytes(), self.unbox())
+                .commit_encode(e);
         }
     }
 
-    impl<T> CommitEncode for T
+    impl<'a, T> CommitEncode for &'a T
     where
-        T: Strategy + Clone,
-        amplify::Holder<T, <T as Strategy>::Strategy>: CommitEncode,
+        T: CommitStrategy,
+        amplify::Holder<'a, T, <T as CommitStrategy>::Strategy>: CommitEncode,
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
-            amplify::Holder::new(self.clone()).commit_encode(e)
+            amplify::Holder::new(*self).commit_encode(e)
         }
     }
 
-    impl Strategy for u8 {
+    impl CommitStrategy for u8 {
         type Strategy = Strict;
     }
-    impl Strategy for u16 {
+    impl CommitStrategy for u16 {
         type Strategy = Strict;
     }
-    impl Strategy for u32 {
+    impl CommitStrategy for u32 {
         type Strategy = Strict;
     }
-    impl Strategy for u64 {
+    impl CommitStrategy for u64 {
         type Strategy = Strict;
     }
-    impl Strategy for u128 {
+    impl CommitStrategy for u128 {
         type Strategy = Strict;
     }
-    impl Strategy for i8 {
+    impl CommitStrategy for i8 {
         type Strategy = Strict;
     }
-    impl Strategy for i16 {
+    impl CommitStrategy for i16 {
         type Strategy = Strict;
     }
-    impl Strategy for i32 {
+    impl CommitStrategy for i32 {
         type Strategy = Strict;
     }
-    impl Strategy for i64 {
+    impl CommitStrategy for i64 {
         type Strategy = Strict;
     }
-    impl Strategy for i128 {
+    impl CommitStrategy for i128 {
         type Strategy = Strict;
     }
 
-    impl<T> Strategy for &T
+    impl<T> CommitStrategy for &T
     where
-        T: Strategy,
+        T: CommitStrategy,
     {
         type Strategy = T::Strategy;
     }
