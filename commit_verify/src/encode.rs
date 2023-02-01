@@ -102,19 +102,28 @@ pub mod strategies {
     /// implementation involving merklization) or data which may contain
     /// confidential or sensitive information (in such case use
     /// [`ConcealStrict`]).
+    ///
+    /// Can apply only to types implementing [`StrictEncode`] trait.
     pub enum Strict {}
 
     /// Encodes data by first converting them into confidential version
     /// (*concealing*) by running [`CommitConceal::commit_conceal`] first and
     /// returning its result serialized with strict encoding rules.
+    ///
+    /// Can apply only to types implementing [`Conceal`] trait, where
+    /// [`Conceal::Concealed`] type must also implement [`StrictEncode`] trait.
     pub enum ConcealStrict {}
 
     /// Computes a single id for the type and then serializes it into the
-    /// hasher. Can apply to types implementing [`CommitId`].
+    /// hasher.
+    ///
+    /// Can apply only to types implementing [`CommitId`] trait.
     pub enum Id {}
 
     /// Merkelizes data provided by this trait and serializes merkle root into
-    /// the hasher. Can apply to types implementing [`ToMerkleSource`].
+    /// the hasher.
+    ///
+    /// Can apply only to types implementing [`ToMerkleSource`] trait.
     pub enum MerkleId {}
 
     impl<T> CommitEncode for T
