@@ -102,8 +102,7 @@ impl CommitEncode for Leaf {
 }
 
 impl CommitmentId for Leaf {
-    // TODO: Use a real midstate
-    const TAG: [u8; 32] = [0u8; 32];
+    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp4:leaf:v01#230202";
     type Id = MerkleNode;
 }
 
