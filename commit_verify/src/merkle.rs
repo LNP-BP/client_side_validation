@@ -154,10 +154,10 @@ impl MerkleNode {
 
         if len <= 2 {
             match (iter.next(), iter.next()) {
-                (None, None) => MerkleNode::void(tag, u4::ONE, width),
-                (Some(branch), None) => MerkleNode::single(tag, u4::ONE, width, &branch),
+                (None, None) => MerkleNode::void(tag, depth, width),
+                (Some(branch), None) => MerkleNode::single(tag, depth, width, &branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleNode::couple(tag, u4::ONE, width, &branch1, &branch2)
+                    MerkleNode::couple(tag, depth, width, &branch1, &branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
