@@ -18,7 +18,7 @@ use amplify::num::{u256, u4};
 use amplify::Wrapper;
 
 pub use self::commit::Error;
-use crate::merkle::{MerkleLeafs, MerkleNode};
+use crate::merkle::{MerkleLeaves, MerkleNode};
 use crate::mpc::atoms::Leaf;
 use crate::mpc::{Message, MessageMap, ProtocolId, LNPBP4_TAG};
 use crate::Conceal;
@@ -73,11 +73,11 @@ impl Iterator for IntoIter {
 
 impl ExactSizeIterator for IntoIter {}
 
-impl MerkleLeafs for MerkleTree {
+impl MerkleLeaves for MerkleTree {
     type Leaf = Leaf;
     type LeafIter = IntoIter;
 
-    fn merkle_leafs(&self) -> Self::LeafIter {
+    fn merkle_leaves(&self) -> Self::LeafIter {
         IntoIter {
             entropy: self.entropy,
             width: self.width(),

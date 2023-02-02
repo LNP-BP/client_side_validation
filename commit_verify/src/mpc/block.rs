@@ -100,9 +100,8 @@ pub struct MerkleBlock {
     #[getter(skip)]
     cross_section: SmallVec<TreeNode>,
 
-    /// Entropy used for placeholders. May be unknown if the message is not
-    /// constructed via [`MerkleTree::try_commit`] method but is provided
-    /// by a third-party, whishing to conceal that information.
+    /// Entropy used for placeholders. May be unknown if the message is provided
+    /// by a third-party, wishing to conceal that information.
     #[getter(as_copy)]
     entropy: Option<u64>,
 }
@@ -487,7 +486,7 @@ impl MerkleProof {
     pub fn as_path(&self) -> &[MerkleNode] { &self.path }
 
     /// Convolves the proof with the `message` under the given `protocol_id`,
-    /// producing [`CommitmentHash`].
+    /// producing [`Commitment`].
     pub fn convolve(
         &self,
         protocol_id: ProtocolId,

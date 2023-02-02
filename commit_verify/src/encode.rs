@@ -38,22 +38,27 @@
 //! Main patterns of [`CommitEncode`] implementation can be automatically
 //! applied to a type by using [`amplify::strategy`] adaptor. These patterns
 //! include:
-//! - [`strategy::Strict`], which serializes the type into the hasher using
-//!   [`strict_encode::StrictEncode`] implementation for the type.
-//! - [`strategy::ConcealStrict`] does the same, but runs [`Conceal::conceal`]
+//! - [`strategies::IntoU8`], which converts the type into U8 using `Into` trait
+//!   and serializes it.
+//! - [`strategies::IntoInner`], which converts the type into inner type using
+//!   `Wrapper` trait and serializes it.
+//! - [`strategies::Strict`], which serializes the type into the hasher using
+//!   [`strict_encoding::StrictEncode`] implementation for the type.
+//! - [`strategies::ConcealStrict`] does the same, but runs [`Conceal::conceal`]
 //!   on the self first, and serializes the result using strict encoding.
-//! - [`strategy::Id`] can apply to types implementing [`CommitId`]. It computes
-//!   a single id for the type and then serializes it into the hasher.
-//! - [`strategy::MerkleId`] can apply to types implementing [`ToMerkleSource`].
-//!   It merkelizes data provided by this trait and serializes merkle root into
-//!   the hasher.
-//!
-//! - [`CommitId`] should be implemented for types which has external
-//!   identifiers
+//! - [`strategies::Id`] can apply to types implementing [`CommitmentId`]. It
+//!   computes a single id for the type and then serializes it into the hasher.
+//! - [`strategies::Merklize`] can apply to types implementing
+//!   [`super::merkle::MerkleLeaves`]. It merkelizes data provided by this trait
+//!   and serializes merkle root into the hasher. [`CommitmentId`] should be
+//!   implemented for types which has external identifiers
 //!
 //! [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
 
 use std::io;
+
+use crate::id::CommitmentId;
+use crate::Conceal;
 
 /// Prepares the data to the *consensus commit* procedure by first running
 /// necessary conceal and merklization procedures, and them performing strict
@@ -72,7 +77,7 @@ macro_rules! commit_encode_list {
             let mut len = 0usize;
             $(
                 len += $item.commit_encode(&mut $encoder);
-            )+
+            )+CommitId
             len
         }
     }
@@ -102,9 +107,7 @@ pub mod strategies {
     use strict_encoding::{StrictEncode, StrictWriter};
 
     use super::*;
-    use crate::id::CommitmentId;
-    use crate::merkle::{MerkleLeafs, MerkleNode};
-    use crate::Conceal;
+    use crate::merkle::{MerkleLeaves, MerkleNode};
 
     /// Commits to the value by converting it into `u8` type. Useful for enum
     /// types.
@@ -144,10 +147,10 @@ pub mod strategies {
     /// Can apply only to types implementing [`CommitId`] trait.
     pub enum Id {}
 
-    /// Commits to the value by merklizing data provided by [`MerkleLeafs`]
+    /// Commits to the value by merklizing data provided by [`MerkleLeaves`]
     /// implementation and serializes merkle root into the hasher.
     ///
-    /// Can apply only to types implementing [`MerkleLeafs`] trait.
+    /// Can apply only to types implementing [`MerkleLeaves`] trait.
     pub enum Merklize<const MERKLE_ROOT_TAG: u128> {}
 
     impl<'a, T> CommitEncode for amplify::Holder<'a, T, IntoU8>
@@ -200,7 +203,7 @@ pub mod strategies {
 
     impl<'a, T, const MERKLE_ROOT_TAG: u128> CommitEncode
         for amplify::Holder<'a, T, Merklize<MERKLE_ROOT_TAG>>
-    where T: MerkleLeafs
+    where T: MerkleLeaves
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
             MerkleNode::merklize(MERKLE_ROOT_TAG.to_be_bytes(), self.unbox()).commit_encode(e);

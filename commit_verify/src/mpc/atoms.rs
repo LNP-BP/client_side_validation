@@ -109,8 +109,8 @@ impl CommitmentId for Leaf {
 
 /// Final [LNPBP-4] commitment value.
 ///
-/// Represents tagged hash of the merkle root of [`MerkleTree`] and
-/// [`MerkleBlock`].
+/// Represents tagged hash of the merkle root of [`super::MerkleTree`] and
+/// [`super::MerkleBlock`].
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]

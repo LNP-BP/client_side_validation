@@ -20,7 +20,7 @@ mod atoms;
 mod tree;
 mod block;
 
-pub use atoms::{Commitment, Message, MessageMap, MultiSource, ProtocolId};
+pub use atoms::{Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId};
 pub use block::{LeafNotKnown, MerkleBlock, MerkleProof, UnrelatedProof};
 pub use tree::{Error, IntoIter, MerkleTree};
 

@@ -37,13 +37,13 @@ where
 
     /// Verifies commitment using proof (the `self`) against the message.
     ///
-    /// Default implementation repeats [`ConvolveCommitVerify::convolve_commit`]
+    /// Default implementation repeats [`ConvolveCommit::convolve_commit`]
     /// procedure, restoring the original value out of proof data, checking
     /// that the resulting commitment matches the provided one in the
     /// `commitment` parameter.
     ///
     /// Errors if the commitment can't be created, i.e. the
-    /// [`ConvolveCommitVerify::convolve_commit`] procedure for the original,
+    /// [`ConvolveCommit::convolve_commit`] procedure for the original,
     /// restored from the proof, can't be performed. This means that the
     /// verification has failed and the commitment and/or the proof are
     /// invalid. The function returns error in this case (ano not simply

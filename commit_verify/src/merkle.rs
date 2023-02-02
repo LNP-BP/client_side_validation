@@ -158,8 +158,8 @@ impl MerkleNode {
     /// according to [LNPBP-81] standard of client-side-validation merklization
     ///
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-    pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeafs) -> Self {
-        Self::_merklize(tag, nodes.merkle_leafs(), u4::ZERO, 0)
+    pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeaves) -> Self {
+        Self::_merklize(tag, nodes.merkle_leaves(), u4::ZERO, 0)
     }
 
     fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
@@ -203,31 +203,31 @@ pub trait MerkleIter<Leaf: CommitEncode>: ExactSizeIterator<Item = Leaf> {}
 
 impl<Leaf: CommitEncode, I> MerkleIter<Leaf> for I where I: ExactSizeIterator<Item = Leaf> {}
 
-pub trait MerkleLeafs {
+pub trait MerkleLeaves {
     type Leaf: CommitEncode;
 
     type LeafIter: MerkleIter<Self::Leaf>;
 
-    fn merkle_leafs(&self) -> Self::LeafIter;
+    fn merkle_leaves(&self) -> Self::LeafIter;
 }
 
-impl<'a, T, const MIN: usize> MerkleLeafs for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
+impl<'a, T, const MIN: usize> MerkleLeaves for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
 where &'a T: CommitEncode
 {
     type Leaf = &'a T;
     type LeafIter = std::slice::Iter<'a, T>;
 
-    fn merkle_leafs(&self) -> Self::LeafIter { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
 }
 
-impl<'a, T: Ord, const MIN: usize> MerkleLeafs
+impl<'a, T: Ord, const MIN: usize> MerkleLeaves
     for &'a Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
 where &'a T: CommitEncode
 {
     type Leaf = &'a T;
     type LeafIter = std::collections::btree_set::Iter<'a, T>;
 
-    fn merkle_leafs(&self) -> Self::LeafIter { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
 }
 
 /*
