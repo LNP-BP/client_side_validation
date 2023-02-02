@@ -293,7 +293,7 @@ impl MerkleBlock {
             if count == prev_count {
                 break;
             }
-            debug_assert_eq!(offset, self.width() as u16);
+            debug_assert_eq!(offset, self.width());
         }
 
         Ok(count)

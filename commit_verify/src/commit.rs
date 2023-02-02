@@ -128,8 +128,6 @@ pub(crate) mod test_helpers {
     use core::hash::Hash;
     use std::collections::HashSet;
 
-    use bitcoin_hashes::hex::FromHex;
-
     use super::*;
 
     /// Runs round-trip of commitment and verification for a given set of
@@ -178,6 +176,7 @@ mod test {
     use core::fmt::Debug;
     use core::hash::Hash;
 
+    use amplify::confinement::SmallVec;
     use bitcoin_hashes::*;
 
     use super::test_helpers::*;
@@ -199,30 +198,40 @@ mod test {
     }
 
     #[test]
-    fn test_commit_verify() { commit_verify_suite::<Vec<u8>, DummyHashCommitment>(gen_messages()); }
-
-    #[test]
-    fn test_sha256_commitment() { commit_verify_suite::<Vec<u8>, sha256::Hash>(gen_messages()); }
-
-    #[test]
-    fn test_sha256d_commitment() { commit_verify_suite::<Vec<u8>, sha256d::Hash>(gen_messages()); }
-
-    #[test]
-    fn test_ripemd160_commitment() {
-        commit_verify_suite::<Vec<u8>, ripemd160::Hash>(gen_messages());
+    fn test_commit_verify() {
+        commit_verify_suite::<SmallVec<u8>, DummyHashCommitment>(gen_messages());
     }
 
     #[test]
-    fn test_hash160_commitment() { commit_verify_suite::<Vec<u8>, hash160::Hash>(gen_messages()); }
+    fn test_sha256_commitment() {
+        commit_verify_suite::<SmallVec<u8>, sha256::Hash>(gen_messages());
+    }
 
     #[test]
-    fn test_sha1_commitment() { commit_verify_suite::<Vec<u8>, sha1::Hash>(gen_messages()); }
+    fn test_sha256d_commitment() {
+        commit_verify_suite::<SmallVec<u8>, sha256d::Hash>(gen_messages());
+    }
 
     #[test]
-    fn test_sha512_commitment() { commit_verify_suite::<Vec<u8>, sha512::Hash>(gen_messages()); }
+    fn test_ripemd160_commitment() {
+        commit_verify_suite::<SmallVec<u8>, ripemd160::Hash>(gen_messages());
+    }
+
+    #[test]
+    fn test_hash160_commitment() {
+        commit_verify_suite::<SmallVec<u8>, hash160::Hash>(gen_messages());
+    }
+
+    #[test]
+    fn test_sha1_commitment() { commit_verify_suite::<SmallVec<u8>, sha1::Hash>(gen_messages()); }
+
+    #[test]
+    fn test_sha512_commitment() {
+        commit_verify_suite::<SmallVec<u8>, sha512::Hash>(gen_messages());
+    }
 
     #[test]
     fn test_siphash24_commitment() {
-        commit_verify_suite::<Vec<u8>, siphash24::Hash>(gen_messages());
+        commit_verify_suite::<SmallVec<u8>, siphash24::Hash>(gen_messages());
     }
 }

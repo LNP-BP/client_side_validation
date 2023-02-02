@@ -177,14 +177,12 @@ pub(crate) mod test_helpers {
     use core::hash::Hash;
     use std::collections::HashSet;
 
-    use bitcoin_hashes::sha256::Midstate;
-
     use super::*;
     use crate::{ConvolveCommit, ConvolveCommitProof};
 
     pub enum TestProtocol {}
     impl CommitmentProtocol for TestProtocol {
-        const HASH_TAG_MIDSTATE: Option<Midstate> = Some(Midstate([0u8; 32]));
+        const HASH_TAG_MIDSTATE: Option<[u8; 32]> = Some([0u8; 32]);
     }
 
     pub const SUPPLEMENT: [u8; 32] = [0xFFu8; 32];
@@ -285,7 +283,9 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod test {
     use core::fmt::Debug;
+    use std::io::Write;
 
+    use amplify::confinement::SmallVec;
     use bitcoin_hashes::{sha256, Hash, HashEngine};
 
     use super::test_helpers::*;
@@ -298,10 +298,14 @@ mod test {
     struct Error;
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-    struct DummyVec(Vec<u8>);
+    struct DummyVec(SmallVec<u8>);
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-    struct DummyProof(Vec<u8>);
+    struct DummyProof(SmallVec<u8>);
+
+    impl CommitEncode for SmallVec<u8> {
+        fn commit_encode(&self, e: &mut impl Write) { e.write_all(self.as_ref()).unwrap() }
+    }
 
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
     where T: AsRef<[u8]> + Clone + CommitEncode
@@ -321,7 +325,7 @@ mod test {
         fn embed_commit(&mut self, msg: &T) -> Result<Self::Proof, Self::CommitError> {
             let proof = self.0.clone();
             let result = &mut self.0;
-            result.extend(msg.as_ref());
+            result.extend(msg.as_ref().iter().copied()).unwrap();
             Ok(DummyProof(proof))
         }
     }
@@ -350,18 +354,21 @@ mod test {
     {
         type Suppl = [u8; 32];
 
-        fn restore_original(&self, _: &sha256::Hash) -> DummyVec { DummyVec(vec![]) }
+        fn restore_original(&self, _: &sha256::Hash) -> DummyVec { DummyVec(default!()) }
 
         fn extract_supplement(&self) -> &Self::Suppl { self }
     }
 
     #[test]
     fn test_embed_commit() {
-        embed_commit_verify_suite::<Vec<u8>, DummyVec>(gen_messages(), DummyVec(vec![]));
+        embed_commit_verify_suite::<SmallVec<u8>, DummyVec>(gen_messages(), DummyVec(default!()));
     }
 
     #[test]
     fn test_convolve_commit() {
-        convolve_commit_verify_suite::<Vec<u8>, DummyVec>(gen_messages(), DummyVec(vec![0xC0; 15]));
+        convolve_commit_verify_suite::<SmallVec<u8>, DummyVec>(
+            gen_messages(),
+            DummyVec(small_vec![0xC0; 15]),
+        );
     }
 }

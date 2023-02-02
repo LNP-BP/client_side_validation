@@ -66,6 +66,7 @@ impl CommitmentProtocol for UntaggedProtocol {
 /// Helpers for writing test functions working with commit schemes
 #[cfg(test)]
 pub mod test_helpers {
+    use amplify::confinement::SmallVec;
     use amplify::hex::FromHex;
 
     pub use super::commit::test_helpers::*;
@@ -76,7 +77,7 @@ pub mod test_helpers {
     ///
     /// All of these messages MUST produce different commitments, otherwise the
     /// commitment algorithm is not collision-resistant
-    pub fn gen_messages() -> Vec<Vec<u8>> {
+    pub fn gen_messages() -> Vec<SmallVec<u8>> {
         vec![
             // empty message
             b"".to_vec(),
@@ -101,5 +102,8 @@ pub mod test_helpers {
             Vec::from_hex("02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9")
                 .unwrap(),
         ]
+        .into_iter()
+        .map(|v| SmallVec::try_from(v).unwrap())
+        .collect()
     }
 }

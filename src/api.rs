@@ -396,7 +396,9 @@ mod test {
 
     #[test]
     fn test() {
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, Default, ConfinedEncode, ConfinedDecode)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+        #[derive(Serialize, Deserialize)]
+        #[serde(crate = "serde_crate")]
         struct Seal {}
 
         struct Protocol {}
@@ -423,10 +425,12 @@ mod test {
             }
         }
 
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, ConfinedEncode, ConfinedDecode)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug)]
         struct Report {}
 
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, ConfinedEncode, ConfinedDecode)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+        #[derive(Serialize, Deserialize)]
+        #[serde(crate = "serde_crate")]
         struct Issue {
             seal: Seal,
         }
