@@ -141,9 +141,9 @@ where
 /// pub enum Lnpbp6 {}
 ///
 /// impl CommitmentProtocol for Lnpbp6 {
-///     const HASH_TAG_MIDSTATE: Option<Midstate> = Some(Midstate(
+///     const HASH_TAG_MIDSTATE: Option<[u8; 32]> = Some(
 ///         [0u8; 32], // replace with the actual midstate constant
-///     ));
+///     );
 /// }
 ///
 /// // Protocol definition containing context object
