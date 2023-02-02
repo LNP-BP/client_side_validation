@@ -183,7 +183,14 @@ impl MerkleNode {
         } else {
             let div = len / 2 + len % 2;
 
-            let slice = iter.by_ref().take(div as usize);
+            let slice = iter
+                .by_ref()
+                .take(div as usize)
+                // Normally we should use `iter.by_ref().take(div)`, but currently
+                // rust compilers is unable to parse recursion with generic types
+                // TODO: Do this without allocation
+                .collect::<Vec<_>>()
+                .into_iter();
             let branch1 = Self::_merklize(tag, slice, depth + 1, 0);
             let branch2 = Self::_merklize(tag, iter, depth + 1, div + 1);
 
