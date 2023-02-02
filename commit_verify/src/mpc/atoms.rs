@@ -17,9 +17,10 @@ use std::io::Write;
 use amplify::confinement::SmallOrdMap;
 use amplify::num::u4;
 use amplify::{Bytes32, Wrapper};
-use bitcoin_hashes::{sha256, Hash};
+use bitcoin_hashes::sha256::Midstate;
 
-use crate::encode::{strategies, CommitStrategy};
+use crate::id::CommitmentId;
+use crate::merkle::MerkleNode;
 use crate::CommitEncode;
 
 /// Map from protocol ids to commitment messages.
@@ -42,6 +43,10 @@ pub struct ProtocolId(
     Bytes32,
 );
 
+impl CommitEncode for ProtocolId {
+    fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
+}
+
 /// Original message participating in multi-message commitment.
 ///
 /// The message must be represented by a 32-byte hash.
@@ -62,13 +67,44 @@ impl CommitEncode for Message {
     fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
 }
 
-impl Message {
-    pub fn entropy(entropy: u64, pos: u16) -> Self {
-        let mut engine = sha256::HashEngine::default();
-        (&entropy).commit_encode(&mut engine);
-        (&pos).commit_encode(&mut engine);
-        sha256::Hash::from_engine(engine).into_inner().into()
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, From)]
+pub enum Leaf {
+    Inhabited {
+        protocol: ProtocolId,
+        message: Message,
+    },
+    Entropy {
+        entropy: u64,
+        pos: u16,
+    },
+}
+
+impl Leaf {
+    pub fn entropy(entropy: u64, pos: u16) -> Self { Self::Entropy { entropy, pos } }
+
+    pub fn inhabited(protocol: ProtocolId, message: Message) -> Self {
+        Self::Inhabited { protocol, message }
     }
+}
+
+impl CommitEncode for Leaf {
+    fn commit_encode(&self, e: &mut impl Write) {
+        match self {
+            Leaf::Inhabited { protocol, message } => {
+                protocol.commit_encode(e);
+                message.commit_encode(e);
+            }
+            Leaf::Entropy { entropy, pos } => {
+                entropy.commit_encode(e);
+                pos.commit_encode(e);
+            }
+        }
+    }
+}
+
+impl CommitmentId for Leaf {
+    const TAG: Midstate = Default::default();
+    type Id = MerkleNode;
 }
 
 /// Final [LNPBP-4] commitment value.

@@ -19,6 +19,7 @@ use amplify::Wrapper;
 
 pub use self::commit::Error;
 use crate::merkle::{MerkleLeafs, MerkleNode};
+use crate::mpc::atoms::Leaf;
 use crate::mpc::{Message, MessageMap, ProtocolId, LNPBP4_TAG};
 use crate::Conceal;
 
@@ -47,7 +48,7 @@ pub struct IntoIter {
 }
 
 impl Iterator for IntoIter {
-    type Item = MerkleNode;
+    type Item = Leaf;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos == self.width {
@@ -55,10 +56,13 @@ impl Iterator for IntoIter {
         }
         self.pos += 1;
 
-        self.map
+        let leaf = self
+            .map
             .get(&self.pos)
-            .map(|(_proto, msg)| *msg)
-            .or_else(|| Some(Message::entropy(self.entropy, self.pos)))
+            .map(|(protocol, msg)| Leaf::inhabited(*protocol, *msg))
+            .unwrap_or_else(|| Leaf::entropy(self.entropy, self.pos));
+
+        Some(leaf)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -70,7 +74,7 @@ impl Iterator for IntoIter {
 impl ExactSizeIterator for IntoIter {}
 
 impl MerkleLeafs for MerkleTree {
-    type Leaf = Message;
+    type Leaf = Leaf;
     type LeafIter = IntoIter;
 
     fn merkle_leafs(&self) -> Self::LeafIter {

@@ -16,7 +16,7 @@
 
 use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
 
-/// Proof type used by [`ConvolveCommitVerify`] protocol.
+/// Proof type used by [`ConvolveCommit`] protocol.
 pub trait ConvolveCommitProof<Msg, Source, Protocol>
 where
     Self: Sized + VerifyEq,

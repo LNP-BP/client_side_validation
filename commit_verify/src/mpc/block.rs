@@ -18,7 +18,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use amplify::confinement::SmallVec;
 use amplify::num::u4;
 
+use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
+use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{Commitment, MerkleTree, Message, ProtocolId, LNPBP4_TAG};
 
@@ -78,7 +80,7 @@ impl TreeNode {
             TreeNode::CommitmentLeaf {
                 protocol_id,
                 message,
-            } => MerkleNode::with_commitment(*protocol_id, *message, depth),
+            } => Leaf::inhabited(*protocol_id, *message).commitment_id(),
         }
     }
 }
@@ -114,7 +116,7 @@ impl From<&MerkleTree> for MerkleBlock {
                 })
                 .unwrap_or_else(|| TreeNode::ConcealedNode {
                     depth: tree.depth,
-                    hash: MerkleNode::with_entropy(tree.entropy, pos as u16),
+                    hash: Leaf::entropy(tree.entropy, pos).commitment_id(),
                 })
         });
         let cross_section =

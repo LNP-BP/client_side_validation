@@ -25,13 +25,13 @@ pub trait CommitmentId: CommitEncode {
     const TAG: sha256::Midstate;
 
     /// Type of the resulting commitment.
-    type Id: From<sha256::Hash>;
+    type Id: From<[u8; 32]>;
 
     /// Performs commitment to client-side-validated data
     #[inline]
     fn commitment_id(&self) -> Self::Id {
         let mut engine = sha256::HashEngine::from_midstate(Self::TAG, 64);
         self.commit_encode(&mut engine);
-        sha256::Hash::from_engine(engine).into()
+        sha256::Hash::from_engine(engine).into_inner().into()
     }
 }
