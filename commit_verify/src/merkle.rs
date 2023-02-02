@@ -92,7 +92,7 @@ impl MerkleNode {
         Self::with(couple, tag, depth, width, branch1, branch2)
     }
 
-    pub fn branch(
+    pub fn branches(
         tag: [u8; 16],
         depth: u4,
         width: u16,
@@ -168,7 +168,7 @@ impl MerkleNode {
             let branch1 = Self::_merklize(tag, slice, depth + 1, 0);
             let branch2 = Self::_merklize(tag, iter, depth + 1, div + 1);
 
-            MerkleNode::branch(tag, depth, width, branch1, branch2)
+            MerkleNode::branches(tag, depth, width, branch1, branch2)
         }
     }
 }
