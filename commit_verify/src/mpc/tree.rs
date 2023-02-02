@@ -14,6 +14,7 @@
 
 use std::collections::BTreeMap;
 
+use amplify::confinement::SmallOrdMap;
 use amplify::num::{u256, u4};
 use amplify::Wrapper;
 
@@ -21,13 +22,15 @@ use amplify::Wrapper;
 pub use self::commit::Error;
 use crate::merkle::{MerkleLeaves, MerkleNode};
 use crate::mpc::atoms::Leaf;
-use crate::mpc::{Message, MessageMap, ProtocolId, LNPBP4_TAG};
-use crate::Conceal;
+use crate::mpc::{Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
+use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
-type OrderedMap = BTreeMap<u16, (ProtocolId, Message)>;
+type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 
 /// Complete information about LNPBP-4 merkle tree.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 pub struct MerkleTree {
     /// Tree depth (up to 16).
     pub(super) depth: u4,
@@ -40,6 +43,8 @@ pub struct MerkleTree {
 
     pub(super) map: OrderedMap,
 }
+
+impl Proof for MerkleTree {}
 
 pub struct IntoIter {
     width: u16,
@@ -100,6 +105,7 @@ impl Conceal for MerkleTree {
 
 #[cfg(feature = "rand")]
 mod commit {
+    use amplify::confinement::Confined;
     use rand::{thread_rng, RngCore};
 
     use super::*;
@@ -157,7 +163,7 @@ mod commit {
                 depth,
                 messages: source.messages.clone(),
                 entropy,
-                map,
+                map: Confined::try_from(map).expect("MultiSource type guarantees"),
             })
         }
     }

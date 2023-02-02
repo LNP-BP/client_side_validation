@@ -12,6 +12,8 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+#![allow(unused_braces)]
+
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
@@ -24,8 +26,8 @@ use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
-use crate::mpc::{Commitment, MerkleTree, Message, ProtocolId, LNPBP4_TAG};
-use crate::{CommitEncode, Conceal};
+use crate::mpc::{Commitment, MerkleTree, Message, Proof, ProtocolId, LNPBP4_TAG};
+use crate::{CommitEncode, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {_0} is absent from the known part of a given
 /// LNPBP-4 Merkle block.
@@ -40,6 +42,12 @@ pub struct UnrelatedProof;
 
 /// LNPBP-4 Merkle tree node.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(StrictType, StrictDumb, StrictEncode, StrictDecode)]
+#[strict_type(
+    lib = LIB_NAME_COMMIT_VERIFY,
+    tags = order,
+    dumb = { TreeNode::ConcealedNode { depth: u4::ZERO, hash: [0u8; 32].into() } }
+)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 enum TreeNode {
     /// A node of the tree with concealed leaf or tree branch information.
@@ -90,6 +98,8 @@ impl TreeNode {
 
 /// Partially-concealed merkle tree data.
 #[derive(Getters, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleBlock {
     /// Tree depth (up to 16).
@@ -105,6 +115,8 @@ pub struct MerkleBlock {
     #[getter(as_copy)]
     entropy: Option<u64>,
 }
+
+impl Proof for MerkleBlock {}
 
 impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
@@ -454,6 +466,8 @@ impl CommitmentId for MerkleBlock {
 
 /// A proof of the merkle commitment.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+#[derive(StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleProof {
     /// Position of the leaf in the tree.
@@ -467,6 +481,8 @@ pub struct MerkleProof {
     #[getter(skip)]
     path: SmallVec<MerkleNode>,
 }
+
+impl Proof for MerkleProof {}
 
 impl MerkleProof {
     /// Computes the depth of the merkle tree.

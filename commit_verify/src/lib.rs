@@ -36,7 +36,7 @@ pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
 pub use encode::CommitEncode;
 
-pub const STY_LIB_NAME: &str = "CommitVerify";
+pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 
 /// Marker trait for specific commitment protocols.
 ///

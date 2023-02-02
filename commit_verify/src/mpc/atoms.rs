@@ -29,8 +29,10 @@ pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
 /// procedure.
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
-#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From, Default)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[derive(StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -49,8 +51,10 @@ impl CommitEncode for ProtocolId {
 /// Original message participating in multi-message commitment.
 ///
 /// The message must be represented by a 32-byte hash.
-#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From, Default)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[derive(StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

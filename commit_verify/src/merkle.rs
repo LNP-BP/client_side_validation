@@ -19,10 +19,9 @@ use amplify::confinement::Confined;
 use amplify::num::u4;
 use amplify::{Bytes32, Wrapper};
 use bitcoin_hashes::{sha256, Hash};
-use strict_encoding::{DecodeError, ReadTuple, StrictDecode, StrictEncode, TypedRead, TypedWrite};
 
 use crate::encode::{strategies, CommitStrategy};
-use crate::{CommitEncode, STY_LIB_NAME};
+use crate::{CommitEncode, LIB_NAME_COMMIT_VERIFY};
 
 /// Type of a merkle node branching.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -56,8 +55,8 @@ impl CommitStrategy for NodeBranching {
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
-#[derive(StrictDumb, StrictType)]
-#[strict_type(lib = STY_LIB_NAME, dumb = MerkleNode(default!()))]
+#[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = MerkleNode(default!()))]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -68,22 +67,6 @@ pub struct MerkleNode(
     #[from([u8; 32])]
     Bytes32,
 );
-
-impl StrictEncode for MerkleNode {
-    fn strict_encode<W: TypedWrite>(&self, writer: W) -> io::Result<W> {
-        writer.write_newtype::<Self>(self.0.as_inner())
-    }
-}
-
-impl StrictDecode for MerkleNode {
-    fn strict_decode(reader: &mut impl TypedRead) -> Result<Self, DecodeError> {
-        reader.read_tuple(|r| {
-            r.read_field::<[u8; 32]>()
-                .map(Bytes32::from_inner)
-                .map(MerkleNode)
-        })
-    }
-}
 
 const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
 
