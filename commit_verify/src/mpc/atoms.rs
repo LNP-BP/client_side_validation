@@ -17,7 +17,6 @@ use std::io::Write;
 use amplify::confinement::SmallOrdMap;
 use amplify::num::u4;
 use amplify::{Bytes32, Wrapper};
-use bitcoin_hashes::sha256::Midstate;
 
 use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
@@ -103,7 +102,8 @@ impl CommitEncode for Leaf {
 }
 
 impl CommitmentId for Leaf {
-    const TAG: Midstate = Default::default();
+    // TODO: Use a real midstate
+    const TAG: [u8; 32] = [0u8; 32];
     type Id = MerkleNode;
 }
 

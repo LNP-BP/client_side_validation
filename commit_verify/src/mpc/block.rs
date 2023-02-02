@@ -14,15 +14,18 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::Write;
 
 use amplify::confinement::SmallVec;
 use amplify::num::u4;
+use strict_encoding::{StrictEncode, StrictWriter};
 
 use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{Commitment, MerkleTree, Message, ProtocolId, LNPBP4_TAG};
+use crate::{CommitEncode, Conceal};
 
 /// commitment under protocol id {_0} is absent from the known part of a given
 /// LNPBP-4 Merkle block.
@@ -74,7 +77,7 @@ impl TreeNode {
 
     pub fn is_leaf(&self) -> bool { matches!(self, TreeNode::CommitmentLeaf { .. }) }
 
-    pub fn merkle_node_with(&self, depth: u4) -> MerkleNode {
+    pub fn merkle_node_with(&self) -> MerkleNode {
         match self {
             TreeNode::ConcealedNode { hash, .. } => *hash,
             TreeNode::CommitmentLeaf {
@@ -218,7 +221,7 @@ impl MerkleBlock {
                     count += 1;
                     *node = TreeNode::ConcealedNode {
                         depth: self.depth,
-                        hash: node.merkle_node_with(self.depth),
+                        hash: node.merkle_node_with(),
                     };
                 }
             }
@@ -312,7 +315,7 @@ impl MerkleBlock {
     /// Merges two merkle blocks together, joining revealed information from
     /// each one of them.
     pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, UnrelatedProof> {
-        if self.consensus_commit() != other.consensus_commit() {
+        if self.commitment_id() != other.commitment_id() {
             return Err(UnrelatedProof);
         }
 
@@ -423,6 +426,34 @@ impl MerkleBlock {
     pub fn width(&self) -> u16 { 2usize.pow(self.depth.to_u8() as u32) as u16 }
 }
 
+impl Conceal for MerkleBlock {
+    type Concealed = MerkleNode;
+
+    /// Reduces merkle tree into merkle tree root.
+    fn conceal(&self) -> Self::Concealed {
+        let mut concealed = self.clone();
+        concealed
+            .conceal_except([])
+            .expect("broken internal MerkleBlock structure");
+        debug_assert_eq!(concealed.cross_section.len(), 1);
+        concealed.cross_section[0].merkle_node_with()
+    }
+}
+
+impl CommitEncode for MerkleBlock {
+    fn commit_encode(&self, e: &mut impl Write) {
+        let concealed = self.conceal();
+        let w = StrictWriter::with(u32::MAX as usize, e);
+        concealed.strict_encode(w).ok();
+    }
+}
+
+impl CommitmentId for MerkleBlock {
+    // TODO: Use a real midstate
+    const TAG: [u8; 32] = [0u8; 32];
+    type Id = Commitment;
+}
+
 /// A proof of the merkle commitment.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
@@ -463,6 +494,6 @@ impl MerkleProof {
         message: Message,
     ) -> Result<Commitment, UnrelatedProof> {
         let block = MerkleBlock::with(self, protocol_id, message)?;
-        Ok(block.consensus_commit())
+        Ok(block.commitment_id())
     }
 }

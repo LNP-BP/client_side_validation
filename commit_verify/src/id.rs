@@ -12,6 +12,7 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use bitcoin_hashes::sha256::Midstate;
 use bitcoin_hashes::{sha256, Hash};
 
 use crate::CommitEncode;
@@ -22,7 +23,7 @@ use crate::CommitEncode;
 /// wrapped into [`CommitEncode`], followed by the actual commitment to its
 /// output.
 pub trait CommitmentId: CommitEncode {
-    const TAG: sha256::Midstate;
+    const TAG: [u8; 32];
 
     /// Type of the resulting commitment.
     type Id: From<[u8; 32]>;
@@ -30,7 +31,8 @@ pub trait CommitmentId: CommitEncode {
     /// Performs commitment to client-side-validated data
     #[inline]
     fn commitment_id(&self) -> Self::Id {
-        let mut engine = sha256::HashEngine::from_midstate(Self::TAG, 64);
+        let midstate = Midstate::from_inner(Self::TAG);
+        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
         self.commit_encode(&mut engine);
         sha256::Hash::from_engine(engine).into_inner().into()
     }

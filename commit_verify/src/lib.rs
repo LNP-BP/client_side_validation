@@ -14,6 +14,8 @@
 
 #[macro_use]
 extern crate amplify;
+#[macro_use]
+extern crate strict_encoding;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_crate as serde;
@@ -33,6 +35,8 @@ pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
 pub use encode::CommitEncode;
+
+pub const STY_LIB_NAME: &str = "CommitVerify";
 
 /// Marker trait for specific commitment protocols.
 ///
