@@ -19,7 +19,7 @@ use amplify::Wrapper;
 
 pub use self::commit::Error;
 use crate::merkle::{MerkleLeafs, MerkleNode};
-use crate::mpc::{Message, MessageMap, ProtocolId};
+use crate::mpc::{Message, MessageMap, ProtocolId, LNPBP4_TAG};
 use crate::Conceal;
 
 type OrderedMap = BTreeMap<u16, (ProtocolId, Message)>;
@@ -28,15 +28,15 @@ type OrderedMap = BTreeMap<u16, (ProtocolId, Message)>;
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct MerkleTree {
     /// Tree depth (up to 16).
-    depth: u4,
+    pub(super) depth: u4,
 
     /// Entropy used for placeholders.
-    entropy: u64,
+    pub(super) entropy: u64,
 
     /// Map of the messages by their respective protocol ids
-    messages: MessageMap,
+    pub(super) messages: MessageMap,
 
-    map: OrderedMap,
+    pub(super) map: OrderedMap,
 }
 
 pub struct IntoIter {
@@ -47,7 +47,7 @@ pub struct IntoIter {
 }
 
 impl Iterator for IntoIter {
-    type Item = Message;
+    type Item = MerkleNode;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos == self.width {
@@ -84,11 +84,7 @@ impl MerkleLeafs for MerkleTree {
 }
 
 impl MerkleTree {
-    pub fn root(&self) -> MerkleNode {
-        let mut tag = [0u8; 16];
-        tag.copy_from_slice(b"urn:lnpbp:lnpbp4");
-        MerkleNode::merklize(tag, self)
-    }
+    pub fn root(&self) -> MerkleNode { MerkleNode::merklize(LNPBP4_TAG, self) }
 }
 
 impl Conceal for MerkleTree {
@@ -162,7 +158,7 @@ mod commit {
     }
 }
 
-fn protocol_id_pos(protocol_id: ProtocolId, width: u16) -> u16 {
+pub(super) fn protocol_id_pos(protocol_id: ProtocolId, width: u16) -> u16 {
     let rem = u256::from_le_bytes((*protocol_id).into_inner()) % u256::from(width as u64);
     rem.low_u64() as u16
 }

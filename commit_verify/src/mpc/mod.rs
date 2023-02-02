@@ -18,7 +18,11 @@
 
 mod atoms;
 mod tree;
-// mod iter;
+mod block;
 
 pub use atoms::{Commitment, Message, MessageMap, MultiSource, ProtocolId};
-// pub use iter::MessageIter;
+pub use block::{LeafNotKnown, MerkleBlock, MerkleProof, UnrelatedProof};
+pub(self) use tree::protocol_id_pos;
+pub use tree::{Error, IntoIter, MerkleTree};
+
+const LNPBP4_TAG: [u8; 16] = *b"urn:lnpbp:lnpbp4";
