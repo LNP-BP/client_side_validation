@@ -80,7 +80,6 @@ where
 ///
 /// ```
 /// # use bitcoin_hashes::sha256::Midstate;
-/// # use lnpbp_secp256k1zkp::Secp256k1;
 /// # use commit_verify::CommitmentProtocol;
 ///
 /// // Uninstantiable type
@@ -92,10 +91,8 @@ where
 ///     );
 /// }
 ///
-/// // Protocol definition containing context object
-/// pub struct Lnpbp1 {
-///     pub secp: Secp256k1,
-/// }
+/// // Protocol definition
+/// pub enum Lnpbp1 {}
 /// // ...
 /// ```
 pub trait EmbedCommitVerify<Msg, Protocol>

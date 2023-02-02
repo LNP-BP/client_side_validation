@@ -36,11 +36,10 @@ serde_crate = { package = "serde", version = "1", features = ["derive"], optiona
 
 [features]
 default = []
-all = ["serde", "rand", "async", "bulletproofs"]
+all = ["serde", "rand", "async"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 serde = ["serde_crate", "commit_verify/serde"]
-bulletproofs = ["commit_verify/bulletproofs"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]

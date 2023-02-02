@@ -33,7 +33,6 @@ jobs:
           - rand
           - serde
           - async
-          - bulletproofs
           - all
     steps:
       - uses: actions/checkout@v2
