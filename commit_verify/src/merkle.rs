@@ -12,8 +12,10 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use std::collections::BTreeSet;
 use std::io::{self, Write};
 
+use amplify::confinement::Confined;
 use amplify::num::u4;
 use amplify::Bytes32;
 use bitcoin_hashes::{sha256, Hash};
@@ -143,7 +145,7 @@ impl MerkleNode {
 
     fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
         tag: [u8; 16],
-        mut iter: impl MerkleIter<'leaf, Leaf>,
+        mut iter: impl MerkleIter<Leaf>,
         depth: u4,
         offset: u16,
     ) -> Self {
@@ -153,9 +155,9 @@ impl MerkleNode {
         if len <= 2 {
             match (iter.next(), iter.next()) {
                 (None, None) => MerkleNode::void(tag, u4::ONE, width),
-                (Some(branch), None) => MerkleNode::single(tag, u4::ONE, width, branch),
+                (Some(branch), None) => MerkleNode::single(tag, u4::ONE, width, &branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleNode::couple(tag, u4::ONE, width, branch1, branch2)
+                    MerkleNode::couple(tag, u4::ONE, width, &branch1, &branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
@@ -171,19 +173,33 @@ impl MerkleNode {
     }
 }
 
-pub trait MerkleIter<'leaf, Leaf: CommitEncode + 'leaf>:
-    ExactSizeIterator<Item = &'leaf Leaf>
-{
-}
+pub trait MerkleIter<Leaf: CommitEncode>: ExactSizeIterator<Item = Leaf> {}
 
-impl<'leaf, Leaf: CommitEncode + 'leaf, I> MerkleIter<'leaf, Leaf> for I where I: ExactSizeIterator<Item = &'leaf Leaf>
-{}
+impl<Leaf: CommitEncode, I> MerkleIter<Leaf> for I where I: ExactSizeIterator<Item = Leaf> {}
 
 pub trait MerkleLeafs {
     type Leaf: CommitEncode;
 
-    type LeafIter<'leaf>: MerkleIter<'leaf, Self::Leaf>
-    where Self: 'leaf;
+    type LeafIter: MerkleIter<Self::Leaf>;
 
-    fn merkle_leafs(&self) -> Self::LeafIter<'_>;
+    fn merkle_leafs(&self) -> Self::LeafIter;
+}
+
+impl<'a, T, const MIN: usize> MerkleLeafs for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
+where &'a T: CommitEncode
+{
+    type Leaf = &'a T;
+    type LeafIter = std::slice::Iter<'a, T>;
+
+    fn merkle_leafs(&self) -> Self::LeafIter { self.iter() }
+}
+
+impl<'a, T: Ord, const MIN: usize> MerkleLeafs
+    for &'a Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
+where &'a T: CommitEncode
+{
+    type Leaf = &'a T;
+    type LeafIter = std::collections::btree_set::Iter<'a, T>;
+
+    fn merkle_leafs(&self) -> Self::LeafIter { self.iter() }
 }

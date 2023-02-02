@@ -82,6 +82,8 @@ macro_rules! commit_encode_list {
 /// automatic implementation of [`CommitEncode`].
 pub trait CommitStrategy {
     /// Specific strategy. List of supported strategies:
+    /// - [`strategies::IntoU8`]
+    /// - [`strategies::IntoInner`]
     /// - [`strategies::Strict`]
     /// - [`strategies::ConcealStrict`]
     /// - [`strategies::Id`]
@@ -96,6 +98,7 @@ pub mod strategies {
     use amplify::confinement::{Collection, Confined};
     use amplify::num::apfloat::ieee;
     use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
+    use amplify::{Bytes32, Wrapper};
     use strict_encoding::{StrictEncode, StrictWriter};
 
     use super::*;
@@ -103,13 +106,20 @@ pub mod strategies {
     use crate::merkle::{MerkleLeafs, MerkleNode};
     use crate::Conceal;
 
-    /// Encodes by converting into `u8` type. Useful for enum types..
+    /// Commits to the value by converting it into `u8` type. Useful for enum
+    /// types.
     ///
     /// Can apply only to types implementing `Into<u8>`.
     pub enum IntoU8 {}
 
-    /// Encodes by running strict *encoding procedure* on the raw data without
-    /// any pre-processing.
+    /// Commits to the value by converting it into inner type. Useful for
+    /// newtypes.
+    ///
+    /// Can apply only to types implementing [`Wrapper`].
+    pub enum IntoInner {}
+
+    /// Commits to the value by running strict *encoding procedure* on the raw
+    /// data without any pre-processing.
     ///
     /// Should not be used for array types (require manual [`CommitEncode`]
     /// implementation involving merklization) or data which may contain
@@ -119,22 +129,23 @@ pub mod strategies {
     /// Can apply only to types implementing [`StrictEncode`] trait.
     pub enum Strict {}
 
-    /// Encodes data by first converting them into confidential version
-    /// (*concealing*) by running [`CommitConceal::commit_conceal`] first and
-    /// returning its result serialized with strict encoding rules.
+    /// Commits to the value data by first converting them into confidential
+    /// version (*concealing*) by running [`CommitConceal::commit_conceal`]
+    /// first and returning its result serialized with strict encoding
+    /// rules.
     ///
     /// Can apply only to types implementing [`Conceal`] trait, where
     /// [`Conceal::Concealed`] type must also implement [`StrictEncode`] trait.
     pub enum ConcealStrict {}
 
-    /// Computes a single id for the type and then serializes it into the
-    /// hasher.
+    /// Commits to the value via commitment id of the type, which is serialized
+    /// into the hasher.
     ///
     /// Can apply only to types implementing [`CommitId`] trait.
     pub enum Id {}
 
-    /// Merkelizes data provided by this trait and serializes merkle root into
-    /// the hasher.
+    /// Commits to the value by merklizing data provided by [`MerkleLeafs`]
+    /// implementation and serializes merkle root into the hasher.
     ///
     /// Can apply only to types implementing [`MerkleLeafs`] trait.
     pub enum Merklize<const MERKLE_ROOT_TAG: u128> {}
@@ -143,8 +154,18 @@ pub mod strategies {
     where T: Copy + Into<u8>
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
-            e.write_all(&[(*(self.unbox())).into()])
-                .expect("hashers must not fail")
+            let raw = *self.unbox();
+            e.write_all(&[raw.into()]).ok();
+        }
+    }
+
+    impl<'a, T> CommitEncode for amplify::Holder<'a, T, IntoInner>
+    where
+        T: Wrapper,
+        T::Inner: CommitEncode,
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) {
+            self.unbox().as_inner().commit_encode(e);
         }
     }
 
@@ -173,8 +194,7 @@ pub mod strategies {
         T::Id: Into<[u8; 32]>,
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
-            e.write_all(&self.unbox().commitment_id().into())
-                .expect("hashers must not fail")
+            e.write_all(&self.unbox().commitment_id().into()).ok();
         }
     }
 
@@ -268,6 +288,10 @@ pub mod strategies {
         type Strategy = Strict;
     }
 
+    impl CommitStrategy for Bytes32 {
+        type Strategy = IntoInner;
+    }
+
     impl<T> CommitStrategy for Box<T>
     where T: StrictEncode
     {
@@ -289,4 +313,8 @@ pub mod strategies {
     {
         type Strategy = T::Strategy;
     }
+}
+
+impl CommitEncode for [u8; 32] {
+    fn commit_encode(&self, e: &mut impl io::Write) { e.write_all(self).ok(); }
 }

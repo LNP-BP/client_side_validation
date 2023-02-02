@@ -16,11 +16,9 @@
 //!
 //! [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 
-/// Maximal depth of LNPBP-4 commitment tree.
-pub const MAX_TREE_DEPTH: u8 = 16;
-
 mod atoms;
+mod tree;
 // mod iter;
 
-pub use atoms::{Commitment, Message, MessageMap, ProtocolId};
+pub use atoms::{Commitment, Message, MessageMap, MultiSource, ProtocolId};
 // pub use iter::MessageIter;

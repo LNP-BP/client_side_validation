@@ -12,8 +12,15 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+use std::io::Write;
+
 use amplify::confinement::SmallOrdMap;
-use amplify::Bytes32;
+use amplify::num::u4;
+use amplify::{Bytes32, Wrapper};
+use bitcoin_hashes::{sha256, Hash};
+
+use crate::encode::{strategies, CommitStrategy};
+use crate::CommitEncode;
 
 /// Map from protocol ids to commitment messages.
 pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
@@ -29,7 +36,11 @@ pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct ProtocolId(Bytes32);
+pub struct ProtocolId(
+    #[from]
+    #[from([u8; 32])]
+    Bytes32,
+);
 
 /// Original message participating in multi-message commitment.
 ///
@@ -41,7 +52,24 @@ pub struct ProtocolId(Bytes32);
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct Message(Bytes32);
+pub struct Message(
+    #[from]
+    #[from([u8; 32])]
+    Bytes32,
+);
+
+impl CommitEncode for Message {
+    fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
+}
+
+impl Message {
+    pub fn entropy(entropy: u64, pos: u16) -> Self {
+        let mut engine = sha256::HashEngine::default();
+        (&entropy).commit_encode(&mut engine);
+        (&pos).commit_encode(&mut engine);
+        sha256::Hash::from_engine(engine).into_inner().into()
+    }
+}
 
 /// Final [LNPBP-4] commitment value.
 ///
@@ -56,4 +84,27 @@ pub struct Message(Bytes32);
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct Commitment(Bytes32);
+pub struct Commitment(
+    #[from]
+    #[from([u8; 32])]
+    Bytes32,
+);
+
+// TODO: Either this type or [`MerkleTree`] should remain
+/// Structured source multi-message data for commitment creation
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct MultiSource {
+    /// Minimal depth of the created LNPBP-4 commitment tree
+    pub min_depth: u4,
+    /// Map of the messages by their respective protocol ids
+    pub messages: MessageMap,
+}
+
+impl Default for MultiSource {
+    fn default() -> Self {
+        MultiSource {
+            min_depth: u4::try_from(3).expect("hardcoded value"),
+            messages: Default::default(),
+        }
+    }
+}
