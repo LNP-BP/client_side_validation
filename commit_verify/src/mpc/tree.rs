@@ -17,6 +17,7 @@ use std::collections::BTreeMap;
 use amplify::num::{u256, u4};
 use amplify::Wrapper;
 
+#[cfg(feature = "rand")]
 pub use self::commit::Error;
 use crate::merkle::{MerkleLeaves, MerkleNode};
 use crate::mpc::atoms::Leaf;
