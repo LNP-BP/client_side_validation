@@ -21,7 +21,11 @@ paradigm for distributed computing, based on top of proof-of-publication/
 commitment medium layer, which may be a bitcoin blockchain or other type of 
 distributed consensus system.
 
-The development of the library is supported by [LNP/BP Standards Association](https://lnp-bp.org).
+The development of the library is supported by [LNP/BP Standards Association][lnpbp-web]
+and is performed on its [GitHub page][lnpbp-github].
+
+Minimum supported rust version for the library (MSRV) is 1.66 and 2021 rust
+edition.
 
 
 ## Documentation
@@ -30,8 +34,8 @@ Detailed developer & API documentation for the library can be accessed
 at <https://docs.rs/single_use_seals/>
 
 To learn about the technologies enabled by the library please check
-[slides from our tech presentations](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/)
-and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwArGaMKsxg)
+[slides from our tech presentations][presentations]
+and [LNP/BP tech talks videos][lnpbp-youtube]
 
 
 ## Usage
@@ -137,4 +141,9 @@ The libraries are distributed on the terms of Apache 2.0 opensource license.
 See [LICENCE](LICENSE) file for the license details.
 
 [`client_side_validation`]: https://crates.io/crates/client_side_validation
+[lnpbp-web]: https://lnp-bp.org
+[lnpbp-github]: https://github.com/LNP-BP
+[lnpbp-youtube]: https://www.youtube.com/@LNPBP
+[presentations]: https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/
+
 [LNPBP-8]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0008.md
