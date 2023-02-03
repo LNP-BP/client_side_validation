@@ -1,6 +1,6 @@
 [package]
 name = "single_use_seals"
-version = "0.9.0"
+version = "0.10.0-beta.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Single-use-seals foundation API"
@@ -18,7 +18,7 @@ path = "src/lib.rs"
 
 [dependencies]
 amplify_derive = "4.0.0-alpha.3"
-async-trait = { version = "0.1.57", optional = true }
+async-trait = { version = "0.1.64", optional = true }
 
 [features]
 default = []
