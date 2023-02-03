@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.9.0"
+version = "0.10.0-beta.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Commit-verify API for client-side validation"
@@ -10,7 +10,7 @@ keywords = ["lnp-bp", "cryptography", "smart-contracts", "commit-verify"]
 categories = ["cryptography", "encoding"]
 readme = "README.md"
 edition = "2021"
-rust-version = "1.59.0"
+rust-version = "1.66.0"
 
 [lib]
 name = "commit_verify"
@@ -19,7 +19,7 @@ path = "src/lib.rs"
 [dependencies]
 amplify = { version = "4.0.0-beta.8", features = ["hex", "apfloat"] }
 bitcoin_hashes = "0.11.0"
-strict_encoding = "2.0.0-beta.2"
+strict_encoding = "2.0.0-beta.5"
 rand = { version = "0.8.5", optional = true }
 serde_crate = { version = "1.0", package = "serde", optional = true }
 

@@ -10,16 +10,21 @@
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/commit_verify)](./LICENSE)
 
-This is an implementation of [LNPBP-4] multi-commitment standard and [LNPBP-9] 
-standard, defining to cryptographic commitment schemes used in 
-client-side-validation. It is a part of more generic [`client_side_validation`] 
-library covering other client-side-validation standards.
+This is an implementation of [LNPBP-4] multi-commitment standard, [LNPBP-9]
+standard, defining to cryptographic commitment schemes used in
+client-side-validation, and [LNPBP-81] tagged merkle tree standard. It is a part
+of more generic [`client_side_validation`] library covering other
+client-side-validation standards.
 
 Client-side-validation is a paradigm for distributed computing, based on top of
 proof-of-publication/commitment medium layer, which may be a bitcoin blockchain
 or other type of distributed consensus system.
 
-The development of the library is supported by [LNP/BP Standards Association](https://lnp-bp.org).
+The development of the library is supported by [LNP/BP Standards Association][lnpbp-web]
+and is performed on its [GitHub page][lnpbp-github].
+
+Minimum supported rust version for the library (MSRV) is 1.66 and 2021 rust
+edition.
 
 
 ## Documentation
@@ -28,8 +33,8 @@ Detailed developer & API documentation for the library can be accessed
 at <https://docs.rs/commit_verify/>
 
 To learn about the technologies enabled by the library please check
-[slides from our tech presentations](https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/)
-and [LNP/BP tech talks videos](https://www.youtube.com/channel/UCK_Q3xcQ-H3ERwArGaMKsxg)
+[slides from our tech presentations][presentations]
+and [LNP/BP tech talks videos][lnpbp-youtube]
 
 
 ## Usage
@@ -64,3 +69,11 @@ The libraries are distributed on the terms of Apache 2.0 opensource license.
 See [LICENCE](LICENSE) file for the license details.
 
 [`client_side_validation`]: https://crates.io/crates/client_side_validation
+[lnpbp-web]: https://lnp-bp.org
+[lnpbp-github]: https://github.com/LNP-BP
+[lnpbp-youtube]: https://www.youtube.com/@LNPBP
+[presentations]: https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/
+
+[LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+[LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
+[LNPBP-81]" https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md

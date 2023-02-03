@@ -1,16 +1,16 @@
 [package]
 name = "single_use_seals"
-version = "0.9.0"
+version = "0.10.0-beta.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
-description = "Single-use-seals foundation API. For bitcoin-specific implementation check bp-seals"
+description = "Single-use-seals foundation API"
 repository = "https://github.com/LNP-BP/client_side_validation"
 homepage = "https://github.com/LNP-BP"
 keywords = ["lnp-bp", "cryptography", "smart-contracts", "single-use-seals"]
 categories = ["cryptography", "cryptography::cryptocurrencies"]
 readme = "README.md"
 edition = "2021"
-rust-version = "1.59.0"
+rust-version = "1.66.0"
 
 [lib]
 name = "single_use_seals"
@@ -18,7 +18,7 @@ path = "src/lib.rs"
 
 [dependencies]
 amplify_derive = "4.0.0-alpha.3"
-async-trait = { version = "0.1.57", optional = true }
+async-trait = { version = "0.1.64", optional = true }
 
 [features]
 default = []
