@@ -22,7 +22,7 @@ keywords = ["lnp-bp", "cryptocurrency", "smart-contracts", "blockchain"]
 categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
 readme = "README.md"
 edition = "2021"
-rust-version = "1.59.0"
+rust-version = "1.66.0"
 exclude = [".github", "commit_verify", "single_use_seals"]
 
 [lib]

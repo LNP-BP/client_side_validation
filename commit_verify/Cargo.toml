@@ -10,7 +10,7 @@ keywords = ["lnp-bp", "cryptography", "smart-contracts", "commit-verify"]
 categories = ["cryptography", "encoding"]
 readme = "README.md"
 edition = "2021"
-rust-version = "1.59.0"
+rust-version = "1.66.0"
 
 [lib]
 name = "commit_verify"
