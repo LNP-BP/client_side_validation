@@ -137,8 +137,7 @@ mod commit {
         CantFitInMaxSlots,
     }
 
-    impl TryCommitVerify<MultiSource> for MerkleTree {
-        type Protocol = UntaggedProtocol;
+    impl TryCommitVerify<MultiSource, UntaggedProtocol> for MerkleTree {
         type Error = Error;
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
