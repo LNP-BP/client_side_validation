@@ -42,6 +42,7 @@ pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
 pub use encode::CommitEncode;
+pub use id::CommitmentId;
 
 pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 
