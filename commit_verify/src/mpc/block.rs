@@ -467,7 +467,7 @@ impl CommitEncode for MerkleBlock {
 }
 
 impl CommitmentId for MerkleBlock {
-    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp4:tree:v01#230202";
+    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
     type Id = Commitment;
 }
 
