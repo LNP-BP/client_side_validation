@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -15,8 +15,6 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
 use std::ops::AddAssign;
-
-use strict_encoding::{StrictDecode, StrictEncode};
 
 /// Result of client-side validation operation
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -48,11 +46,18 @@ impl Display for Validity {
     }
 }
 
+#[cfg(not(feature = "serde"))]
+/// Marker trait for all types of validation log entries (failures, trust
+/// issues, warnings, info messages) contained within a [`ValidationReport`]
+/// produced during client-side-validation.
+pub trait ValidationLog: Clone + Eq + Hash + Debug + Display {}
+
+#[cfg(feature = "serde")]
 /// Marker trait for all types of validation log entries (failures, trust
 /// issues, warnings, info messages) contained within a [`ValidationReport`]
 /// produced during client-side-validation.
 pub trait ValidationLog:
-    Clone + Eq + Hash + Debug + Display + StrictEncode + StrictDecode
+    Clone + Eq + Hash + Debug + Display + serde::Serialize + for<'de> serde::Deserialize<'de>
 {
 }
 
@@ -85,6 +90,12 @@ pub trait ValidationReport {
     /// reports
     type Failure: ValidationFailure;
 
+    #[cfg(not(feature = "serde"))]
+    /// Issues which does not render client-side-validated data invalid, but
+    /// which should be reported to the user anyway
+    type Warning: Clone + Eq + Hash + Debug + Display;
+
+    #[cfg(feature = "serde")]
     /// Issues which does not render client-side-validated data invalid, but
     /// which should be reported to the user anyway
     type Warning: Clone
@@ -92,29 +103,32 @@ pub trait ValidationReport {
         + Hash
         + Debug
         + Display
-        + StrictEncode
-        + StrictDecode;
+        + serde::Serialize
+        + for<'de> serde::Deserialize<'de>;
 
+    #[cfg(not(feature = "serde"))]
     /// Information reports about client-side-validation, which do not affect
     /// data safety or validity and may not be presented to the user
-    type Info: Clone + Eq + Hash + Debug + Display + StrictEncode + StrictDecode;
+    type Info: Clone + Eq + Hash + Debug + Display;
+
+    #[cfg(feature = "serde")]
+    /// Information reports about client-side-validation, which do not affect
+    /// data safety or validity and may not be presented to the user
+    type Info: Clone
+        + Eq
+        + Hash
+        + Debug
+        + Display
+        + serde::Serialize
+        + for<'de> serde::Deserialize<'de>;
 }
 
 /// Client-side-validation status containing all reports from the validation
 /// process
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Debug,
-    Default,
-    StrictEncode,
-    StrictDecode
-)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct Status<R>
-where
-    R: ValidationReport,
+where R: ValidationReport
 {
     /// List of seal resolver reported issues (see [`SealIssue`] trait for
     /// details).
@@ -146,8 +160,7 @@ where
 }
 
 impl<R> AddAssign for Status<R>
-where
-    R: ValidationReport,
+where R: ValidationReport
 {
     fn add_assign(&mut self, rhs: Self) {
         self.seal_issues.extend(rhs.seal_issues);
@@ -158,8 +171,7 @@ where
 }
 
 impl<R> FromIterator<R::Failure> for Status<R>
-where
-    R: ValidationReport,
+where R: ValidationReport
 {
     fn from_iter<T: IntoIterator<Item = R::Failure>>(iter: T) -> Self {
         Status {
@@ -172,8 +184,7 @@ where
 }
 
 impl<R> Status<R>
-where
-    R: ValidationReport,
+where R: ValidationReport
 {
     /// Constructs empty status report
     pub fn new() -> Self {
@@ -249,8 +260,7 @@ where
 /// deterministically validate this set giving an external validation function,
 /// that is able to provide validator with
 pub trait ClientSideValidate<'client_data>: ClientData<'client_data>
-where
-    Self::ValidationItem: 'client_data,
+where Self::ValidationItem: 'client_data
 {
     /// Data type for data sub-entries contained withing the current
     /// client-side-validated data item.
@@ -259,10 +269,7 @@ where
     /// entries, this may be a special enum type with a per-data-type variant.
     ///
     /// If the data do not contain internal data, set this type to `()`.
-    type ValidationItem: ClientData<
-        'client_data,
-        ValidationReport = Self::ValidationReport,
-    >;
+    type ValidationItem: ClientData<'client_data, ValidationReport = Self::ValidationReport>;
 
     /// Iterator over the list of specific validation items.
     ///
@@ -318,8 +325,7 @@ where
 
 /// Marker trait for client-side-validation data at any level of data hierarchy.
 pub trait ClientData<'client_data>
-where
-    Self: 'client_data,
+where Self: 'client_data
 {
     /// Data type that stores validation report configuration for the validation
     /// [`Status`] object.
@@ -344,9 +350,7 @@ where
     /// single current item. The iteration is performed at higher levels,
     /// normally as a part of [`ClientSideValidate::client_side_validate`]
     /// method logic.
-    fn validate_internal_consistency(
-        &'client_data self,
-    ) -> Status<Self::ValidationReport>;
+    fn validate_internal_consistency(&'client_data self) -> Status<Self::ValidationReport>;
 }
 
 /// Seal resolver validates seal to have `closed` status, or reports
@@ -392,16 +396,9 @@ mod test {
 
     #[test]
     fn test() {
-        #[derive(
-            Clone,
-            PartialEq,
-            Eq,
-            Hash,
-            Debug,
-            Default,
-            StrictEncode,
-            StrictDecode
-        )]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+        #[derive(Serialize, Deserialize)]
+        #[serde(crate = "serde_crate")]
         struct Seal {}
 
         struct Protocol {}
@@ -412,10 +409,7 @@ mod test {
             type PublicationId = ();
             type Error = Issue;
 
-            fn get_seal_status(
-                &self,
-                _seal: &Seal,
-            ) -> Result<SealStatus, Self::Error> {
+            fn get_seal_status(&self, _seal: &Seal) -> Result<SealStatus, Self::Error> {
                 Ok(SealStatus::Undefined)
             }
         }
@@ -431,17 +425,17 @@ mod test {
             }
         }
 
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug)]
         struct Report {}
 
-        #[derive(Clone, PartialEq, Eq, Hash, Debug, StrictEncode, StrictDecode)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+        #[derive(Serialize, Deserialize)]
+        #[serde(crate = "serde_crate")]
         struct Issue {
             seal: Seal,
         }
         impl Display for Issue {
-            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-                f.write_str("")
-            }
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result { f.write_str("") }
         }
         impl std::error::Error for Issue {}
 
@@ -468,19 +462,14 @@ mod test {
         }
 
         impl<'a> ClientData<'a> for Data
-        where
-            Data: 'a,
+        where Data: 'a
         {
             type ValidationReport = Report;
             type SealIterator = std::slice::Iter<'a, Seal>;
 
-            fn single_use_seals(&'a self) -> Self::SealIterator {
-                self.seals.iter()
-            }
+            fn single_use_seals(&'a self) -> Self::SealIterator { self.seals.iter() }
 
-            fn validate_internal_consistency(
-                &self,
-            ) -> Status<Self::ValidationReport> {
+            fn validate_internal_consistency(&self) -> Status<Self::ValidationReport> {
                 Status::new()
             }
         }
@@ -495,9 +484,7 @@ mod test {
 
             fn single_use_seals(&self) -> Self::SealIterator { [].iter() }
 
-            fn validate_internal_consistency(
-                &self,
-            ) -> Status<Self::ValidationReport> {
+            fn validate_internal_consistency(&self) -> Status<Self::ValidationReport> {
                 Status::new()
             }
         }
@@ -506,9 +493,7 @@ mod test {
             type ValidationItem = Data;
             type ValidationIter = std::slice::Iter<'a, Data>;
 
-            fn validation_iter(&'a self) -> Self::ValidationIter {
-                self.data.iter()
-            }
+            fn validation_iter(&'a self) -> Self::ValidationIter { self.data.iter() }
         }
 
         #[derive(Default)]
@@ -517,12 +502,7 @@ mod test {
         impl SealResolver<Seal> for Resolver {
             type Error = Issue;
 
-            fn resolve_trust(
-                &mut self,
-                _seal: &Seal,
-            ) -> Result<(), Self::Error> {
-                Ok(())
-            }
+            fn resolve_trust(&mut self, _seal: &Seal) -> Result<(), Self::Error> { Ok(()) }
         }
 
         let state = State {

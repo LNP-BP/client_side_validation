@@ -31,13 +31,9 @@ jobs:
       matrix:
         feature:
           - rand
-          - crypto
           - serde
           - async
-          - bitcoin
-          - rand,crypto,bitcoin
           - all
-          - bulletproofs
     steps:
       - uses: actions/checkout@v2
       - name: Install rust stable
@@ -78,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ nightly, beta, stable, 1.59.0 ]
+        toolchain: [ nightly, beta, stable, 1.66.0 ]
     steps:
       - uses: actions/checkout@v2
       - name: Install rust ${{ matrix.toolchain }}

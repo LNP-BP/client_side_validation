@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -14,10 +14,10 @@
 
 // Coding conventions
 #![recursion_limit = "256"]
-#![deny(dead_code, missing_docs, warnings)]
+#![deny(dead_code, missing_docs)]
 
 //! The LNP/BP client-side-validation foundation libraries implementing LNPBP
-//! specifications & standards (LNPBP-4, 7, 8, 9, 42, 81).
+//! specifications & standards (LNPBP-4, 7, 8, 9, 81).
 //!
 //! Defines core interfaces from LNPBP standards specifying secure and robust
 //! practices via well-format APIs. Consists of the following main components:
@@ -31,15 +31,17 @@
 //! standardizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in a wrong way.
 
-pub extern crate commit_verify;
+// pub extern crate commit_verify;
 pub extern crate single_use_seals;
-pub extern crate strict_encoding;
+
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde_crate as serde;
 
 mod api;
 
 pub use api::{
-    ClientData, ClientSideValidate, SealIssue, SealResolver, Status,
-    ValidationFailure, ValidationLog, ValidationReport, Validity,
+    ClientData, ClientSideValidate, SealIssue, SealResolver, Status, ValidationFailure,
+    ValidationLog, ValidationReport, Validity,
 };
-pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};
-pub use strict_encoding::derive::{StrictDecode, StrictEncode};
+// pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};

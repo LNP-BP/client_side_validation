@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -14,14 +14,13 @@
 
 //! Convolved commitments (convolve-commit-verify scheme).
 
-use crate::embed_commit::VerifyEq;
-use crate::{CommitEncode, CommitmentProtocol};
+use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
 
-/// Proof type used by [`ConvolveCommitVerify`] protocol.
+/// Proof type used by [`ConvolveCommit`] protocol.
 pub trait ConvolveCommitProof<Msg, Source, Protocol>
 where
     Self: Sized + VerifyEq,
-    Source: ConvolveCommitVerify<Msg, Self, Protocol>,
+    Source: ConvolveCommit<Msg, Self, Protocol>,
     Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
@@ -38,13 +37,13 @@ where
 
     /// Verifies commitment using proof (the `self`) against the message.
     ///
-    /// Default implementation repeats [`ConvolveCommitVerify::convolve_commit`]
+    /// Default implementation repeats [`ConvolveCommit::convolve_commit`]
     /// procedure, restoring the original value out of proof data, checking
     /// that the resulting commitment matches the provided one in the
     /// `commitment` parameter.
     ///
     /// Errors if the commitment can't be created, i.e. the
-    /// [`ConvolveCommitVerify::convolve_commit`] procedure for the original,
+    /// [`ConvolveCommit::convolve_commit`] procedure for the original,
     /// restored from the proof, can't be performed. This means that the
     /// verification has failed and the commitment and/or the proof are
     /// invalid. The function returns error in this case (ano not simply
@@ -135,25 +134,22 @@ where
 ///
 /// ```
 /// # use bitcoin_hashes::sha256::Midstate;
-/// # use lnpbp_secp256k1zkp::Secp256k1;
 /// # use commit_verify::CommitmentProtocol;
 ///
 /// // Uninstantiable type
 /// pub enum Lnpbp6 {}
 ///
 /// impl CommitmentProtocol for Lnpbp6 {
-///     const HASH_TAG_MIDSTATE: Option<Midstate> = Some(Midstate(
+///     const HASH_TAG_MIDSTATE: Option<[u8; 32]> = Some(
 ///         [0u8; 32], // replace with the actual midstate constant
-///     ));
+///     );
 /// }
 ///
-/// // Protocol definition containing context object
-/// pub struct Lnpbp1 {
-///     pub secp: Secp256k1,
-/// }
+/// // Protocol definition
+/// pub enum Lnpbp1 {}
 /// // ...
 /// ```
-pub trait ConvolveCommitVerify<Msg, Proof, Protocol>
+pub trait ConvolveCommit<Msg, Proof, Protocol>
 where
     Self: Sized,
     Msg: CommitEncode,
@@ -189,9 +185,6 @@ where
     /// Always panics when called.
     #[doc(hidden)]
     fn _phantom(_: Protocol) {
-        unimplemented!(
-            "EmbedCommitVerify::_phantom is a marker method which must not be \
-             used"
-        )
+        unimplemented!("EmbedCommitVerify::_phantom is a marker method which must not be used")
     }
 }

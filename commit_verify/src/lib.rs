@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -12,49 +12,31 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-// Coding conventions
-#![recursion_limit = "256"]
-#![deny(dead_code, missing_docs, warnings)]
-
-//! Library providing primitives for cryptographic commit-verify schemes used in
-//! client-side-validation
-//!
-//! Library covers [LNPBP-9] and [LNPBP-81] standards.
-//!
-//! [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
-//! [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-
 #[macro_use]
 extern crate amplify;
 #[macro_use]
-extern crate bitcoin_hashes;
+extern crate strict_encoding;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_crate as serde;
-#[cfg(feature = "lnpbp_secp256k1zkp")]
-extern crate lnpbp_secp256k1zkp as secp256k1zkp;
-#[cfg(feature = "serde")]
-extern crate serde_with;
 
-pub mod commit_encode;
-pub mod commit_verify;
-pub mod convolve_commit;
-pub mod embed_commit;
-pub mod lnpbp4;
+pub(self) mod commit;
+mod conceal;
+mod convolve;
+pub(self) mod embed;
+mod encode;
+mod id;
+
 pub mod merkle;
-pub mod tagged_hash;
+pub mod mpc;
 
-pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
-pub use embed_commit::{EmbedCommitProof, EmbedCommitVerify};
-pub use merkle::{
-    merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
-};
-pub use tagged_hash::TaggedHash;
+pub use commit::{CommitVerify, TryCommitVerify};
+pub use conceal::Conceal;
+pub use convolve::{ConvolveCommit, ConvolveCommitProof};
+pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
+pub use encode::CommitEncode;
 
-pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
-
-// TODO: Improve support of creating tagged hashes of the messages at the
-//       commitment protocol level.
+pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 
 /// Marker trait for specific commitment protocols.
 ///
@@ -71,12 +53,57 @@ pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
 /// part of tagged hashing of the message as a part of the commitment procedure.
 pub trait CommitmentProtocol {
     /// Midstate for the protocol-specific tagged hash.
-    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate>;
+    const HASH_TAG_MIDSTATE: Option<[u8; 32]>;
 }
 
 /// Protocol defining commits created by using externally created hash value
 /// *optionally pretagged).
-pub struct PrehashedProtocol;
-impl CommitmentProtocol for PrehashedProtocol {
-    const HASH_TAG_MIDSTATE: Option<bitcoin_hashes::sha256::Midstate> = None;
+pub struct UntaggedProtocol;
+impl CommitmentProtocol for UntaggedProtocol {
+    const HASH_TAG_MIDSTATE: Option<[u8; 32]> = None;
+}
+
+/// Helpers for writing test functions working with commit schemes
+#[cfg(test)]
+pub mod test_helpers {
+    use amplify::confinement::SmallVec;
+    use amplify::hex::FromHex;
+
+    pub use super::commit::test_helpers::*;
+    pub use super::embed::test_helpers::*;
+    use super::*;
+
+    /// Generates a set of messages for testing purposes
+    ///
+    /// All of these messages MUST produce different commitments, otherwise the
+    /// commitment algorithm is not collision-resistant
+    pub fn gen_messages() -> Vec<SmallVec<u8>> {
+        vec![
+            // empty message
+            b"".to_vec(),
+            // zero byte message
+            b"\x00".to_vec(),
+            // text message
+            b"test".to_vec(),
+            // text length-extended message
+            b"test*".to_vec(),
+            // short binary message
+            Vec::from_hex("deadbeef").unwrap(),
+            // length-extended version
+            Vec::from_hex("deadbeef00").unwrap(),
+            // prefixed version
+            Vec::from_hex("00deadbeef").unwrap(),
+            // serialized public key as text
+            b"0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".to_vec(),
+            // the same public key binary data
+            Vec::from_hex("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+                .unwrap(),
+            // different public key
+            Vec::from_hex("02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9")
+                .unwrap(),
+        ]
+        .into_iter()
+        .map(|v| SmallVec::try_from(v).unwrap())
+        .collect()
+    }
 }

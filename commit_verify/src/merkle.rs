@@ -1,5 +1,5 @@
 // LNP/BP client-side-validation foundation libraries implementing LNPBP
-// specifications & standards (LNPBP-4, 7, 8, 9, 42, 81)
+// specifications & standards (LNPBP-4, 7, 8, 9, 81)
 //
 // Written in 2019-2022 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
@@ -12,281 +12,208 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-//! Merklization procedures for client-side-validation according to [LNPBP-81]
-//! standard.
-//!
-//! [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
+use std::collections::BTreeSet;
+use std::io::{self, Write};
 
-use std::io;
+use amplify::confinement::Confined;
+use amplify::num::u4;
+use amplify::{Bytes32, Wrapper};
+use bitcoin_hashes::{sha256, Hash};
 
-use bitcoin_hashes::{sha256, Hash, HashEngine};
+use crate::encode::{strategies, CommitStrategy};
+use crate::{CommitEncode, LIB_NAME_COMMIT_VERIFY};
 
-use crate::{
-    commit_encode, CommitEncode, CommitVerify, ConsensusCommit,
-    PrehashedProtocol,
-};
+/// Type of a merkle node branching.
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub enum NodeBranching {
+    /// Void node: virtual node with no leafs.
+    ///
+    /// Used when the total width of the three is not a power two.
+    Void = 0x00,
 
-/// Marker trait for types that require merklization of the underlying data
-/// during [`ConsensusCommit`] procedure. Allows specifying custom tag for the
-/// tagged hash used in the merklization (see [`merklize`]).
-pub trait ConsensusMerkleCommit:
-    ConsensusCommit<Commitment = MerkleNode>
-{
-    /// The tag prefix which will be used in the merklization process (see
-    /// [`merklize`])
-    const MERKLE_NODE_PREFIX: &'static str;
+    /// Node having just a single leaf, with the second branch being void.
+    Single = 0x01,
+
+    /// Node having two leafs.
+    Couple = 0x02,
+
+    /// Node having two branches.
+    Branch = 0xFF,
 }
 
-hash_newtype!(
-    MerkleNode,
-    sha256::Hash,
-    32,
-    doc = "A hash type for LNPBP-81 Merkle tree leaves, branches and root",
-    false // We do not reverse displaying MerkleNodes in hexadecimal
+impl From<NodeBranching> for u8 {
+    fn from(value: NodeBranching) -> Self { value as u8 }
+}
+
+impl CommitStrategy for NodeBranching {
+    type Strategy = strategies::IntoU8;
+}
+
+/// Source data for creation of multi-message commitments according to [LNPBP-4]
+/// procedure.
+///
+/// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = MerkleNode(default!()))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", transparent)
+)]
+pub struct MerkleNode(
+    #[from]
+    #[from([u8; 32])]
+    Bytes32,
 );
 
-impl strict_encoding::Strategy for MerkleNode {
-    type Strategy = strict_encoding::strategies::HashFixedBytes;
+const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
+
+impl MerkleNode {
+    pub fn void(tag: [u8; 16], depth: u4, width: u16) -> Self {
+        let virt = VIRTUAL_LEAF;
+        Self::with(NodeBranching::Void, tag, depth, width, virt, virt)
+    }
+
+    pub fn single(tag: [u8; 16], depth: u4, width: u16, leaf: &impl CommitEncode) -> Self {
+        let single = NodeBranching::Single;
+        Self::with(single, tag, depth, width, Self::commit(leaf), VIRTUAL_LEAF)
+    }
+
+    pub fn couple<L: CommitEncode>(
+        tag: [u8; 16],
+        depth: u4,
+        width: u16,
+        leaf1: &L,
+        leaf2: &L,
+    ) -> Self {
+        let couple = NodeBranching::Couple;
+        let branch1 = Self::commit(leaf1);
+        let branch2 = Self::commit(leaf2);
+        Self::with(couple, tag, depth, width, branch1, branch2)
+    }
+
+    pub fn branches(
+        tag: [u8; 16],
+        depth: u4,
+        width: u16,
+        branch1: MerkleNode,
+        branch2: MerkleNode,
+    ) -> Self {
+        Self::with(NodeBranching::Branch, tag, depth, width, branch1, branch2)
+    }
+
+    fn with(
+        branching: NodeBranching,
+        tag: [u8; 16],
+        depth: u4,
+        width: u16,
+        branch1: MerkleNode,
+        branch2: MerkleNode,
+    ) -> Self {
+        let mut engine = sha256::HashEngine::default();
+        (&branching).commit_encode(&mut engine);
+        engine.write_all(&tag).ok();
+        (&depth.to_u8()).commit_encode(&mut engine);
+        (&width).commit_encode(&mut engine);
+        branch1.commit_encode(&mut engine);
+        branch2.commit_encode(&mut engine);
+        sha256::Hash::from_engine(engine).into_inner().into()
+    }
+
+    pub fn commit(leaf: &impl CommitEncode) -> Self {
+        let mut engine = sha256::HashEngine::default();
+        leaf.commit_encode(&mut engine);
+        sha256::Hash::from_engine(engine).into_inner().into()
+    }
 }
 
-impl commit_encode::Strategy for MerkleNode {
-    type Strategy = commit_encode::strategies::UsingStrict;
+impl CommitEncode for MerkleNode {
+    fn commit_encode(&self, e: &mut impl io::Write) {
+        e.write_all(self.as_slice())
+            .expect("hash encoders must not error");
+    }
 }
 
-impl<Msg> CommitVerify<Msg, PrehashedProtocol> for MerkleNode
-where
-    Msg: AsRef<[u8]>,
-{
-    #[inline]
-    fn commit(msg: &Msg) -> MerkleNode { MerkleNode::hash(msg.as_ref()) }
-}
+impl MerkleNode {
+    /// Merklization procedure that uses tagged hashes with depth commitments
+    /// according to [LNPBP-81] standard of client-side-validation merklization
+    ///
+    /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
+    pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeaves) -> Self {
+        Self::_merklize(tag, nodes.merkle_leaves(), u4::ZERO, 0)
+    }
 
-impl<A, B> ConsensusCommit for (A, B)
-where
-    A: CommitEncode,
-    B: CommitEncode,
-{
-    type Commitment = MerkleNode;
-}
+    fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
+        tag: [u8; 16],
+        mut iter: impl MerkleIter<Leaf>,
+        depth: u4,
+        offset: u16,
+    ) -> Self {
+        let len = iter.len() as u16;
+        let width = len + offset;
 
-impl<A, B, C> ConsensusCommit for (A, B, C)
-where
-    A: CommitEncode,
-    B: CommitEncode,
-    C: CommitEncode,
-{
-    type Commitment = MerkleNode;
-}
-
-/// Merklization procedure that uses tagged hashes with depth commitments
-/// according to [LNPBP-81] standard of client-side-validation merklization
-///
-/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-pub fn merklize<I>(prefix: &str, data: I) -> (MerkleNode, u8)
-where
-    I: IntoIterator<Item = MerkleNode>,
-    <I as IntoIterator>::IntoIter: ExactSizeIterator<Item = MerkleNode>,
-{
-    let mut tag_engine = sha256::Hash::engine();
-    tag_engine.input(prefix.as_bytes());
-    tag_engine.input(":merkle:".as_bytes());
-
-    let iter = data.into_iter();
-    let width = iter.len();
-
-    // Tagging merkle tree root
-    let (root, height) = merklize_inner(&tag_engine, iter, 0, false, None);
-    tag_engine.input("root:height=".as_bytes());
-    tag_engine.input(&height.to_string().into_bytes());
-    tag_engine.input(":width=".as_bytes());
-    tag_engine.input(&width.to_string().into_bytes());
-    let tag_hash = sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
-    let mut engine = MerkleNode::engine();
-    engine.input(&tag_hash[..]);
-    engine.input(&tag_hash[..]);
-    root.commit_encode(&mut engine);
-    let tagged_root = MerkleNode::from_engine(engine);
-
-    (tagged_root, height)
-}
-
-// TODO: Optimize to avoid allocations
-// In current rust generic iterators do not work with recursion :(
-fn merklize_inner(
-    engine_proto: &sha256::HashEngine,
-    mut iter: impl ExactSizeIterator<Item = MerkleNode>,
-    depth: u8,
-    extend: bool,
-    empty_node: Option<MerkleNode>,
-) -> (MerkleNode, u8) {
-    let len = iter.len() + extend as usize;
-    let empty_node = empty_node.unwrap_or_else(|| MerkleNode::hash(&[0xFF]));
-
-    // Computing tagged hash as per BIP-340
-    let mut tag_engine = engine_proto.clone();
-    tag_engine.input("depth=".as_bytes());
-    tag_engine.input(depth.to_string().as_bytes());
-    tag_engine.input(":width=".as_bytes());
-    tag_engine.input(len.to_string().as_bytes());
-    tag_engine.input(":height=".as_bytes());
-
-    let mut engine = MerkleNode::engine();
-    if len <= 2 {
-        tag_engine.input("0:".as_bytes());
-        let tag_hash =
-            sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
-        engine.input(&tag_hash[..]);
-        engine.input(&tag_hash[..]);
-
-        let mut leaf_tag_engine = engine_proto.clone();
-        leaf_tag_engine.input("leaf".as_bytes());
-        let leaf_tag =
-            sha256::Hash::hash(&sha256::Hash::from_engine(leaf_tag_engine));
-        let mut leaf_engine = MerkleNode::engine();
-        leaf_engine.input(&leaf_tag[..]);
-        leaf_engine.input(&leaf_tag[..]);
-
-        let mut leaf1 = leaf_engine.clone();
-        leaf1.input(
-            iter.next()
-                .as_ref()
-                .map(|d| d.as_ref())
-                .unwrap_or_else(|| empty_node.as_ref()),
-        );
-        MerkleNode::from_engine(leaf1).commit_encode(&mut engine);
-
-        leaf_engine.input(
-            iter.next()
-                .as_ref()
-                .map(|d| d.as_ref())
-                .unwrap_or_else(|| empty_node.as_ref()),
-        );
-        MerkleNode::from_engine(leaf_engine).commit_encode(&mut engine);
-
-        (MerkleNode::from_engine(engine), 1)
-    } else {
-        let div = len / 2 + len % 2;
-
-        let (node1, height1) = merklize_inner(
-            engine_proto,
-            // Normally we should use `iter.by_ref().take(div)`, but currently
-            // rust compilers is unable to parse recursion with generic types
-            iter.by_ref().take(div).collect::<Vec<_>>().into_iter(),
-            depth + 1,
-            false,
-            Some(empty_node),
-        );
-
-        let iter = if extend {
-            iter.chain(vec![empty_node]).collect::<Vec<_>>().into_iter()
+        if len <= 2 {
+            match (iter.next(), iter.next()) {
+                (None, None) => MerkleNode::void(tag, depth, width),
+                (Some(branch), None) => MerkleNode::single(tag, depth, width, &branch),
+                (Some(branch1), Some(branch2)) => {
+                    MerkleNode::couple(tag, depth, width, &branch1, &branch2)
+                }
+                (None, Some(_)) => unreachable!(),
+            }
         } else {
-            iter.collect::<Vec<_>>().into_iter()
-        };
+            let div = len / 2 + len % 2;
 
-        let (node2, height2) = merklize_inner(
-            engine_proto,
-            iter,
-            depth + 1,
-            (div % 2 + len % 2) / 2 == 1,
-            Some(empty_node),
-        );
+            let slice = iter
+                .by_ref()
+                .take(div as usize)
+                // Normally we should use `iter.by_ref().take(div)`, but currently
+                // rust compilers is unable to parse recursion with generic types
+                // TODO: Do this without allocation
+                .collect::<Vec<_>>()
+                .into_iter();
+            let branch1 = Self::_merklize(tag, slice, depth + 1, 0);
+            let branch2 = Self::_merklize(tag, iter, depth + 1, div + 1);
 
-        assert_eq!(
-            height1,
-            height2,
-            "merklization algorithm failure: height of subtrees is not equal \
-             (width = {}, depth = {}, prev_extend = {}, next_extend = {})",
-            len,
-            depth,
-            extend,
-            div % 2 == 1 && len % 2 == 1
-        );
-
-        tag_engine.input(height1.to_string().as_bytes());
-        tag_engine.input(":".as_bytes());
-        let tag_hash =
-            sha256::Hash::hash(&sha256::Hash::from_engine(tag_engine));
-        engine.input(&tag_hash[..]);
-        engine.input(&tag_hash[..]);
-        node1.commit_encode(&mut engine);
-        node2.commit_encode(&mut engine);
-
-        (MerkleNode::from_engine(engine), height1 + 1)
+            MerkleNode::branches(tag, depth, width, branch1, branch2)
+        }
     }
 }
 
-/// The source data for the [LNPBP-81] merklization process.
-///
-/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-pub struct MerkleSource<T>(
-    /// Array of the data which will be merklized
-    pub Vec<T>,
-);
+pub trait MerkleIter<Leaf: CommitEncode>: ExactSizeIterator<Item = Leaf> {}
 
-impl<L, I> From<I> for MerkleSource<L>
-where
-    I: IntoIterator<Item = L>,
-    L: CommitEncode,
+impl<Leaf: CommitEncode, I> MerkleIter<Leaf> for I where I: ExactSizeIterator<Item = Leaf> {}
+
+pub trait MerkleLeaves {
+    type Leaf: CommitEncode;
+
+    type LeafIter: MerkleIter<Self::Leaf>;
+
+    fn merkle_leaves(&self) -> Self::LeafIter;
+}
+
+impl<'a, T, const MIN: usize> MerkleLeaves for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
+where &'a T: CommitEncode
 {
-    fn from(collection: I) -> Self { Self(collection.into_iter().collect()) }
+    type Leaf = &'a T;
+    type LeafIter = std::slice::Iter<'a, T>;
+
+    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
 }
 
-impl<L> FromIterator<L> for MerkleSource<L>
-where
-    L: CommitEncode,
+impl<'a, T: Ord, const MIN: usize> MerkleLeaves
+    for &'a Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
+where &'a T: CommitEncode
 {
-    fn from_iter<T: IntoIterator<Item = L>>(iter: T) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into()
-    }
+    type Leaf = &'a T;
+    type LeafIter = std::collections::btree_set::Iter<'a, T>;
+
+    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
 }
 
-impl<L> CommitEncode for MerkleSource<L>
-where
-    L: ConsensusMerkleCommit,
-{
-    fn commit_encode<E: io::Write>(&self, e: E) -> usize {
-        let leafs = self.0.iter().map(L::consensus_commit);
-        merklize(L::MERKLE_NODE_PREFIX, leafs).0.commit_encode(e)
-    }
-}
-
-impl<L> ConsensusCommit for MerkleSource<L>
-where
-    L: ConsensusMerkleCommit + CommitEncode,
-{
-    type Commitment = MerkleNode;
-
-    #[inline]
-    fn consensus_commit(&self) -> Self::Commitment {
-        MerkleNode::from_slice(&self.commit_serialize())
-            .expect("MerkleSource::commit_serialize must produce MerkleNode")
-    }
-
-    #[inline]
-    fn consensus_verify(&self, commitment: &Self::Commitment) -> bool {
-        self.consensus_commit() == *commitment
-    }
-}
-
-/// Converts given piece of client-side-validated data into a structure which
-/// can be used in merklization process.
-///
-/// This dedicated structure is required since with
-/// `impl From<_> for MerkleSource` we would not be able to specify a concrete
-/// tagged hash, which we require in [LNPBP-81] merklization and which we
-/// provide here via [`ToMerkleSource::Leaf`]` associated type holding
-/// [`ConsensusMerkleCommit::MERKLE_NODE_PREFIX`] prefix value.
-///
-/// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-pub trait ToMerkleSource {
-    /// Defining type of the commitment produced during merlization process
-    type Leaf: ConsensusMerkleCommit;
-
-    /// Performs transformation of the data type into a merkilzable data
-    fn to_merkle_source(&self) -> MerkleSource<Self::Leaf>;
-}
-
+/*
 #[cfg(test)]
 mod test {
     use std::collections::BTreeMap;
@@ -294,7 +221,7 @@ mod test {
     use amplify::{bmap, s};
     use bitcoin_hashes::hex::ToHex;
     use bitcoin_hashes::{sha256d, Hash};
-    use strict_encoding::{StrictDecode, StrictEncode};
+    use confined_encoding::{ConfinedDecode, ConfinedEncode};
 
     use super::*;
     use crate::commit_encode::{strategies, Strategy};
@@ -304,15 +231,15 @@ mod test {
     fn collections() {
         // First, we define a data type
         #[derive(
-            Clone,
-            PartialEq,
-            Eq,
-            PartialOrd,
-            Ord,
-            Hash,
-            Debug,
-            StrictEncode,
-            StrictDecode
+        Clone,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        Debug,
+        ConfinedEncode,
+        ConfinedDecode
         )]
         struct Item(pub String);
         // Next, we say that it should be concealed using some function
@@ -392,7 +319,10 @@ mod test {
         );
 
         let item = Item(s!("Some text"));
-        assert_eq!(&b"\x09\x00Some text"[..], item.strict_serialize().unwrap());
+        assert_eq!(
+            &b"\x09\x00Some text"[..],
+            item.confined_serialize().unwrap()
+        );
         assert_eq!(
             "6680bbec0d05d3eaac9c8b658c40f28d2f0cb0f245c7b1cabf5a61c35bd03d8e",
             item.commit_serialize().to_hex()
@@ -401,7 +331,7 @@ mod test {
             "3e4b2dcf9bca33400028c8947565c1ff421f6d561e9ec48f88f0c9a24ebc8c30",
             item.consensus_commit().to_hex()
         );
-        assert_ne!(item.commit_serialize(), item.strict_serialize().unwrap());
+        assert_ne!(item.commit_serialize(), item.confined_serialize().unwrap());
         assert_eq!(
             MerkleNode::hash(&item.commit_serialize()),
             item.consensus_commit()
@@ -424,7 +354,7 @@ mod test {
              \x03\x00\
              \x31\x00\
              My third case to make the Merkle tree two layered"[..],
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             "d911717b8dfbbcef68495c93c0a5e69df618f5dcc194d69e80b6fafbfcd6ed5d",
@@ -436,7 +366,7 @@ mod test {
         );
         assert_ne!(
             collection.commit_serialize(),
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             MerkleNode::from_slice(&collection.commit_serialize()).unwrap(),
@@ -457,7 +387,7 @@ mod test {
              My second case with a very long string\
              \x31\x00\
              My third case to make the Merkle tree two layered"[..],
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             "fd72061e26055fb907aa512a591b4291e739f15198eb72027c4dd6506f14f469",
@@ -469,7 +399,7 @@ mod test {
         );
         assert_ne!(
             vec.commit_serialize(),
-            original.strict_serialize().unwrap()
+            original.confined_serialize().unwrap()
         );
         assert_eq!(
             MerkleNode::from_slice(&vec.commit_serialize()).unwrap(),
@@ -478,3 +408,4 @@ mod test {
         assert_ne!(vec.consensus_commit(), collection.consensus_commit());
     }
 }
+*/

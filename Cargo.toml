@@ -1,3 +1,15 @@
+[workspace]
+members = [
+    ".",
+    "commit_verify",
+    "single_use_seals"
+]
+default-members = [
+    ".",
+    "commit_verify",
+    "single_use_seals"
+]
+
 [package]
 name = "client_side_validation"
 version = "0.9.0"
@@ -11,32 +23,26 @@ categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
 readme = "README.md"
 edition = "2021"
 rust-version = "1.59.0"
-exclude = [".github", "commit_verify", "strict_encoding", "single_use_seals"]
+exclude = [".github", "commit_verify", "single_use_seals"]
 
 [lib]
 name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-strict_encoding = { version = "0.9.0", path = "./strict_encoding" }
 commit_verify = { version = "0.9.0", path = "./commit_verify" }
 single_use_seals = { version = "0.9.0", path = "./single_use_seals" }
+serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
 [features]
 default = []
-all = ["serde", "rand", "bitcoin", "crypto", "async", "bulletproofs", "float"]
+all = ["serde", "rand", "async"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
-serde = ["commit_verify/serde", "strict_encoding/serde"]
-bitcoin = ["strict_encoding/bitcoin", "strict_encoding/miniscript"]
-crypto = ["strict_encoding/crypto"]
-bulletproofs = ["commit_verify/bulletproofs", "strict_encoding/lnpbp_secp256k1zkp"]
-float = ["strict_encoding/float"]
+serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
 
-[workspace]
-members = [".", "strict_encoding", "commit_verify", "single_use_seals",
-           "strict_encoding/derive", "strict_encoding/derive_helpers", "strict_encoding/test_helpers"]
-default-members = ["."]
+[patch.crates-io]
+strict_encoding = { git = "https://github.com/strict-types/strict-encoding" }
