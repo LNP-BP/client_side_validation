@@ -125,6 +125,8 @@ impl CommitmentId for Leaf {
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[derive(StrictType, StrictDumb, StrictEncode, StrictDecode)]
+#[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -135,6 +137,10 @@ pub struct Commitment(
     #[from([u8; 32])]
     Bytes32,
 );
+
+impl CommitEncode for Commitment {
+    fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
+}
 
 // TODO: Either this type or [`MerkleTree`] should remain
 /// Structured source multi-message data for commitment creation
