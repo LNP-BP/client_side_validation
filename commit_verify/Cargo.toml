@@ -1,16 +1,16 @@
 [package]
 name = "commit_verify"
 version = "0.10.0-beta.1"
-license = "Apache-2.0"
-authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Commit-verify API for client-side validation"
-repository = "https://github.com/LNP-BP/client_side_validation"
-homepage = "https://github.com/LNP-BP"
-keywords = ["lnp-bp", "cryptography", "smart-contracts", "commit-verify"]
-categories = ["cryptography", "encoding"]
+keywords = ["lnp-bp", "smart-contracts", "blockchain", "commitments"]
+categories = ["cryptography"]
+authors = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
 readme = "README.md"
-edition = "2021"
-rust-version = "1.66.0"
 
 [lib]
 name = "commit_verify"

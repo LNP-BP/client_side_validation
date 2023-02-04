@@ -10,19 +10,27 @@ default-members = [
     "single_use_seals"
 ]
 
+[workspace.package]
+authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
+homepage = "https://github.com/LNP-BP"
+repository = "https://github.com/LNP-BP/client_side_validation"
+rust-version = "1.66" # Due to strict encoding library (caused by GAD)
+edition = "2021"
+license = "Apache-2.0"
+
 [package]
 name = "client_side_validation"
 version = "0.10.0-beta.1"
-license = "Apache-2.0"
-authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Client-side validation foundation library"
-repository = "https://github.com/LNP-BP/client_side_validation"
-homepage = "https://github.com/LNP-BP"
-keywords = ["lnp-bp", "cryptocurrency", "smart-contracts", "blockchain"]
-categories = ["cryptography::cryptocurrencies", "encoding", "parsing"]
+keywords = ["lnp-bp", "smart-contracts", "blockchain"]
+categories = ["cryptography"]
+authors = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
 readme = "README.md"
-edition = "2021"
-rust-version = "1.66.0"
 exclude = [".github", "commit_verify", "single_use_seals"]
 
 [lib]
