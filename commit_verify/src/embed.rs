@@ -32,9 +32,12 @@ pub trait VerifyEq {
 }
 
 impl<T> VerifyEq for T
-where T: Eq
+where
+    T: Eq,
 {
-    fn verify_eq(&self, other: &Self) -> bool { self == other }
+    fn verify_eq(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
@@ -287,7 +290,6 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod test {
     use core::fmt::Debug;
-    use std::io::Write;
 
     use amplify::confinement::SmallVec;
     use bitcoin_hashes::{sha256, Hash, HashEngine};
@@ -307,12 +309,9 @@ mod test {
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     struct DummyProof(SmallVec<u8>);
 
-    impl CommitEncode for SmallVec<u8> {
-        fn commit_encode(&self, e: &mut impl Write) { e.write_all(self.as_ref()).unwrap() }
-    }
-
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where
+        T: AsRef<[u8]> + Clone + CommitEncode,
     {
         fn restore_original_container(&self, _: &DummyVec) -> Result<DummyVec, Error> {
             Ok(DummyVec(self.0.clone()))
@@ -320,7 +319,8 @@ mod test {
     }
 
     impl<T> EmbedCommitVerify<T, TestProtocol> for DummyVec
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where
+        T: AsRef<[u8]> + Clone + CommitEncode,
     {
         type Proof = DummyProof;
         type CommitError = Error;
@@ -335,7 +335,8 @@ mod test {
     }
 
     impl<T> ConvolveCommit<T, [u8; 32], TestProtocol> for DummyVec
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where
+        T: AsRef<[u8]> + Clone + CommitEncode,
     {
         type Commitment = sha256::Hash;
         type CommitError = Error;
@@ -354,13 +355,18 @@ mod test {
     }
 
     impl<T> ConvolveCommitProof<T, DummyVec, TestProtocol> for [u8; 32]
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where
+        T: AsRef<[u8]> + Clone + CommitEncode,
     {
         type Suppl = [u8; 32];
 
-        fn restore_original(&self, _: &sha256::Hash) -> DummyVec { DummyVec(default!()) }
+        fn restore_original(&self, _: &sha256::Hash) -> DummyVec {
+            DummyVec(default!())
+        }
 
-        fn extract_supplement(&self) -> &Self::Suppl { self }
+        fn extract_supplement(&self) -> &Self::Suppl {
+            self
+        }
     }
 
     #[test]
