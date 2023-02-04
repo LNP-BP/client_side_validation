@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
-
 use amplify::confinement::SmallOrdMap;
 use amplify::num::{u256, u4};
 use amplify::Wrapper;
@@ -141,6 +139,8 @@ mod commit {
         type Error = Error;
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
+            use std::collections::BTreeMap;
+
             if source.min_depth == u4::ZERO && source.messages.is_empty() {
                 return Err(Error::Empty);
             }
