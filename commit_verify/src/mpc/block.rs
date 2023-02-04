@@ -23,18 +23,17 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::Write;
 
 use amplify::confinement::SmallVec;
 use amplify::num::u4;
-use strict_encoding::{StrictEncode, StrictWriter};
+use strict_encoding::StrictEncode;
 
 use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{Commitment, MerkleTree, Message, Proof, ProtocolId, LNPBP4_TAG};
-use crate::{CommitEncode, Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::{strategies, CommitStrategy, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {_0} is absent from the known part of a given
 /// LNPBP-4 Merkle block.
@@ -458,12 +457,8 @@ impl Conceal for MerkleBlock {
     }
 }
 
-impl CommitEncode for MerkleBlock {
-    fn commit_encode(&self, e: &mut impl Write) {
-        let concealed = self.conceal();
-        let w = StrictWriter::with(u32::MAX as usize, e);
-        concealed.strict_encode(w).ok();
-    }
+impl CommitStrategy for MerkleBlock {
+    type Strategy = strategies::ConcealStrict;
 }
 
 impl CommitmentId for MerkleBlock {

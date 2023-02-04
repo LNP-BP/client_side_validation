@@ -20,7 +20,7 @@
 // limitations under the License.
 
 use std::collections::BTreeSet;
-use std::io::{self, Write};
+use std::io::Write;
 
 use amplify::confinement::Confined;
 use amplify::num::u4;
@@ -136,11 +136,8 @@ impl MerkleNode {
     }
 }
 
-impl CommitEncode for MerkleNode {
-    fn commit_encode(&self, e: &mut impl io::Write) {
-        e.write_all(self.as_slice())
-            .expect("hash encoders must not error");
-    }
+impl CommitStrategy for MerkleNode {
+    type Strategy = strategies::Strict;
 }
 
 impl MerkleNode {

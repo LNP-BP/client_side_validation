@@ -27,7 +27,7 @@ use amplify::{Bytes32, Wrapper};
 
 use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
-use crate::CommitEncode;
+use crate::{strategies, CommitEncode, CommitStrategy};
 
 /// Map from protocol ids to commitment messages.
 pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
@@ -51,8 +51,8 @@ pub struct ProtocolId(
     Bytes32,
 );
 
-impl CommitEncode for ProtocolId {
-    fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
+impl CommitStrategy for ProtocolId {
+    type Strategy = strategies::Strict;
 }
 
 /// Original message participating in multi-message commitment.
@@ -73,8 +73,8 @@ pub struct Message(
     Bytes32,
 );
 
-impl CommitEncode for Message {
-    fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
+impl CommitStrategy for Message {
+    type Strategy = strategies::Strict;
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, From)]
@@ -138,8 +138,8 @@ pub struct Commitment(
     Bytes32,
 );
 
-impl CommitEncode for Commitment {
-    fn commit_encode(&self, e: &mut impl Write) { self.0.as_inner().commit_encode(e) }
+impl CommitStrategy for Commitment {
+    type Strategy = strategies::Strict;
 }
 
 // TODO: Either this type or [`MerkleTree`] should remain
