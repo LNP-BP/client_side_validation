@@ -37,7 +37,7 @@ pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From, Default)]
-#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
@@ -59,7 +59,7 @@ impl CommitEncode for ProtocolId {
 ///
 /// The message must be represented by a 32-byte hash.
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From, Default)]
-#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
@@ -124,7 +124,7 @@ impl CommitmentId for Leaf {
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
-#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictType, StrictDumb, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(

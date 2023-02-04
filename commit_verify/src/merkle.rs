@@ -61,7 +61,7 @@ impl CommitStrategy for NodeBranching {
 ///
 /// [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
-#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, RangeOps)]
+#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = MerkleNode(default!()))]
 #[cfg_attr(
