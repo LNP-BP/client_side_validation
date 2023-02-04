@@ -68,7 +68,7 @@ where
     fn verify(
         &self,
         msg: &Msg,
-        commitment: Source::Commitment,
+        commitment: &Source::Commitment,
     ) -> Result<bool, Source::CommitError>
     where
         Self: VerifyEq,

@@ -153,7 +153,7 @@ where
     /// from an untrusted party, a proper form would be
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     #[inline]
-    fn verify(&self, msg: &Msg, proof: Self::Proof) -> Result<bool, Self::VerifyError>
+    fn verify(&self, msg: &Msg, proof: &Self::Proof) -> Result<bool, Self::VerifyError>
     where
         Self: VerifyEq,
         Self::Proof: VerifyEq,
@@ -214,18 +214,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(commitment.clone().verify(msg, proof.clone()).unwrap());
+                assert!(commitment.clone().verify(msg, &proof).unwrap());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(commitment.clone().verify(m, proof.clone()).unwrap(), m == msg);
+                    assert_eq!(commitment.clone().verify(m, &proof).unwrap(), m == msg);
                 });
 
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt.clone().verify(msg, proof.clone()).unwrap());
+                    assert!(!cmt.clone().verify(msg, &proof).unwrap());
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -260,18 +260,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(SUPPLEMENT.verify(msg, commitment.clone()).unwrap());
+                assert!(SUPPLEMENT.verify(msg, &commitment).unwrap());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(SUPPLEMENT.verify(m, commitment.clone()).unwrap(), m == msg);
+                    assert_eq!(SUPPLEMENT.verify(m, &commitment).unwrap(), m == msg);
                 });
 
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!SUPPLEMENT.verify(msg, commitment.clone()).unwrap());
+                    assert!(!SUPPLEMENT.verify(msg, &commitment).unwrap());
                 });
 
                 // Detecting collision: each message should produce a unique
