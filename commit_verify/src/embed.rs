@@ -32,12 +32,9 @@ pub trait VerifyEq {
 }
 
 impl<T> VerifyEq for T
-where
-    T: Eq,
+where T: Eq
 {
-    fn verify_eq(&self, other: &Self) -> bool {
-        self == other
-    }
+    fn verify_eq(&self, other: &Self) -> bool { self == other }
 }
 
 /// Proofs produced by [`EmbedCommitVerify::embed_commit`] procedure.
@@ -310,8 +307,7 @@ mod test {
     struct DummyProof(SmallVec<u8>);
 
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         fn restore_original_container(&self, _: &DummyVec) -> Result<DummyVec, Error> {
             Ok(DummyVec(self.0.clone()))
@@ -319,8 +315,7 @@ mod test {
     }
 
     impl<T> EmbedCommitVerify<T, TestProtocol> for DummyVec
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         type Proof = DummyProof;
         type CommitError = Error;
@@ -335,8 +330,7 @@ mod test {
     }
 
     impl<T> ConvolveCommit<T, [u8; 32], TestProtocol> for DummyVec
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         type Commitment = sha256::Hash;
         type CommitError = Error;
@@ -355,18 +349,13 @@ mod test {
     }
 
     impl<T> ConvolveCommitProof<T, DummyVec, TestProtocol> for [u8; 32]
-    where
-        T: AsRef<[u8]> + Clone + CommitEncode,
+    where T: AsRef<[u8]> + Clone + CommitEncode
     {
         type Suppl = [u8; 32];
 
-        fn restore_original(&self, _: &sha256::Hash) -> DummyVec {
-            DummyVec(default!())
-        }
+        fn restore_original(&self, _: &sha256::Hash) -> DummyVec { DummyVec(default!()) }
 
-        fn extract_supplement(&self) -> &Self::Suppl {
-            self
-        }
+        fn extract_supplement(&self) -> &Self::Suppl { self }
     }
 
     #[test]
