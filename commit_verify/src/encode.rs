@@ -110,8 +110,7 @@ pub mod strategies {
     use amplify::confinement::Confined;
     use amplify::num::apfloat::ieee;
     use amplify::num::{i1024, i256, i512, u1024, u24, u256, u512};
-    use amplify::{Bytes32, Wrapper};
-    use std::marker::PhantomData;
+    use amplify::{Bytes32, Holder, Wrapper};
     use strict_encoding::{StrictEncode, StrictWriter};
 
     use super::*;
@@ -161,26 +160,8 @@ pub mod strategies {
     /// Can apply only to types implementing [`MerkleLeaves`] trait.
     pub enum Merklize<const MERKLE_ROOT_TAG: u128> {}
 
-    /// Helper type allowing implementation of trait object for generic types
-    /// multiple times. In practice this type is never used
-    pub struct Holder<T, S>(T, PhantomData<S>);
-    impl<T, S> Holder<T, S> {
-        #[allow(missing_docs)]
-        #[inline]
-        pub fn new(val: T) -> Self {
-            Self(val, PhantomData::<S>::default())
-        }
-
-        #[allow(missing_docs)]
-        #[inline]
-        pub fn as_type(&self) -> &T {
-            &self.0
-        }
-    }
-
     impl<'a, T> CommitEncode for Holder<&'a T, IntoU8>
-    where
-        T: Copy + Into<u8>,
+    where T: Copy + Into<u8>
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
             let raw = **self.as_type();
@@ -199,8 +180,7 @@ pub mod strategies {
     }
 
     impl<'a, T> CommitEncode for Holder<&'a T, Strict>
-    where
-        T: StrictEncode,
+    where T: StrictEncode
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
             let w = StrictWriter::with(u32::MAX as usize, e);
@@ -229,8 +209,7 @@ pub mod strategies {
     }
 
     impl<'a, T, const MERKLE_ROOT_TAG: u128> CommitEncode for Holder<&'a T, Merklize<MERKLE_ROOT_TAG>>
-    where
-        T: MerkleLeaves,
+    where T: MerkleLeaves
     {
         fn commit_encode(&self, e: &mut impl io::Write) {
             MerkleNode::merklize(MERKLE_ROOT_TAG.to_be_bytes(), *self.as_type()).commit_encode(e);
@@ -242,9 +221,7 @@ pub mod strategies {
         T: CommitStrategy,
         for<'a> Holder<&'a T, T::Strategy>: CommitEncode,
     {
-        fn commit_encode(&self, e: &mut impl io::Write) {
-            Holder::new(self).commit_encode(e)
-        }
+        fn commit_encode(&self, e: &mut impl io::Write) { Holder::new(self).commit_encode(e) }
     }
 
     impl CommitStrategy for u8 {
@@ -323,14 +300,12 @@ pub mod strategies {
     }
 
     impl<T> CommitStrategy for Box<T>
-    where
-        T: StrictEncode,
+    where T: StrictEncode
     {
         type Strategy = Strict;
     }
     impl<T> CommitStrategy for Option<T>
-    where
-        T: StrictEncode,
+    where T: StrictEncode
     {
         type Strategy = Strict;
     }
@@ -339,15 +314,12 @@ pub mod strategies {
     }
 
     impl<T> CommitStrategy for &T
-    where
-        T: CommitStrategy,
+    where T: CommitStrategy
     {
         type Strategy = T::Strategy;
     }
 }
 
 impl CommitEncode for [u8; 32] {
-    fn commit_encode(&self, e: &mut impl io::Write) {
-        e.write_all(self).ok();
-    }
+    fn commit_encode(&self, e: &mut impl io::Write) { e.write_all(self).ok(); }
 }
