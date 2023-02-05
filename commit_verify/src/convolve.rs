@@ -140,7 +140,6 @@ where
 /// containing commitment protocol configuration or context objects.
 ///
 /// ```
-/// # use bitcoin_hashes::sha256::Midstate;
 /// # use commit_verify::CommitmentProtocol;
 ///
 /// // Uninstantiable type

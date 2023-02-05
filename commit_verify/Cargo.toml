@@ -17,9 +17,8 @@ name = "commit_verify"
 path = "src/lib.rs"
 
 [dependencies]
-amplify = { version = "4.0.0-beta.10", features = ["hex", "apfloat"] }
-bitcoin_hashes = "0.11.0"
-strict_encoding = "2.0.0-beta.5"
+amplify = { version = "4.0.0-beta.15", features = ["hex", "apfloat"] }
+strict_encoding = "2.0.0-rc.1"
 rand = { version = "0.8.5", optional = true }
 serde_crate = { version = "1.0", package = "serde", optional = true }
 
@@ -29,7 +28,7 @@ rand = "0.8.5"
 [features]
 default = []
 all = ["rand", "serde"]
-serde = ["serde_crate", "bitcoin_hashes/serde", "amplify/serde"]
+serde = ["serde_crate", "amplify/serde"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]

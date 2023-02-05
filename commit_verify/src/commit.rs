@@ -21,9 +21,7 @@
 
 //! Base commit-verify scheme interface.
 
-use bitcoin_hashes::{hash160, ripemd160, sha1, sha256, sha256d, sha512, siphash24, Hash};
-
-use crate::{CommitmentProtocol, UntaggedProtocol};
+use crate::CommitmentProtocol;
 
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements
@@ -65,55 +63,6 @@ where Self: Eq + Sized
     }
 }
 
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha1::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> sha1::Hash { sha1::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for ripemd160::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> ripemd160::Hash { ripemd160::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for hash160::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> hash160::Hash { hash160::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha256::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> sha256::Hash { sha256::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha256d::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> sha256d::Hash { sha256d::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for siphash24::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> siphash24::Hash { siphash24::Hash::hash(msg.as_ref()) }
-}
-
-impl<Msg> CommitVerify<Msg, UntaggedProtocol> for sha512::Hash
-where Msg: AsRef<[u8]>
-{
-    #[inline]
-    fn commit(msg: &Msg) -> sha512::Hash { sha512::Hash::hash(msg.as_ref()) }
-}
-
 /// Helpers for writing test functions working with commit-verify scheme
 #[cfg(test)]
 pub(crate) mod test_helpers {
@@ -122,6 +71,7 @@ pub(crate) mod test_helpers {
     use std::collections::HashSet;
 
     use super::*;
+    use crate::UntaggedProtocol;
 
     /// Runs round-trip of commitment and verification for a given set of
     /// messages
@@ -170,59 +120,26 @@ mod test {
     use core::hash::Hash;
 
     use amplify::confinement::SmallVec;
-    use bitcoin_hashes::*;
 
     use super::test_helpers::*;
     use super::*;
     use crate::test_helpers::gen_messages;
+    use crate::{Sha256, UntaggedProtocol};
 
     #[derive(Debug, Display, Error)]
     #[display(Debug)]
     struct Error;
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-    struct DummyHashCommitment(sha256d::Hash);
+    struct DummyHashCommitment([u8; 32]);
     impl<T> CommitVerify<T, UntaggedProtocol> for DummyHashCommitment
     where T: AsRef<[u8]>
     {
-        fn commit(msg: &T) -> Self { Self(bitcoin_hashes::Hash::hash(msg.as_ref())) }
+        fn commit(msg: &T) -> Self { Self(Sha256::digest(msg.as_ref())) }
     }
 
     #[test]
     fn test_commit_verify() {
         commit_verify_suite::<SmallVec<u8>, DummyHashCommitment>(gen_messages());
-    }
-
-    #[test]
-    fn test_sha256_commitment() {
-        commit_verify_suite::<SmallVec<u8>, sha256::Hash>(gen_messages());
-    }
-
-    #[test]
-    fn test_sha256d_commitment() {
-        commit_verify_suite::<SmallVec<u8>, sha256d::Hash>(gen_messages());
-    }
-
-    #[test]
-    fn test_ripemd160_commitment() {
-        commit_verify_suite::<SmallVec<u8>, ripemd160::Hash>(gen_messages());
-    }
-
-    #[test]
-    fn test_hash160_commitment() {
-        commit_verify_suite::<SmallVec<u8>, hash160::Hash>(gen_messages());
-    }
-
-    #[test]
-    fn test_sha1_commitment() { commit_verify_suite::<SmallVec<u8>, sha1::Hash>(gen_messages()); }
-
-    #[test]
-    fn test_sha512_commitment() {
-        commit_verify_suite::<SmallVec<u8>, sha512::Hash>(gen_messages());
-    }
-
-    #[test]
-    fn test_siphash24_commitment() {
-        commit_verify_suite::<SmallVec<u8>, siphash24::Hash>(gen_messages());
     }
 }

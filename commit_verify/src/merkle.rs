@@ -25,10 +25,9 @@ use std::io::Write;
 use amplify::confinement::Confined;
 use amplify::num::u4;
 use amplify::{Bytes32, Wrapper};
-use bitcoin_hashes::{sha256, Hash};
 
 use crate::encode::{strategies, CommitStrategy};
-use crate::{CommitEncode, LIB_NAME_COMMIT_VERIFY};
+use crate::{CommitEncode, Sha256, LIB_NAME_COMMIT_VERIFY};
 
 /// Type of a merkle node branching.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -119,20 +118,20 @@ impl MerkleNode {
         branch1: MerkleNode,
         branch2: MerkleNode,
     ) -> Self {
-        let mut engine = sha256::HashEngine::default();
+        let mut engine = Sha256::default();
         branching.commit_encode(&mut engine);
         engine.write_all(&tag).ok();
         depth.to_u8().commit_encode(&mut engine);
         width.commit_encode(&mut engine);
         branch1.commit_encode(&mut engine);
         branch2.commit_encode(&mut engine);
-        sha256::Hash::from_engine(engine).into_inner().into()
+        engine.finish().into()
     }
 
     pub fn commit(leaf: &impl CommitEncode) -> Self {
-        let mut engine = sha256::HashEngine::default();
+        let mut engine = Sha256::default();
         leaf.commit_encode(&mut engine);
-        sha256::Hash::from_engine(engine).into_inner().into()
+        engine.finish().into()
     }
 }
 

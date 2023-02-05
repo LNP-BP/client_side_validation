@@ -86,7 +86,6 @@ where
 /// containing commitment protocol configuration or context objects.
 ///
 /// ```
-/// # use bitcoin_hashes::sha256::Midstate;
 /// # use commit_verify::CommitmentProtocol;
 ///
 /// // Uninstantiable type
@@ -289,12 +288,11 @@ mod test {
     use core::fmt::Debug;
 
     use amplify::confinement::SmallVec;
-    use bitcoin_hashes::{sha256, Hash, HashEngine};
 
     use super::test_helpers::*;
     use super::*;
     use crate::test_helpers::gen_messages;
-    use crate::{ConvolveCommit, ConvolveCommitProof};
+    use crate::{ConvolveCommit, ConvolveCommitProof, Sha256};
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash, Error, Display)]
     #[display("error")]
@@ -332,7 +330,7 @@ mod test {
     impl<T> ConvolveCommit<T, [u8; 32], TestProtocol> for DummyVec
     where T: AsRef<[u8]> + Clone + CommitEncode
     {
-        type Commitment = sha256::Hash;
+        type Commitment = [u8; 32];
         type CommitError = Error;
 
         fn convolve_commit(
@@ -340,11 +338,11 @@ mod test {
             supplement: &[u8; 32],
             msg: &T,
         ) -> Result<(Self::Commitment, [u8; 32]), Self::CommitError> {
-            let mut engine = sha256::Hash::engine();
-            engine.input(TestProtocol::HASH_TAG_MIDSTATE.unwrap().as_ref());
-            engine.input(supplement);
-            engine.input(msg.as_ref());
-            Ok((sha256::Hash::from_engine(engine), *supplement))
+            let mut engine = Sha256::default();
+            engine.input_raw(TestProtocol::HASH_TAG_MIDSTATE.unwrap().as_ref());
+            engine.input_raw(supplement);
+            engine.input_with_len(msg.as_ref());
+            Ok((engine.finish(), *supplement))
         }
     }
 
@@ -353,7 +351,7 @@ mod test {
     {
         type Suppl = [u8; 32];
 
-        fn restore_original(&self, _: &sha256::Hash) -> DummyVec { DummyVec(default!()) }
+        fn restore_original(&self, _: &[u8; 32]) -> DummyVec { DummyVec(default!()) }
 
         fn extract_supplement(&self) -> &Self::Suppl { self }
     }

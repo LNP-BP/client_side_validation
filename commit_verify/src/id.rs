@@ -19,10 +19,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bitcoin_hashes::sha256::Midstate;
-use bitcoin_hashes::{sha256, Hash};
-
-use crate::CommitEncode;
+use crate::{CommitEncode, Sha256};
 
 /// High-level API used in client-side validation for producing a single
 /// commitment to the data, which includes running all necessary procedures like
@@ -38,9 +35,8 @@ pub trait CommitmentId: CommitEncode {
     /// Performs commitment to client-side-validated data
     #[inline]
     fn commitment_id(&self) -> Self::Id {
-        let midstate = Midstate::from_inner(Self::TAG);
-        let mut engine = sha256::HashEngine::from_midstate(midstate, 64);
+        let mut engine = Sha256::from_tag(Self::TAG);
         self.commit_encode(&mut engine);
-        sha256::Hash::from_engine(engine).into_inner().into()
+        engine.finish().into()
     }
 }
