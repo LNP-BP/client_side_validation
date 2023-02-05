@@ -70,20 +70,12 @@ pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 /// - add multiple implementations under different commitment protocols to the
 ///   combination of the same message and container type (each of each will have
 ///   its own `Proof` type defined as an associated generic).
-///
-/// Each of the commitment protocols should use [`Self::HASH_TAG_MIDSTATE`] as a
-/// part of tagged hashing of the message as a part of the commitment procedure.
-pub trait CommitmentProtocol {
-    /// Midstate for the protocol-specific tagged hash.
-    const HASH_TAG_MIDSTATE: Option<[u8; 32]>;
-}
+pub trait CommitmentProtocol {}
 
 /// Protocol defining commits created by using externally created hash value
 /// *optionally pretagged).
 pub struct UntaggedProtocol;
-impl CommitmentProtocol for UntaggedProtocol {
-    const HASH_TAG_MIDSTATE: Option<[u8; 32]> = None;
-}
+impl CommitmentProtocol for UntaggedProtocol {}
 
 /// Helpers for writing test functions working with commit schemes
 #[cfg(test)]

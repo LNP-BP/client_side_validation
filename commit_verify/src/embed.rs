@@ -91,11 +91,7 @@ where
 /// // Uninstantiable type
 /// pub enum Lnpbp6 {}
 ///
-/// impl CommitmentProtocol for Lnpbp6 {
-///     const HASH_TAG_MIDSTATE: Option<[u8; 32]> = Some(
-///         [0u8; 32], // replace with the actual midstate constant
-///     );
-/// }
+/// impl CommitmentProtocol for Lnpbp6 {}
 ///
 /// // Protocol definition
 /// pub enum Lnpbp1 {}
@@ -184,9 +180,7 @@ pub(crate) mod test_helpers {
     use crate::{ConvolveCommit, ConvolveCommitProof};
 
     pub enum TestProtocol {}
-    impl CommitmentProtocol for TestProtocol {
-        const HASH_TAG_MIDSTATE: Option<[u8; 32]> = Some([0u8; 32]);
-    }
+    impl CommitmentProtocol for TestProtocol {}
 
     pub const SUPPLEMENT: [u8; 32] = [0xFFu8; 32];
 
@@ -339,7 +333,6 @@ mod test {
             msg: &T,
         ) -> Result<(Self::Commitment, [u8; 32]), Self::CommitError> {
             let mut engine = Sha256::default();
-            engine.input_raw(TestProtocol::HASH_TAG_MIDSTATE.unwrap().as_ref());
             engine.input_raw(supplement);
             engine.input_with_len(msg.as_ref());
             Ok((engine.finish(), *supplement))

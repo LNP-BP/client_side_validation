@@ -21,7 +21,10 @@
 
 //! Base commit-verify scheme interface.
 
-use crate::CommitmentProtocol;
+use amplify::Bytes32;
+use strict_encoding::{StrictEncode, StrictWriter};
+
+use crate::{CommitmentProtocol, Sha256};
 
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements
@@ -60,6 +63,22 @@ where Self: Eq + Sized
     #[inline]
     fn try_verify(&self, msg: &Msg) -> Result<bool, Self::Error> {
         Ok(Self::try_commit(msg)? == *self)
+    }
+}
+
+/// Commitment protocol which writes strict-encoded data into a hasher.
+pub struct StrictEncodedProtocol;
+
+impl CommitmentProtocol for StrictEncodedProtocol {}
+
+impl<T> CommitVerify<T, StrictEncodedProtocol> for Bytes32
+where T: StrictEncode
+{
+    fn commit(msg: &T) -> Self {
+        let mut engine = Sha256::from_tag(*b"urn:lnpbp:lnpbp0007:strict:v01#A");
+        let w = StrictWriter::with(u32::MAX as usize, &mut engine);
+        msg.strict_encode(w).ok();
+        engine.finish().into()
     }
 }
 
