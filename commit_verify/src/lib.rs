@@ -50,7 +50,7 @@ pub mod merkle;
 pub mod mpc;
 mod sha256;
 
-pub use commit::{CommitVerify, TryCommitVerify};
+pub use commit::{CommitVerify, StrictEncodedProtocol, TryCommitVerify};
 pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
