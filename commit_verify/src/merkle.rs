@@ -120,10 +120,10 @@ impl MerkleNode {
         branch2: MerkleNode,
     ) -> Self {
         let mut engine = sha256::HashEngine::default();
-        (&branching).commit_encode(&mut engine);
+        branching.commit_encode(&mut engine);
         engine.write_all(&tag).ok();
-        (&depth.to_u8()).commit_encode(&mut engine);
-        (&width).commit_encode(&mut engine);
+        depth.to_u8().commit_encode(&mut engine);
+        width.commit_encode(&mut engine);
         branch1.commit_encode(&mut engine);
         branch2.commit_encode(&mut engine);
         sha256::Hash::from_engine(engine).into_inner().into()
