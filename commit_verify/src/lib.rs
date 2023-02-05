@@ -48,6 +48,7 @@ mod id;
 
 pub mod merkle;
 pub mod mpc;
+mod sha256;
 
 pub use commit::{CommitVerify, TryCommitVerify};
 pub use conceal::Conceal;
@@ -55,6 +56,7 @@ pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
 pub use encode::{strategies, CommitEncode, CommitStrategy};
 pub use id::CommitmentId;
+pub use sha256::Sha256;
 
 pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 
