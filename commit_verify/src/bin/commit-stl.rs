@@ -12,18 +12,17 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-use std::io::stdout;
-use std::{env, fs, io};
-
-use amplify::num::u24;
-use strict_encoding::{StrictEncode, StrictWriter};
-
 #[macro_use]
 extern crate amplify;
 #[macro_use]
 extern crate strict_types;
 
+use std::io::stdout;
+use std::{env, fs, io};
+
+use amplify::num::u24;
 use commit_verify::{mpc, LIB_NAME_COMMIT_VERIFY};
+use strict_encoding::{StrictEncode, StrictWriter};
 use strict_types::typelib::LibBuilder;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
