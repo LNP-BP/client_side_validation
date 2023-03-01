@@ -1,0 +1,28 @@
+{-
+  Id: eric_pablo_junior_6dNLcuqHACv1yYndmvNnXHuP7g3DV4qVkSf9tou6cDBm
+  Name: CommitVerify
+  Description: Types for client-side-validation commits and verification
+  Author: Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+  Copyright (C) 2023 LNP/BP Standards Association. All rights reserved.
+  License: Apache-2.0
+-}
+
+typelib CommitVerify
+
+data Message          :: [U8 ^ 32]
+data ProtocolId       :: [U8 ^ 32]
+data MerkleNode       :: [U8 ^ 32]
+
+data TreeNode         :: concealedNode (depth StdLib.U4, hash MerkleNode)
+                       | commitmentLeaf (protocolId ProtocolId, message Message)
+
+data MerkleTree       :: depth StdLib.U4,
+                         entropy U64,
+                         messages {[Byte ^ 32] -> Message},
+                         map {U16 -> ProtocolId, Message}
+
+data MerkleBlock      :: depth StdLib.U4,
+                         crossSection [TreeNode],
+                         entropy U64?
+
+data MerkleProof      :: pos U16, path [MerkleNode]
