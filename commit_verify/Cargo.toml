@@ -18,7 +18,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "commit-stl"
-required-features = ["stl", "strict_types/base64"]
+required-features = ["stl"]
 
 [dependencies]
 amplify = { version = "4.0.0-beta.18", features = ["hex", "apfloat"] }
@@ -34,7 +34,7 @@ rand = "0.8.5"
 default = []
 all = ["rand", "serde", "stl"]
 serde = ["serde_crate", "amplify/serde"]
-stl = ["strict_types"]
+stl = ["strict_types", "strict_types/base64"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
