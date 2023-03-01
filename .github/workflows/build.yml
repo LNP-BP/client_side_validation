@@ -33,6 +33,7 @@ jobs:
           - rand
           - serde
           - async
+          - stl
           - all
     steps:
       - uses: actions/checkout@v2
