@@ -396,10 +396,9 @@ mod test {
     //! of an array of data items, each of which has a name bound to a certain
     //! bitcoin single-use-seal.
 
-    use single_use_seals::{SealStatus, VerifySeal};
+    use single_use_seals::{SealProtocol, SealStatus, VerifySeal};
 
     use super::*;
-    use crate::single_use_seals::SealProtocol;
 
     #[test]
     fn test() {

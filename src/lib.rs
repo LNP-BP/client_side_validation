@@ -46,8 +46,8 @@
 //! standardizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in a wrong way.
 
-// pub extern crate commit_verify;
-pub extern crate single_use_seals;
+pub extern crate commit_verify as commit;
+pub extern crate single_use_seals as seals;
 
 #[cfg(feature = "serde")]
 #[macro_use]
@@ -59,4 +59,3 @@ pub use api::{
     ClientData, ClientSideValidate, SealIssue, SealResolver, Status, ValidationFailure,
     ValidationLog, ValidationReport, Validity,
 };
-// pub use commit_verify::{commit_encode, lnpbp4, merkle, tagged_hash};
