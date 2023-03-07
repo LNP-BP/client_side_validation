@@ -396,7 +396,7 @@ mod test {
     //! of an array of data items, each of which has a name bound to a certain
     //! bitcoin single-use-seal.
 
-    use single_use_seals::{SealProtocol, SealStatus, VerifySeal};
+    use single_use_seals::{SealProtocol, SealStatus, SealWitness};
 
     use super::*;
 
@@ -420,13 +420,11 @@ mod test {
             }
         }
 
-        impl VerifySeal<'_, Seal> for Protocol {
-            fn verify_seal(
-                &self,
-                _seal: &Seal,
-                _msg: &Self::Message,
-                _witness: &Self::Witness,
-            ) -> Result<bool, Self::Error> {
+        impl SealWitness<Seal> for () {
+            type Message = Vec<u8>;
+            type Error = Issue;
+
+            fn verify_seal(&self, _seal: &Seal, _msg: &Self::Message) -> Result<bool, Self::Error> {
                 Ok(true)
             }
         }

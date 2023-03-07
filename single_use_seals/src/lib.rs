@@ -254,31 +254,33 @@ pub trait MergeCloseSeal<Seal>: SealProtocol<Seal> {
         Seal: 'seal;
 }
 
-/// Adds support for the seal verify operation to [`SealProtocol`].
-pub trait VerifySeal<'seal, Seal>: SealProtocol<Seal>
-where Seal: 'seal
-{
+/// Seal witness which can verify seal or multiple seals.
+pub trait SealWitness<Seal> {
+    /// Message type that is supported by the current single-use-seal
+    type Message;
+
+    /// Error type that contains reasons of medium access failure
+    type Error: std::error::Error;
+
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
-    fn verify_seal(
-        &self,
-        seal: &'seal Seal,
-        msg: &Self::Message,
-        witness: &Self::Witness,
-    ) -> Result<bool, Self::Error>;
+    fn verify_seal(&self, seal: &Seal, msg: &Self::Message) -> Result<bool, Self::Error>;
 
-    /// Performs batch verification of the seals. Default implementation
-    /// iterates through the seals and calls [`Self::verify_seal`] for each of
-    /// them, returning `false` on first failure (not verifying the rest of
-    /// seals).
-    fn verify_seal_all(
+    /// Performs batch verification of the seals.
+    ///
+    /// Default implementation iterates through the seals and calls
+    /// [`Self::verify_seal`] for each of them, returning `false` on first
+    /// failure (not verifying the rest of seals).
+    fn verify_many_seals<'seal>(
         &self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         msg: &Self::Message,
-        witness: &Self::Witness,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<bool, Self::Error>
+    where
+        Seal: 'seal,
+    {
         for seal in seals {
-            if !self.verify_seal(seal, msg, witness)? {
+            if !self.verify_seal(seal, msg)? {
                 return Ok(false);
             }
         }
@@ -420,39 +422,43 @@ where Seal: Sync + Send
         Seal: 'seal;
 }
 
-/// Adds support for the seal verify operation to [`SealProtocolAsync`].
+/// Async version of [`SealWitness`] which can verify seal or multiple seals.
 #[cfg(feature = "async")]
 #[async_trait]
-pub trait VerifySealAsync<'seal, Seal>: SealProtocol<Seal>
-where Seal: 'seal + Sync + Send
+pub trait SealWitnessAsync<Seal>
+where Seal: Sync + Send
 {
+    /// Message type that is supported by the current single-use-seal
+    type Message: Sync;
+
+    /// Error type that contains reasons of medium access failure
+    type Error: std::error::Error;
+
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
     async fn verify_seal_async(
         &self,
-        seal: &'seal Seal,
+        seal: &Seal,
         msg: &Self::Message,
-        witness: &Self::Witness,
     ) -> Result<bool, Self::Error>;
 
-    /// Performs batch verification of the seals. Default implementation
-    /// iterates through the seals and calls [`Self::verify_seal_async`] for
-    /// each of them, returning `false` on first failure (not verifying the
-    /// rest of seals).
-    async fn verify_all_seals_async<I>(
+    /// Performs batch verification of the seals.
+    ///
+    /// Default implementation iterates through the seals and calls
+    /// [`Self::verify_seal_async`] for each of them, returning `false` on
+    /// first failure (not verifying the rest of seals).
+    async fn verify_all_seals_async<'seal, I>(
         &self,
         seals: I,
         msg: &Self::Message,
-        witness: &Self::Witness,
     ) -> Result<bool, Self::Error>
     where
-        <Self as SealProtocol<Seal>>::Message: Sync,
-        <Self as SealProtocol<Seal>>::Witness: Sync,
         I: IntoIterator<Item = &'seal Seal> + Send,
         I::IntoIter: Send,
+        Seal: 'seal,
     {
         for seal in seals {
-            if !self.verify_seal_async(seal, msg, witness).await? {
+            if !self.verify_seal_async(seal, msg).await? {
                 return Ok(false);
             }
         }
