@@ -20,7 +20,7 @@ license = "Apache-2.0"
 
 [package]
 name = "client_side_validation"
-version = "0.10.0-beta.2"
+version = "0.10.0-rc.1"
 description = "Client-side validation foundation library"
 keywords = ["lnp-bp", "smart-contracts", "blockchain"]
 categories = ["cryptography"]
@@ -38,8 +38,8 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-commit_verify = { version = "0.10.0-beta.2", path = "./commit_verify" }
-single_use_seals = { version = "0.10.0-beta.2", path = "./single_use_seals" }
+commit_verify = { version = "0.10.0-rc.1", path = "./commit_verify" }
+single_use_seals = { version = "0.10.0-rc.1", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
 [features]
@@ -51,7 +51,3 @@ serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
-
-[patch.crates-io]
-strict_encoding = { git = "https://github.com/strict-types/strict-encoding" }
-strict_types = { git = "https://github.com/strict-types/strict-types" }
