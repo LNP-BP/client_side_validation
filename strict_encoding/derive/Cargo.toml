@@ -18,7 +18,7 @@ proc-macro = true
 [dependencies]
 syn = "1"
 proc-macro2 = "1"
-encoding_derive_helpers = { version = "0.8.1", path = "../derive_helpers" }
+encoding_derive_helpers = { version = "0.9.0", path = "../derive_helpers" }
 amplify_syn = "1.1.6"
 
 [dev-dependencies]
