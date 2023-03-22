@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.10.0-rc.1"
+version = "0.10.0-rc.2"
 dependencies = [
  "amplify",
  "rand",
