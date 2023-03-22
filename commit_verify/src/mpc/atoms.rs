@@ -55,6 +55,10 @@ impl CommitStrategy for ProtocolId {
     type Strategy = strategies::Strict;
 }
 
+impl ProtocolId {
+    pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
+}
+
 /// Original message participating in multi-message commitment.
 ///
 /// The message must be represented by a 32-byte hash.
