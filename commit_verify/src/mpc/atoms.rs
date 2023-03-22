@@ -77,6 +77,10 @@ impl CommitStrategy for Message {
     type Strategy = strategies::Strict;
 }
 
+impl Message {
+    pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, From)]
 pub enum Leaf {
     Inhabited {
@@ -140,6 +144,10 @@ pub struct Commitment(
 
 impl CommitStrategy for Commitment {
     type Strategy = strategies::Strict;
+}
+
+impl Commitment {
+    pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
 }
 
 // TODO: Either this type or [`MerkleTree`] should remain
