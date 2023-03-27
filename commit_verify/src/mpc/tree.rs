@@ -200,5 +200,7 @@ impl MerkleTree {
 
     pub fn depth(&self) -> u4 { self.depth }
 
+    pub fn entropy(&self) -> u64 { self.entropy }
+
     fn as_ordered_map(&self) -> &OrderedMap { &self.map }
 }
