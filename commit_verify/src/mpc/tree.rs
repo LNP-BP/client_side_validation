@@ -27,8 +27,8 @@ use amplify::Wrapper;
 pub use self::commit::Error;
 use crate::merkle::{MerkleLeaves, MerkleNode};
 use crate::mpc::atoms::Leaf;
-use crate::mpc::{Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
-use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
+use crate::{strategies, CommitStrategy, CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 
@@ -50,6 +50,15 @@ pub struct MerkleTree {
 }
 
 impl Proof for MerkleTree {}
+
+impl CommitStrategy for MerkleTree {
+    type Strategy = strategies::ConcealStrict;
+}
+
+impl CommitmentId for MerkleTree {
+    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
+    type Id = Commitment;
+}
 
 pub struct IntoIter {
     width: u16,
