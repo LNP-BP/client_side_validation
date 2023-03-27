@@ -24,7 +24,7 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
-use amplify::confinement::SmallVec;
+use amplify::confinement::{Confined, SmallVec};
 use amplify::num::u4;
 use strict_encoding::StrictEncode;
 
@@ -32,7 +32,7 @@ use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
-use crate::mpc::{Commitment, MerkleTree, Message, Proof, ProtocolId, LNPBP4_TAG};
+use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
 use crate::{strategies, CommitStrategy, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {_0} is absent from the known part of a given
@@ -441,6 +441,23 @@ impl MerkleBlock {
 
     /// Computes the width of the merkle tree.
     pub fn width(&self) -> u16 { 2usize.pow(self.depth.to_u8() as u32) as u16 }
+
+    /// Constructs [`MessageMap`] for revealed protocols and messages.
+    pub fn to_known_message_map(&self) -> MessageMap {
+        Confined::try_from_iter(
+            self.cross_section
+                .iter()
+                .copied()
+                .filter_map(|item| match item {
+                    TreeNode::ConcealedNode { .. } => None,
+                    TreeNode::CommitmentLeaf {
+                        protocol_id,
+                        message,
+                    } => Some((protocol_id, message)),
+                }),
+        )
+        .expect("same collection size")
+    }
 }
 
 impl Conceal for MerkleBlock {
