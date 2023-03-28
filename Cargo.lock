@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "amplify"
-version = "4.0.0-beta.19"
+version = "4.0.0-beta.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "015181670696f32b43334da39fa4e8926b8b2d154acc4aa26614c42a667a1b84"
+checksum = "da67d736b18002e654099c6b393ebb3058825513baefec514cf7725c2088ced7"
 dependencies = [
  "amplify_apfloat",
  "amplify_derive",
@@ -179,7 +179,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.10.0-rc.1"
+version = "0.10.0"
 dependencies = [
  "commit_verify",
  "serde",
@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.10.0-rc.2"
+version = "0.10.0"
 dependencies = [
  "amplify",
  "rand",
@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "single_use_seals"
-version = "0.10.0-rc.1"
+version = "0.10.0"
 dependencies = [
  "amplify_derive",
  "async-trait",
@@ -455,9 +455,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "2.0.0-rc.2"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3860de955f067ceeedfdc16e3cc156f3576b6b57b62ebd0fadf8818c1081895"
+checksum = "8ff63df75d779e9005d7790b8e5d9d46d38a6c0ea74a8850f3d3a6b0145a05d9"
 dependencies = [
  "amplify",
  "half",
@@ -466,9 +466,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_derive"
-version = "2.0.0-rc.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0ab244e49e394576489e8617324915c2205c1c5129c28c00af4932486dc18f7"
+checksum = "4f5adae55367464f5a229bfd539682c94f870b98a220be6e61dc43f85d612e7e"
 dependencies = [
  "amplify_syn",
  "heck",
@@ -479,9 +479,9 @@ dependencies = [
 
 [[package]]
 name = "strict_types"
-version = "1.0.0-beta.4"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acc1eabc5793010440b89e33fad97407a96c30a6f0ce3d38904e40cfed36477d"
+checksum = "371701e525f77661673ef2dca749793000162c28eb9745e69499653f61f6a9e2"
 dependencies = [
  "amplify",
  "baid58",
