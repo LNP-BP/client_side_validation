@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.10.0"
+version = "0.10.1"
 description = "Commit-verify API for client-side validation"
 keywords = ["lnp-bp", "smart-contracts", "blockchain", "commitments"]
 categories = ["cryptography"]
@@ -11,6 +11,7 @@ edition = { workspace = true }
 license = { workspace = true }
 rust-version = { workspace = true }
 readme = "README.md"
+exclude = ["derive"]
 
 [lib]
 name = "commit_verify"
@@ -22,6 +23,7 @@ required-features = ["stl"]
 
 [dependencies]
 amplify = { version = "4.0.0-beta.20", features = ["hex", "apfloat"] }
+commit_encoding_derive = { version = "0.10.0-beta.1", path = "derive" }
 strict_encoding = "2.0.0"
 strict_types = { version = "1.0.0-rc.1", optional = true }
 rand = { version = "0.8.5", optional = true }

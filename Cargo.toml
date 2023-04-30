@@ -2,12 +2,14 @@
 members = [
     ".",
     "commit_verify",
-    "single_use_seals"
+    "commit_verify/derive",
+    "single_use_seals",
 ]
 default-members = [
     ".",
     "commit_verify",
-    "single_use_seals"
+    "commit_verify/derive",
+    "single_use_seals",
 ]
 
 [workspace.package]
@@ -20,7 +22,7 @@ license = "Apache-2.0"
 
 [package]
 name = "client_side_validation"
-version = "0.10.0"
+version = "0.10.1"
 description = "Client-side validation foundation library"
 keywords = ["lnp-bp", "smart-contracts", "blockchain"]
 categories = ["cryptography"]
@@ -38,7 +40,7 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-commit_verify = { version = "0.10.0", path = "./commit_verify" }
+commit_verify = { version = "0.10.1", path = "./commit_verify" }
 single_use_seals = { version = "0.10.0", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
