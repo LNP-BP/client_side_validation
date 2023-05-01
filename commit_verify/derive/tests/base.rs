@@ -19,6 +19,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(unused_braces)]
+
 #[macro_use]
 extern crate amplify;
 #[macro_use]
@@ -30,7 +32,7 @@ mod common;
 
 use std::convert::Infallible;
 
-use commit_verify::CommitEncode;
+use commit_verify::{CommitEncode, Conceal};
 use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
 
 const TEST_LIB: &str = "TestLib";
@@ -311,3 +313,48 @@ fn enum_custom_tags() -> common::Result {
 
     Ok(())
 }
+
+#[test]
+fn conceal() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = TEST_LIB, tags = order, dumb = { Self::Concealed(0) })]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = conceal_strict)]
+    enum Data {
+        Revealed(u128),
+        Concealed(u8),
+    }
+
+    impl Conceal for Data {
+        type Concealed = Self;
+        fn conceal(&self) -> Self { Self::Concealed(0xde) }
+    }
+
+    verify_commit(Data::Revealed(0xcafe1234), [1, 0xde]);
+
+    Ok(())
+}
+
+#[test]
+fn skip() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    struct Data {
+        data: u8,
+        #[commit_encode(skip)]
+        bulletproof: Vec<u8>,
+    }
+
+    verify_commit(
+        Data {
+            data: 0xfe,
+            bulletproof: vec![0xde, 0xad],
+        },
+        [0xfe],
+    );
+
+    Ok(())
+}
+
+// TODO: Test merklize

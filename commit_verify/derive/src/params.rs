@@ -20,7 +20,7 @@
 // limitations under the License.
 
 use amplify_syn::{
-    ArgValueReq, AttrReq, DataType, FieldKind, LiteralClass, ParametrizedAttr, TypeClass,
+    ArgValueReq, AttrReq, DataType, FieldKind, ListReq, LiteralClass, ParametrizedAttr, TypeClass,
 };
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
@@ -118,9 +118,10 @@ impl TryFrom<ParametrizedAttr> for ContainerAttr {
 
 impl FieldAttr {
     pub fn with(mut params: ParametrizedAttr, _kind: FieldKind) -> Result<Self> {
-        let req = AttrReq::with(map![
+        let mut req = AttrReq::with(map![
             ATTR_MERKLIZE => ArgValueReq::optional(LiteralClass::Str),
         ]);
+        req.path_req = ListReq::maybe_one(path!(skip));
         params.check(req)?;
 
         Ok(FieldAttr {
@@ -141,7 +142,7 @@ impl TryFrom<DeriveInput> for CommitDerive {
     fn try_from(input: DeriveInput) -> Result<Self> {
         let params = ParametrizedAttr::with(ATTR, &input.attrs)?;
         let conf = ContainerAttr::try_from(params)?;
-        let data = DataType::with(input, ident!(strict_type))?;
+        let data = DataType::with(input, ident!(commit_encode))?;
         Ok(Self { data, conf })
     }
 }

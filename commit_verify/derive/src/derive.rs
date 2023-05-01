@@ -62,7 +62,11 @@ impl CommitDerive {
 
         let mut field_encoding = Vec::new();
         for (no, (field_name, unnamed_field)) in fields.enumerate() {
-            let attr = FieldAttr::with(unnamed_field.attr.clone(), FieldKind::Named)?;
+            let kind = match field_name {
+                Some(_) => FieldKind::Named,
+                None => FieldKind::Unnamed,
+            };
+            let attr = FieldAttr::with(unnamed_field.attr.clone(), kind)?;
             if attr.skip {
                 continue;
             }
