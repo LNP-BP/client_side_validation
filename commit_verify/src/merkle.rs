@@ -19,7 +19,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeSet;
+use core::{iter, slice};
+use std::collections::{btree_set, BTreeSet};
 use std::io::Write;
 
 use amplify::confinement::Confined;
@@ -148,9 +149,9 @@ impl MerkleNode {
         Self::_merklize(tag, nodes.merkle_leaves(), u4::ZERO, 0)
     }
 
-    pub fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
+    pub fn _merklize<Leaf: CommitEncode>(
         tag: [u8; 16],
-        mut iter: impl ExactSizeIterator<Item = &'leaf Leaf>,
+        mut iter: impl ExactSizeIterator<Item = Leaf>,
         depth: u4,
         offset: u16,
     ) -> Self {
@@ -160,9 +161,9 @@ impl MerkleNode {
         if len <= 2 {
             match (iter.next(), iter.next()) {
                 (None, None) => MerkleNode::void(tag, depth, width),
-                (Some(branch), None) => MerkleNode::single(tag, depth, width, branch),
+                (Some(branch), None) => MerkleNode::single(tag, depth, width, &branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleNode::couple(tag, depth, width, branch1, branch2)
+                    MerkleNode::couple(tag, depth, width, &branch1, &branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
@@ -187,29 +188,28 @@ impl MerkleNode {
 
 pub trait MerkleLeaves {
     type Leaf: CommitEncode;
-
-    type LeafIter<'leaf>: ExactSizeIterator<Item = &'leaf Self::Leaf>
-    where Self: 'leaf;
+    type LeafIter<'tmp>: ExactSizeIterator<Item = Self::Leaf>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_>;
 }
 
 impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u16::MAX as usize }>
-where T: CommitEncode
+where T: CommitEncode + Copy
 {
     type Leaf = T;
-    type LeafIter<'leaf> = std::slice::Iter<'leaf, T> where Self: 'leaf;
+    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
 
-    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
 
 impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
-where T: CommitEncode
+where T: CommitEncode + Copy
 {
     type Leaf = T;
-    type LeafIter<'leaf> = std::collections::btree_set::Iter<'leaf, T> where Self: 'leaf;
+    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
 
-    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
 
 /*

@@ -38,6 +38,7 @@ extern crate strict_encoding;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_crate as serde;
+extern crate core;
 
 #[cfg(feature = "derive")]
 pub use commit_encoding_derive::CommitEncode;
