@@ -119,7 +119,7 @@ impl TryFrom<ParametrizedAttr> for ContainerAttr {
 impl FieldAttr {
     pub fn with(mut params: ParametrizedAttr, _kind: FieldKind) -> Result<Self> {
         let mut req = AttrReq::with(map![
-            ATTR_MERKLIZE => ArgValueReq::optional(LiteralClass::Str),
+            ATTR_MERKLIZE => ArgValueReq::optional(LiteralClass::Int),
         ]);
         req.path_req = ListReq::maybe_one(path!(skip));
         params.check(req)?;

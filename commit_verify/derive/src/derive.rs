@@ -77,7 +77,7 @@ impl CommitDerive {
                 quote! {
                     {
                         use #crate_name::merkle::MerkleLeaves;
-                        #crate_name::merkle::MerkleNode::merklize(#tag.to_be_bytes(), self.#field_name).commit_encode(e);
+                        #crate_name::merkle::MerkleNode::merklize(#tag.to_be_bytes(), &self.#field_name).commit_encode(e);
                     }
                 }
             } else {
