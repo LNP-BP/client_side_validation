@@ -322,7 +322,7 @@ fn conceal() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = order, dumb = { Self::Concealed(0) })]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = conceal_strict)]
+    #[commit_encode(conceal, strategy = strict)]
     enum Data {
         Revealed(u128),
         Concealed(u8),

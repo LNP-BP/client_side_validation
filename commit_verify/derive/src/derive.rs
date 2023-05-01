@@ -60,6 +60,16 @@ impl CommitDerive {
     ) -> Result<TokenStream2> {
         let crate_name = &self.conf.commit_crate;
 
+        let conceal_code = if self.conf.conceal {
+            quote! {
+                let me = self.conceal();
+            }
+        } else {
+            quote! {
+                let me = &self;
+            }
+        };
+
         let mut field_encoding = Vec::new();
         for (no, (field_name, unnamed_field)) in fields.enumerate() {
             let kind = match field_name {
@@ -77,12 +87,12 @@ impl CommitDerive {
                 quote! {
                     {
                         use #crate_name::merkle::MerkleLeaves;
-                        #crate_name::merkle::MerkleNode::merklize(#tag.to_be_bytes(), &self.#field_name).commit_encode(e);
+                        #crate_name::merkle::MerkleNode::merklize(#tag.to_be_bytes(), &me.#field_name).commit_encode(e);
                     }
                 }
             } else {
                 quote! {
-                    self.#field_name.commit_encode(e);
+                    me.#field_name.commit_encode(e);
                 }
             };
             field_encoding.push(field)
@@ -91,6 +101,7 @@ impl CommitDerive {
         Ok(quote! {
             fn commit_encode(&self, e: &mut impl ::std::io::Write) {
                 use #crate_name::CommitEncode;
+                #conceal_code
                 #( #field_encoding )*
             }
         })
