@@ -31,7 +31,7 @@ pub use atoms::{Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId};
 pub use block::{LeafNotKnown, MerkleBlock, MerkleProof, UnrelatedProof};
 #[cfg(feature = "rand")]
 pub use tree::Error;
-pub use tree::{IntoIter, MerkleTree};
+pub use tree::{Iter, MerkleTree};
 
 const LNPBP4_TAG: [u8; 16] = *b"urn:lnpbp:lnpbp4";
 

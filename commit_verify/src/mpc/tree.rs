@@ -60,14 +60,14 @@ impl CommitmentId for MerkleTree {
     type Id = Commitment;
 }
 
-pub struct IntoIter {
+pub struct Iter<'src> {
     width: u16,
     pos: u16,
-    map: OrderedMap,
+    map: &'src OrderedMap,
     entropy: u64,
 }
 
-impl Iterator for IntoIter {
+impl<'src> Iterator for Iter<'src> {
     type Item = Leaf;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -91,18 +91,18 @@ impl Iterator for IntoIter {
     }
 }
 
-impl ExactSizeIterator for IntoIter {}
+impl<'src> ExactSizeIterator for Iter<'src> {}
 
 impl MerkleLeaves for MerkleTree {
     type Leaf = Leaf;
-    type LeafIter = IntoIter;
+    type LeafIter<'src> = Iter<'src>;
 
-    fn merkle_leaves(&self) -> Self::LeafIter {
-        IntoIter {
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> {
+        Iter {
             entropy: self.entropy,
             width: self.width(),
             pos: 0,
-            map: self.as_ordered_map().clone(), // TODO: Remove clone
+            map: self.as_ordered_map(),
         }
     }
 }

@@ -188,18 +188,19 @@ impl MerkleNode {
 pub trait MerkleLeaves {
     type Leaf: CommitEncode;
 
-    type LeafIter: ExactSizeIterator<Item = Self::Leaf>;
+    type LeafIter<'leaf>: ExactSizeIterator<Item = Self::Leaf>
+    where Self: 'leaf;
 
-    fn merkle_leaves(&self) -> Self::LeafIter;
+    fn merkle_leaves(&self) -> Self::LeafIter<'_>;
 }
 
 impl<'a, T, const MIN: usize> MerkleLeaves for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
 where &'a T: CommitEncode
 {
     type Leaf = &'a T;
-    type LeafIter = std::slice::Iter<'a, T>;
+    type LeafIter<'leaf> = std::slice::Iter<'a, T> where Self: 'leaf, 'a: 'leaf;
 
-    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter() }
 }
 
 impl<'a, T: Ord, const MIN: usize> MerkleLeaves
@@ -207,9 +208,9 @@ impl<'a, T: Ord, const MIN: usize> MerkleLeaves
 where &'a T: CommitEncode
 {
     type Leaf = &'a T;
-    type LeafIter = std::collections::btree_set::Iter<'a, T>;
+    type LeafIter<'leaf> = std::collections::btree_set::Iter<'a, T> where Self: 'leaf, 'a: 'leaf;
 
-    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter() }
 }
 
 /*
