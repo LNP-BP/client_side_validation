@@ -116,6 +116,8 @@ pub mod strategies {
     use super::*;
     use crate::merkle::{MerkleLeaves, MerkleNode};
 
+    pub enum AsRef {}
+
     /// Commits to the value by converting it into `u8` type. Useful for enum
     /// types.
     ///
@@ -167,6 +169,12 @@ pub mod strategies {
             let raw = **self.as_type();
             e.write_all(&[raw.into()]).ok();
         }
+    }
+
+    impl<'a, T> CommitEncode for Holder<&'a T, AsRef>
+    where T: CommitEncode
+    {
+        fn commit_encode(&self, e: &mut impl io::Write) { self.as_type().commit_encode(e); }
     }
 
     impl<'a, T> CommitEncode for Holder<&'a T, IntoInner>
@@ -314,9 +322,9 @@ pub mod strategies {
     }
 
     impl<T> CommitStrategy for &T
-    where T: CommitStrategy
+    where T: CommitEncode
     {
-        type Strategy = T::Strategy;
+        type Strategy = AsRef;
     }
 }
 
