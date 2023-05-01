@@ -64,6 +64,8 @@ impl CommitStrategy for NodeBranching {
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = MerkleNode(default!()))]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -134,10 +136,6 @@ impl MerkleNode {
         leaf.commit_encode(&mut engine);
         engine.finish().into()
     }
-}
-
-impl CommitStrategy for MerkleNode {
-    type Strategy = strategies::Strict;
 }
 
 impl MerkleNode {

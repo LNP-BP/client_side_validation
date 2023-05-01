@@ -28,7 +28,7 @@ pub use self::commit::Error;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG};
-use crate::{strategies, CommitStrategy, CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::{CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 
@@ -36,6 +36,8 @@ type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, conceal, strategy = strict)]
 pub struct MerkleTree {
     /// Tree depth (up to 16).
     pub(super) depth: u4,
@@ -50,10 +52,6 @@ pub struct MerkleTree {
 }
 
 impl Proof for MerkleTree {}
-
-impl CommitStrategy for MerkleTree {
-    type Strategy = strategies::ConcealStrict;
-}
 
 impl CommitmentId for MerkleTree {
     const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
