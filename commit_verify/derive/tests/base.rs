@@ -32,6 +32,7 @@ mod common;
 
 use std::convert::Infallible;
 
+use amplify::confinement::TinyVec;
 use commit_verify::{CommitEncode, Conceal};
 use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
 
@@ -357,4 +358,21 @@ fn skip() -> common::Result {
     Ok(())
 }
 
-// TODO: Test merklize
+#[test]
+fn merklize() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    struct Tree {
+        #[commit_encode(merklize = 0u128)]
+        leaves: TinyVec<u16>,
+    }
+
+    verify_commit(
+        Tree {
+            leaves: tiny_vec!(0, 1, 2, 3),
+        },
+        [0],
+    );
+
+    Ok(())
+}
