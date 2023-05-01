@@ -19,7 +19,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify_syn::{DeriveInner, Field, FieldKind, Items, NamedField, Variant};
+use amplify_syn::{DeriveInner, EnumKind, Field, FieldKind, Fields, Items, NamedField, Variant};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 use syn::{Error, Index, Result};
@@ -126,7 +126,118 @@ impl DeriveInner for DeriveCommit<'_> {
         self.0.derive_fields(fields.iter().map(|f| (None, f)))
     }
 
-    fn derive_enum_inner(&self, _variants: &Items<Variant>) -> Result<TokenStream2> {
-        Err(Error::new(Span::call_site(), "enums can't use CommitEncode strategy"))
+    fn derive_enum_inner(&self, variants: &Items<Variant>) -> Result<TokenStream2> {
+        let crate_name = &self.0.conf.commit_crate;
+
+        if variants.enum_kind() == EnumKind::Primitive {
+            return Err(Error::new(
+                Span::call_site(),
+                "primitive enums can't use `propagate` strategy",
+            ));
+        }
+
+        let conceal_code = if self.0.conf.conceal {
+            quote! {
+                let me = self.conceal();
+            }
+        } else {
+            quote! {
+                let me = &self;
+            }
+        };
+
+        let mut write_variants = Vec::with_capacity(variants.len());
+        for var in variants {
+            let var_name = &var.name;
+            match &var.fields {
+                Fields::Unit => {
+                    write_variants.push(quote! {
+                        Self::#var_name() => {},
+                    });
+                }
+                Fields::Unnamed(fields) if fields.is_empty() => {
+                    write_variants.push(quote! {
+                        Self::#var_name() => {},
+                    });
+                }
+                Fields::Named(fields) if fields.is_empty() => {
+                    write_variants.push(quote! {
+                        Self::#var_name {} => {},
+                    });
+                }
+                Fields::Unnamed(fields) => {
+                    let mut field_idx = Vec::with_capacity(fields.len());
+                    let mut field_fragments = Vec::with_capacity(fields.len());
+                    for (no, field) in fields.iter().enumerate() {
+                        let index = Index::from(no);
+                        let attr = FieldAttr::with(field.attr.clone(), FieldKind::Unnamed)?;
+                        if attr.skip {
+                            continue;
+                        }
+
+                        field_idx.push(index.clone());
+                        if let Some(tag) = attr.merklize {
+                            field_fragments.push(quote! {
+                                MerkleNode::merklize(#tag.to_be_bytes(), &me.#index).commit_encode(e);
+                            })
+                        } else {
+                            field_fragments.push(quote! {
+                                me.#index.commit_encode(e);
+                            })
+                        }
+                    }
+                    write_variants.push(quote! {
+                        Self::#var_name( #( #field_idx ),* ) => {
+                            #( #field_fragments )*
+                        },
+                    });
+                }
+                Fields::Named(fields) => {
+                    let mut field_name = Vec::with_capacity(fields.len());
+                    let mut field_fragments = Vec::with_capacity(fields.len());
+                    for named_field in fields {
+                        let attr =
+                            FieldAttr::with(named_field.field.attr.clone(), FieldKind::Named)?;
+                        let name = &named_field.name;
+                        if attr.skip {
+                            continue;
+                        }
+
+                        field_name.push(name.clone());
+                        if let Some(tag) = attr.merklize {
+                            field_fragments.push(quote! {
+                                MerkleNode::merklize(#tag.to_be_bytes(), &me.#name).commit_encode(e);
+                            })
+                        } else {
+                            field_fragments.push(quote! {
+                                me.#name.commit_encode(e);
+                            })
+                        }
+                    }
+
+                    write_variants.push(quote! {
+                        Self::#var_name { #( #field_name ),* } => {
+                            #( #field_fragments )*
+                        },
+                    });
+                }
+            }
+        }
+
+        Ok(quote! {
+            #[allow(unused_imports)]
+            fn commit_encode(&self, e: &mut impl ::std::io::Write) {
+                use #crate_name::CommitEncode;
+                use #crate_name::merkle::{MerkleLeaves, MerkleNode};
+                use ::strict_encoding::StrictSum;
+
+                #conceal_code
+                me.variant_ord.commit_encode(e);
+
+                match self {
+                    #( #write_variants )*
+                }
+            }
+        })
     }
 }
