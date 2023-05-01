@@ -308,14 +308,14 @@ pub mod strategies {
     }
 
     impl<T> CommitStrategy for Box<T>
-    where T: StrictEncode
+    where T: CommitStrategy
     {
-        type Strategy = Strict;
+        type Strategy = T::Strategy;
     }
     impl<T> CommitStrategy for Option<T>
-    where T: StrictEncode
+    where T: CommitStrategy
     {
-        type Strategy = Strict;
+        type Strategy = T::Strategy;
     }
     impl<const MIN: usize, const MAX: usize> CommitStrategy for Confined<Vec<u8>, MIN, MAX> {
         type Strategy = Strict;
