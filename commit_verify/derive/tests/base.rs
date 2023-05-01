@@ -24,8 +24,6 @@
 #[macro_use]
 extern crate amplify;
 #[macro_use]
-extern crate commit_encoding_derive;
-#[macro_use]
 extern crate strict_encoding;
 
 mod common;

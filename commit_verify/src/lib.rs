@@ -39,6 +39,9 @@ extern crate strict_encoding;
 #[macro_use]
 extern crate serde_crate as serde;
 
+#[cfg(feature = "derive")]
+pub use commit_encoding_derive::CommitEncode;
+
 pub(self) mod commit;
 mod conceal;
 mod convolve;

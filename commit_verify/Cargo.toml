@@ -23,7 +23,7 @@ required-features = ["stl"]
 
 [dependencies]
 amplify = { version = "4.0.0-beta.20", features = ["hex", "apfloat"] }
-commit_encoding_derive = { version = "0.10.0-beta.1", path = "derive" }
+commit_encoding_derive = { version = "0.10.0-beta.1", path = "derive", optional = true }
 strict_encoding = "2.0.0"
 strict_types = { version = "1.0.0-rc.1", optional = true }
 rand = { version = "0.8.5", optional = true }
@@ -33,10 +33,11 @@ serde_crate = { version = "1.0", package = "serde", optional = true }
 rand = "0.8.5"
 
 [features]
-default = []
-all = ["rand", "serde", "stl"]
+default = ["derive"]
+all = ["rand", "serde", "stl", "derive"]
 serde = ["serde_crate", "amplify/serde"]
 stl = ["strict_types", "strict_types/base64"]
+derive = ["commit_encoding_derive"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
