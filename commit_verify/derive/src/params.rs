@@ -29,9 +29,9 @@ use syn::{DeriveInput, Error, Expr, Path, Result};
 const ATTR: &str = "commit_encode";
 const ATTR_CRATE: &str = "crate";
 const ATTR_STRATEGY: &str = "strategy";
-const ATTR_STRATEGY_COMMIT: &str = "commit_encode";
-const ATTR_STRATEGY_STRICT: &str = "strict_encode";
-const ATTR_STRATEGY_CONCEAL: &str = "conceal_strict_encode";
+const ATTR_STRATEGY_COMMIT: &str = "propagate";
+const ATTR_STRATEGY_STRICT: &str = "strict";
+const ATTR_STRATEGY_CONCEAL: &str = "conceal_strict";
 const ATTR_STRATEGY_TRANSPARENT: &str = "transparent";
 const ATTR_STRATEGY_INTO_U8: &str = "into_u8";
 const ATTR_MERKLIZE: &str = "merklize";
@@ -105,7 +105,7 @@ impl TryFrom<ParametrizedAttr> for ContainerAttr {
 
         let path = params
             .arg_value(ATTR_STRATEGY)
-            .unwrap_or_else(|_| path!(commit_encoding));
+            .unwrap_or_else(|_| path!(propagate));
 
         Ok(ContainerAttr {
             commit_crate: params

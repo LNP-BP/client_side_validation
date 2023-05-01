@@ -33,7 +33,7 @@ impl CommitDerive {
         match self.conf.strategy {
             StrategyAttr::CommitEncoding => self.data.derive(
                 &self.conf.commit_crate,
-                &ident!(StrictEncode),
+                &ident!(CommitEncode),
                 &DeriveCommit(self),
             ),
             other => self.derive_strategy(other),
@@ -78,7 +78,7 @@ impl CommitDerive {
                 }
             } else {
                 quote! {
-                    self.#field_name.commit_encode(e)?;
+                    self.#field_name.commit_encode(e);
                 }
             };
             field_encoding.push(field)

@@ -223,6 +223,7 @@ dependencies = [
  "compiletest_rs",
  "proc-macro2",
  "quote",
+ "strict_encoding",
  "syn",
 ]
 
@@ -655,9 +656,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "2.0.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ff63df75d779e9005d7790b8e5d9d46d38a6c0ea74a8850f3d3a6b0145a05d9"
+checksum = "21201d9c01000d4a5e715a3f0b04eeea265a57a3557c06c5408d1a4471acb414"
 dependencies = [
  "amplify",
  "half",

@@ -23,33 +23,162 @@
 extern crate amplify;
 #[macro_use]
 extern crate commit_encoding_derive;
+#[macro_use]
+extern crate strict_encoding;
 
 mod common;
 
 use std::convert::Infallible;
 
-use strict_encoding::{
-    tn, StrictDecode, StrictDumb, StrictEncode, StrictSerialize, StrictSum, VariantError,
-};
+use commit_verify::CommitEncode;
+use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
 
 const TEST_LIB: &str = "TestLib";
 
+fn verify_commit<T: CommitEncode>(t: T, c: impl AsRef<[u8]>) {
+    let mut e = Vec::<u8>::new();
+    t.commit_encode(&mut e);
+    assert_eq!(e.as_slice(), c.as_ref(), "invalid commitment");
+}
+
 #[test]
-fn wrapper_base() -> common::Result {
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-    #[strict_type(lib = TEST_LIB)]
+fn strategy_transparent() -> common::Result {
+    #[derive(Wrapper, Clone, PartialEq, Eq, Debug, From)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = transparent)]
     struct ShortLen(u16);
+
+    verify_commit(ShortLen(0), [0, 0]);
+    verify_commit(ShortLen(0xFFde), [0xde, 0xFF]);
 
     Ok(())
 }
 
 #[test]
-fn tuple_base() -> common::Result {
+fn strategy_into_u8() -> common::Result {
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = into_u8)]
+    #[repr(u8)]
+    enum Prim {
+        A,
+        B,
+        C,
+    }
+    impl Into<u8> for Prim {
+        fn into(self) -> u8 { self as u8 }
+    }
+
+    verify_commit(Prim::A, [0]);
+    verify_commit(Prim::B, [1]);
+    verify_commit(Prim::C, [2]);
+
+    Ok(())
+}
+
+#[test]
+fn strategy_default_tuple() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    struct TaggedInfo(u16, u64);
+
+    verify_commit(TaggedInfo(0xdead, 0xbeefcafebaddafec), [
+        0xad, 0xde, 0xec, 0xaf, 0xdd, 0xba, 0xfe, 0xca, 0xef, 0xbe,
+    ]);
+
+    Ok(())
+}
+
+#[test]
+fn strategy_commit_tuple() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = propagate)]
+    struct TaggedInfo(u16, u64);
+
+    verify_commit(TaggedInfo(0xdead, 0xbeefcafebaddafec), [
+        0xad, 0xde, 0xec, 0xaf, 0xdd, 0xba, 0xfe, 0xca, 0xef, 0xbe,
+    ]);
+
+    Ok(())
+}
+
+#[test]
+fn strategy_strict_tuple() -> common::Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = strict)]
     struct TaggedInfo(u16, u64);
+
+    verify_commit(TaggedInfo(0xdead, 0xbeefcafebaddafec), [
+        0xad, 0xde, 0xec, 0xaf, 0xdd, 0xba, 0xfe, 0xca, 0xef, 0xbe,
+    ]);
+
+    Ok(())
+}
+
+#[test]
+fn strategy_default_struct() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    struct TaggedInfo {
+        a: u16,
+        b: u64,
+    }
+
+    verify_commit(
+        TaggedInfo {
+            a: 0xdead,
+            b: 0xbeefcafebaddafec,
+        },
+        [0xad, 0xde, 0xec, 0xaf, 0xdd, 0xba, 0xfe, 0xca, 0xef, 0xbe],
+    );
+
+    Ok(())
+}
+
+#[test]
+fn strategy_commit_struct() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = propagate)]
+    struct TaggedInfo {
+        a: u16,
+        b: u64,
+    }
+
+    verify_commit(
+        TaggedInfo {
+            a: 0xdead,
+            b: 0xbeefcafebaddafec,
+        },
+        [0xad, 0xde, 0xec, 0xaf, 0xdd, 0xba, 0xfe, 0xca, 0xef, 0xbe],
+    );
+
+    Ok(())
+}
+
+#[test]
+fn strategy_strict_struct() -> common::Result {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = TEST_LIB)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = strict)]
+    struct TaggedInfo {
+        a: u16,
+        b: u64,
+    }
+
+    verify_commit(
+        TaggedInfo {
+            a: 0xdead,
+            b: 0xbeefcafebaddafec,
+        },
+        [0xad, 0xde, 0xec, 0xaf, 0xdd, 0xba, 0xfe, 0xca, 0xef, 0xbe],
+    );
 
     Ok(())
 }
@@ -57,21 +186,16 @@ fn tuple_base() -> common::Result {
 #[test]
 fn tuple_generics() -> common::Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-    #[strict_type(lib = TEST_LIB)]
-    struct Pair<
-        A: StrictDumb + StrictEncode + StrictDecode,
-        B: StrictDumb + StrictEncode + StrictDecode,
-    >(A, B);
+    #[derive(CommitEncode)]
+    struct Pair<A: CommitEncode, B: CommitEncode + Default>(A, B);
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-    #[strict_type(lib = TEST_LIB)]
+    #[derive(CommitEncode)]
     struct WhereConstraint<A: TryInto<u8>, B: From<String>>(A, B)
     where
-        A: StrictDumb + StrictEncode + StrictDecode + From<u8>,
+        A: CommitEncode + From<u8>,
         <A as TryFrom<u8>>::Error: From<Infallible>,
-        B: StrictDumb + StrictEncode + StrictDecode;
+        B: CommitEncode + Default;
 
     Ok(())
 }
@@ -79,17 +203,15 @@ fn tuple_generics() -> common::Result {
 #[test]
 fn struct_generics() -> common::Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-    #[strict_type(lib = TEST_LIB)]
-    struct Field<V: StrictEncode + StrictDecode + StrictDumb> {
+    #[derive(CommitEncode)]
+    struct Field<V: CommitEncode> {
         tag: u8,
         value: V,
     }
 
     #[derive(Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictDumb, StrictType, StrictEncode)]
-    #[strict_type(lib = TEST_LIB)]
-    struct ComplexField<'a, V: StrictEncode + StrictDumb>
+    #[derive(CommitEncode)]
+    struct ComplexField<'a, V: CommitEncode>
     where
         for<'b> V: From<&'b str>,
         &'a V: Default,
@@ -102,31 +224,12 @@ fn struct_generics() -> common::Result {
 }
 
 #[test]
-fn enum_ord() -> common::Result {
-    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-    #[strict_type(lib = TEST_LIB, tags = repr, into_u8, try_from_u8)]
-    #[repr(u8)]
-    enum Variants {
-        #[strict_type(dumb)]
-        One = 5,
-        Two = 6,
-        Three = 7,
-    }
-
-    assert_eq!(Variants::Three as u8, 7);
-    assert_eq!(u8::from(Variants::Three), 7);
-    assert_eq!(Variants::try_from(6), Ok(Variants::Two));
-    assert_eq!(Variants::try_from(3), Err(VariantError(Some(tn!("Variants")), 3)));
-
-    Ok(())
-}
-
-#[test]
 fn enum_repr() -> common::Result {
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = repr, into_u8, try_from_u8)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = into_u8)]
     #[repr(u16)]
     enum Cls {
         One = 1,
@@ -135,9 +238,9 @@ fn enum_repr() -> common::Result {
         Three,
     }
 
-    assert_eq!(u8::from(Cls::Three), 3);
-    assert_eq!(Cls::try_from(2), Ok(Cls::Two));
-    assert_eq!(Cls::try_from(4), Err(VariantError(Some(tn!("Cls")), 4)));
+    verify_commit(Cls::One, [1]);
+    verify_commit(Cls::Two, [2]);
+    verify_commit(Cls::Three, [3]);
 
     Ok(())
 }
@@ -148,6 +251,8 @@ fn enum_associated() -> common::Result {
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = order)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = strict)]
     enum Assoc {
         One {
             hash: [u8; 32],
@@ -160,13 +265,15 @@ fn enum_associated() -> common::Result {
         Five {},
     }
 
-    assert_eq!(Assoc::ALL_VARIANTS, &[
-        (0, "one"),
-        (1, "two"),
-        (2, "three"),
-        (3, "four"),
-        (4, "five")
-    ]);
+    let mut res = vec![0; 33];
+    res.extend([1]);
+    verify_commit(
+        Assoc::One {
+            hash: default!(),
+            ord: 1,
+        },
+        res,
+    );
 
     Ok(())
 }
@@ -177,11 +284,11 @@ fn enum_custom_tags() -> common::Result {
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = order)]
+    #[derive(CommitEncode)]
+    #[commit_encode(strategy = strict)]
     enum Assoc {
-        One {
-            hash: [u8; 32],
-            ord: u8,
-        },
+        #[strict_type(tag = 8)]
+        One { hash: [u8; 32], ord: u8 },
         #[strict_type(tag = 2)]
         Two(u8, u16, u32),
         #[strict_type(dumb, tag = 3)]
@@ -192,24 +299,15 @@ fn enum_custom_tags() -> common::Result {
         Five {},
     }
 
-    impl StrictSerialize for Assoc {}
-
-    assert_eq!(Assoc::ALL_VARIANTS, &[
-        (0, "one"),
-        (2, "two"),
-        (3, "three"),
-        (4, "four"),
-        (5, "five")
-    ]);
-
-    let assoc = Assoc::Two(0, 1, 2);
-    assert_eq!(assoc.to_strict_serialized::<256>().unwrap().as_slice(), &[2, 0, 1, 0, 2, 0, 0, 0]);
-
-    let assoc = Assoc::One {
-        hash: [0u8; 32],
-        ord: 0,
-    };
-    assert_eq!(assoc.to_strict_serialized::<256>().unwrap().as_slice(), &[0u8; 34]);
+    let mut res = vec![8; 33];
+    res.extend([1]);
+    verify_commit(
+        Assoc::One {
+            hash: [8; 32],
+            ord: 1,
+        },
+        res,
+    );
 
     Ok(())
 }

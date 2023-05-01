@@ -24,9 +24,6 @@ extern crate compiletest_rs as compiletest;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 
-use strict_encoding::{StrictDecode, StrictEncode};
-use strict_encoding_test::DataEncodingTestFailure;
-
 #[allow(dead_code)]
 pub fn compile_test(mode: &'static str) {
     let mut config = compiletest::Config {
