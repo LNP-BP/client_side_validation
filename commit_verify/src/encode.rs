@@ -116,6 +116,8 @@ pub mod strategies {
     use super::*;
     use crate::merkle::{MerkleLeaves, MerkleNode};
 
+    /// Used only internally for blank implementation on reference types.
+    #[doc(hidden)]
     pub enum AsRef {}
 
     /// Commits to the value by converting it into `u8` type. Useful for enum
