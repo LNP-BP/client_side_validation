@@ -31,13 +31,13 @@ pub use atoms::{Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId};
 pub use block::{LeafNotKnown, MerkleBlock, MerkleProof, UnrelatedProof};
 #[cfg(feature = "rand")]
 pub use tree::Error;
-pub use tree::{Iter, MerkleTree};
+pub use tree::MerkleTree;
 
-const LNPBP4_TAG: [u8; 16] = *b"urn:lnpbp:lnpbp4";
+pub const MERKLE_LNPBP4_TAG: u128 = u128::from_le_bytes(*b"urn:lnpbp:lnpbp4");
 
 /// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the
 /// amount of concealed information.
 pub trait Proof:
-    strict_encoding::StrictEncode + strict_encoding::StrictDecode + Clone + Eq + std::fmt::Debug
+    strict_encoding::StrictEncode + strict_encoding::StrictDecode + Eq + std::fmt::Debug
 {
 }

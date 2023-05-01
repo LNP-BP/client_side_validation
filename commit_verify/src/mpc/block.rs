@@ -32,7 +32,9 @@ use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
-use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
+use crate::mpc::{
+    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
+};
 use crate::{strategies, CommitStrategy, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {_0} is absent from the known part of a given
@@ -76,7 +78,7 @@ impl TreeNode {
     fn with(hash1: MerkleNode, hash2: MerkleNode, depth: u4, width: u16) -> TreeNode {
         TreeNode::ConcealedNode {
             depth,
-            hash: MerkleNode::branches(LNPBP4_TAG, depth, width, hash1, hash2),
+            hash: MerkleNode::branches(MERKLE_LNPBP4_TAG.to_be_bytes(), depth, width, hash1, hash2),
         }
     }
 

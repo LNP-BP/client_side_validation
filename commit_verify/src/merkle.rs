@@ -141,16 +141,16 @@ impl CommitStrategy for MerkleNode {
 
 impl MerkleNode {
     /// Merklization procedure that uses tagged hashes with depth commitments
-    /// according to [LNPBP-81] standard of client-side-validation merklization
+    /// according to [LNPBP-81] standard of client-side-validation merklization.
     ///
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
     pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeaves) -> Self {
         Self::_merklize(tag, nodes.merkle_leaves(), u4::ZERO, 0)
     }
 
-    fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
+    pub fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
         tag: [u8; 16],
-        mut iter: impl ExactSizeIterator<Item = Leaf>,
+        mut iter: impl ExactSizeIterator<Item = &'leaf Leaf>,
         depth: u4,
         offset: u16,
     ) -> Self {
@@ -160,9 +160,9 @@ impl MerkleNode {
         if len <= 2 {
             match (iter.next(), iter.next()) {
                 (None, None) => MerkleNode::void(tag, depth, width),
-                (Some(branch), None) => MerkleNode::single(tag, depth, width, &branch),
+                (Some(branch), None) => MerkleNode::single(tag, depth, width, branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleNode::couple(tag, depth, width, &branch1, &branch2)
+                    MerkleNode::couple(tag, depth, width, branch1, branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
@@ -188,27 +188,26 @@ impl MerkleNode {
 pub trait MerkleLeaves {
     type Leaf: CommitEncode;
 
-    type LeafIter<'leaf>: ExactSizeIterator<Item = Self::Leaf>
+    type LeafIter<'leaf>: ExactSizeIterator<Item = &'leaf Self::Leaf>
     where Self: 'leaf;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_>;
 }
 
-impl<'a, T, const MIN: usize> MerkleLeaves for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
-where &'a T: CommitEncode
+impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u16::MAX as usize }>
+where T: CommitEncode
 {
-    type Leaf = &'a T;
-    type LeafIter<'leaf> = std::slice::Iter<'a, T> where Self: 'leaf, 'a: 'leaf;
+    type Leaf = T;
+    type LeafIter<'leaf> = std::slice::Iter<'leaf, T> where Self: 'leaf;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter() }
 }
 
-impl<'a, T: Ord, const MIN: usize> MerkleLeaves
-    for &'a Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
-where &'a T: CommitEncode
+impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
+where T: CommitEncode
 {
-    type Leaf = &'a T;
-    type LeafIter<'leaf> = std::collections::btree_set::Iter<'a, T> where Self: 'leaf, 'a: 'leaf;
+    type Leaf = T;
+    type LeafIter<'leaf> = std::collections::btree_set::Iter<'leaf, T> where Self: 'leaf;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter() }
 }
