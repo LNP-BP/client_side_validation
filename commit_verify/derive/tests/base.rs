@@ -32,7 +32,10 @@ mod common;
 
 use std::convert::Infallible;
 
-use amplify::confinement::TinyVec;
+use amplify::confinement::SmallVec;
+use amplify::Wrapper;
+use commit_verify::merkle::MerkleNode;
+use commit_verify::mpc::MERKLE_LNPBP4_TAG;
 use commit_verify::{CommitEncode, Conceal};
 use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
 
@@ -363,15 +366,16 @@ fn merklize() -> common::Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(CommitEncode)]
     struct Tree {
-        #[commit_encode(merklize = 0u128)]
-        leaves: TinyVec<u16>,
+        #[commit_encode(merklize = MERKLE_LNPBP4_TAG)]
+        leaves: SmallVec<u16>,
     }
 
+    let test_vec = small_vec!(0, 1, 2, 3);
     verify_commit(
         Tree {
-            leaves: tiny_vec!(0, 1, 2, 3),
+            leaves: test_vec.clone(),
         },
-        [0],
+        MerkleNode::merklize(MERKLE_LNPBP4_TAG.to_be_bytes(), &test_vec).as_slice(),
     );
 
     Ok(())

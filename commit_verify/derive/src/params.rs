@@ -20,7 +20,7 @@
 // limitations under the License.
 
 use amplify_syn::{
-    ArgValueReq, AttrReq, DataType, FieldKind, ListReq, LiteralClass, ParametrizedAttr, TypeClass,
+    ArgValueReq, AttrReq, DataType, FieldKind, ListReq, ParametrizedAttr, TypeClass, ValueClass,
 };
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
@@ -119,7 +119,7 @@ impl TryFrom<ParametrizedAttr> for ContainerAttr {
 impl FieldAttr {
     pub fn with(mut params: ParametrizedAttr, _kind: FieldKind) -> Result<Self> {
         let mut req = AttrReq::with(map![
-            ATTR_MERKLIZE => ArgValueReq::optional(LiteralClass::Int),
+            ATTR_MERKLIZE => ArgValueReq::optional(ValueClass::Expr),
         ]);
         req.path_req = ListReq::maybe_one(path!(skip));
         params.check(req)?;
