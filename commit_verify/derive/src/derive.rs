@@ -66,7 +66,7 @@ impl CommitDerive {
             }
         } else {
             quote! {
-                let me = &self;
+                let me = self;
             }
         };
 
@@ -142,7 +142,7 @@ impl DeriveInner for DeriveCommit<'_> {
             }
         } else {
             quote! {
-                let me = &self;
+                let me = self;
             }
         };
 
@@ -152,7 +152,7 @@ impl DeriveInner for DeriveCommit<'_> {
             match &var.fields {
                 Fields::Unit => {
                     write_variants.push(quote! {
-                        Self::#var_name() => {},
+                        Self::#var_name => {},
                     });
                 }
                 Fields::Unnamed(fields) if fields.is_empty() => {
@@ -169,20 +169,20 @@ impl DeriveInner for DeriveCommit<'_> {
                     let mut field_idx = Vec::with_capacity(fields.len());
                     let mut field_fragments = Vec::with_capacity(fields.len());
                     for (no, field) in fields.iter().enumerate() {
-                        let index = Index::from(no);
+                        let index = Ident::new(&format!("_{no}"), Span::call_site());
                         let attr = FieldAttr::with(field.attr.clone(), FieldKind::Unnamed)?;
+                        field_idx.push(index.clone());
                         if attr.skip {
                             continue;
                         }
 
-                        field_idx.push(index.clone());
                         if let Some(tag) = attr.merklize {
                             field_fragments.push(quote! {
-                                MerkleNode::merklize(#tag.to_be_bytes(), &me.#index).commit_encode(e);
+                                MerkleNode::merklize(#tag.to_be_bytes(), #index).commit_encode(e);
                             })
                         } else {
                             field_fragments.push(quote! {
-                                me.#index.commit_encode(e);
+                                #index.commit_encode(e);
                             })
                         }
                     }
@@ -199,18 +199,18 @@ impl DeriveInner for DeriveCommit<'_> {
                         let attr =
                             FieldAttr::with(named_field.field.attr.clone(), FieldKind::Named)?;
                         let name = &named_field.name;
+                        field_name.push(name.clone());
                         if attr.skip {
                             continue;
                         }
 
-                        field_name.push(name.clone());
                         if let Some(tag) = attr.merklize {
                             field_fragments.push(quote! {
-                                MerkleNode::merklize(#tag.to_be_bytes(), &me.#name).commit_encode(e);
+                                MerkleNode::merklize(#tag.to_be_bytes(), #name).commit_encode(e);
                             })
                         } else {
                             field_fragments.push(quote! {
-                                me.#name.commit_encode(e);
+                                #name.commit_encode(e);
                             })
                         }
                     }
@@ -225,14 +225,14 @@ impl DeriveInner for DeriveCommit<'_> {
         }
 
         Ok(quote! {
-            #[allow(unused_imports)]
+            #[allow(unused_imports, unused_variables)]
             fn commit_encode(&self, e: &mut impl ::std::io::Write) {
                 use #crate_name::CommitEncode;
                 use #crate_name::merkle::{MerkleLeaves, MerkleNode};
                 use ::strict_encoding::StrictSum;
 
                 #conceal_code
-                me.variant_ord.commit_encode(e);
+                me.variant_ord().commit_encode(e);
 
                 match self {
                     #( #write_variants )*

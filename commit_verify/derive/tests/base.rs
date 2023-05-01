@@ -317,6 +317,45 @@ fn enum_custom_tags() -> common::Result {
 }
 
 #[test]
+fn enum_propagate() -> common::Result {
+    #[allow(dead_code)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = TEST_LIB, tags = order)]
+    #[derive(CommitEncode)]
+    enum Assoc {
+        #[strict_type(tag = 8)]
+        One { hash: [u8; 32], ord: u8 },
+        #[strict_type(tag = 2)]
+        Two(u8, u16, #[commit_encode(skip)] u32),
+        #[strict_type(dumb, tag = 3)]
+        Three,
+        #[strict_type(tag = 4)]
+        Four(),
+        #[strict_type(tag = 5)]
+        Five {},
+        Six {
+            a: u8,
+            #[commit_encode(skip)]
+            b: u16,
+        },
+    }
+
+    let mut res = vec![8; 33];
+    res.extend([1]);
+    verify_commit(
+        Assoc::One {
+            hash: [8; 32],
+            ord: 1,
+        },
+        res,
+    );
+    verify_commit(Assoc::Two(0xfe, 0xdead, 0xbeefcafe), [2, 0xfe, 0xad, 0xde]);
+
+    Ok(())
+}
+
+#[test]
 fn conceal() -> common::Result {
     #[derive(Clone, PartialEq, Eq, Debug)]
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
