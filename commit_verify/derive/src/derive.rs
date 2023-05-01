@@ -19,195 +19,99 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify_syn::{DeriveInner, EnumKind, Field, FieldKind, Fields, Items, NamedField, Variant};
+use amplify_syn::{DeriveInner, Field, FieldKind, Items, NamedField, Variant};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
+use quote::ToTokens;
 use syn::{Error, Index, Result};
 
-use crate::params::{CommitDerive, FieldAttr, VariantAttr};
+use crate::params::{CommitDerive, FieldAttr, StrategyAttr};
 
-struct DeriveEncode<'a>(&'a CommitDerive);
+struct DeriveCommit<'a>(&'a CommitDerive);
 
 impl CommitDerive {
     pub fn derive_encode(&self) -> Result<TokenStream2> {
-        self.data
-            .derive(&self.conf.strict_crate, &ident!(StrictEncode), &DeriveEncode(self))
+        match self.conf.strategy {
+            StrategyAttr::CommitEncoding => self.data.derive(
+                &self.conf.commit_crate,
+                &ident!(StrictEncode),
+                &DeriveCommit(self),
+            ),
+            other => self.derive_strategy(other),
+        }
+    }
+
+    fn derive_strategy(&self, strategy: StrategyAttr) -> Result<TokenStream2> {
+        let (impl_generics, ty_generics, where_clause) = self.data.generics.split_for_impl();
+        let trait_crate = &self.conf.commit_crate;
+        let ident_name = &self.data.name;
+        let strategy_name = strategy.to_ident();
+
+        Ok(quote! {
+            #[automatically_derived]
+            impl #impl_generics #trait_crate::CommitStrategy for #ident_name #ty_generics #where_clause {
+                type Strategy = #trait_crate::strategies::#strategy_name;
+            }
+        })
+    }
+
+    fn derive_fields<'a>(
+        &self,
+        fields: impl Iterator<Item = (Option<&'a Ident>, &'a Field)>,
+    ) -> Result<TokenStream2> {
+        let crate_name = &self.conf.commit_crate;
+
+        let mut field_encoding = Vec::new();
+        for (no, (field_name, unnamed_field)) in fields.enumerate() {
+            let attr = FieldAttr::with(unnamed_field.attr.clone(), FieldKind::Named)?;
+            if attr.skip {
+                continue;
+            }
+            let field_name = field_name
+                .map(Ident::to_token_stream)
+                .unwrap_or_else(|| Index::from(no).to_token_stream());
+            let field = if let Some(tag) = attr.merklize {
+                quote! {
+                    {
+                        use #crate_name::merkle::MerkleLeaves;
+                        #crate_name::merkle::MerkleNode::merklize(#tag.to_be_bytes(), self.#field_name).commit_encode(e);
+                    }
+                }
+            } else {
+                quote! {
+                    self.#field_name.commit_encode(e)?;
+                }
+            };
+            field_encoding.push(field)
+        }
+
+        Ok(quote! {
+            fn commit_encode(&self, e: &mut impl ::std::io::Write) {
+                use #crate_name::CommitEncode;
+                #( #field_encoding )*
+            }
+        })
     }
 }
 
-impl DeriveInner for DeriveEncode<'_> {
+impl DeriveInner for DeriveCommit<'_> {
     fn derive_unit_inner(&self) -> Result<TokenStream2> {
         Err(Error::new(
             Span::call_site(),
-            "StrictEncode must not be derived on a unit types. Use just a unit type instead when \
+            "CommitEncode must not be derived on a unit types. Use just a unit type instead when \
              encoding parent structure.",
         ))
     }
 
     fn derive_struct_inner(&self, fields: &Items<NamedField>) -> Result<TokenStream2> {
-        let crate_name = &self.0.conf.strict_crate;
-
-        let mut orig_name = Vec::with_capacity(fields.len());
-        let mut field_name = Vec::with_capacity(fields.len());
-        for named_field in fields {
-            let attr = FieldAttr::with(named_field.field.attr.clone(), FieldKind::Named)?;
-            if !attr.skip {
-                orig_name.push(&named_field.name);
-                field_name.push(attr.field_name(&named_field.name));
-            }
-        }
-
-        Ok(quote! {
-            fn strict_encode<W: #crate_name::TypedWrite>(&self, writer: W) -> ::std::io::Result<W> {
-                use #crate_name::{TypedWrite, WriteStruct, fname};
-                writer.write_struct::<Self>(|w| {
-                    Ok(w
-                        #( .write_field(fname!(#field_name), &self.#orig_name)? )*
-                        .complete())
-                })
-            }
-        })
+        self.0
+            .derive_fields(fields.iter().map(|f| (Some(&f.name), &f.field)))
     }
 
     fn derive_tuple_inner(&self, fields: &Items<Field>) -> Result<TokenStream2> {
-        let crate_name = &self.0.conf.strict_crate;
-
-        let no = fields.iter().enumerate().filter_map(|(index, field)| {
-            let attr = FieldAttr::with(field.attr.clone(), FieldKind::Unnamed).ok()?;
-            if attr.skip {
-                None
-            } else {
-                Some(Index::from(index))
-            }
-        });
-
-        Ok(quote! {
-            fn strict_encode<W: #crate_name::TypedWrite>(&self, writer: W) -> ::std::io::Result<W> {
-                use #crate_name::{TypedWrite, WriteTuple};
-                writer.write_tuple::<Self>(|w| {
-                    Ok(w
-                        #( .write_field(&self.#no)? )*
-                        .complete())
-                })
-            }
-        })
+        self.0.derive_fields(fields.iter().map(|f| (None, f)))
     }
 
-    fn derive_enum_inner(&self, variants: &Items<Variant>) -> Result<TokenStream2> {
-        let crate_name = &self.0.conf.strict_crate;
-
-        let inner = if variants.enum_kind() == EnumKind::Primitive {
-            quote! {
-                writer.write_enum(*self)
-            }
-        } else {
-            let mut define_variants = Vec::with_capacity(variants.len());
-            let mut write_variants = Vec::with_capacity(variants.len());
-            for var in variants {
-                let attr = VariantAttr::try_from(var.attr.clone())?;
-                let var_name = &var.name;
-                let name = attr.variant_name(var_name);
-                match &var.fields {
-                    Fields::Unit => {
-                        define_variants.push(quote! {
-                            .define_unit(vname!(#name))
-                        });
-                        write_variants.push(quote! {
-                            Self::#var_name => writer.write_unit(vname!(#name))?,
-                        });
-                    }
-                    Fields::Unnamed(fields) if fields.is_empty() => {
-                        define_variants.push(quote! {
-                            .define_unit(vname!(#name))
-                        });
-                        write_variants.push(quote! {
-                            Self::#var_name() => writer.write_unit(vname!(#name))?,
-                        });
-                    }
-                    Fields::Named(fields) if fields.is_empty() => {
-                        define_variants.push(quote! {
-                            .define_unit(vname!(#name))
-                        });
-                        write_variants.push(quote! {
-                            Self::#var_name {} => writer.write_unit(vname!(#name))?,
-                        });
-                    }
-                    Fields::Unnamed(fields) => {
-                        let mut field_ty = Vec::with_capacity(fields.len());
-                        let mut field_idx = Vec::with_capacity(fields.len());
-                        for (index, field) in fields.iter().enumerate() {
-                            let attr = FieldAttr::with(field.attr.clone(), FieldKind::Unnamed)?;
-
-                            if !attr.skip {
-                                let ty = &field.ty;
-                                let index = Ident::new(&format!("_{index}"), Span::call_site());
-                                field_ty.push(quote! { #ty });
-                                field_idx.push(quote! { #index });
-                            }
-                        }
-                        define_variants.push(quote! {
-                            .define_tuple(vname!(#name), |d| {
-                                d #( .define_field::<#field_ty>() )* .complete()
-                            })
-                        });
-                        write_variants.push(quote! {
-                            Self::#var_name( #( #field_idx ),* ) => writer.write_tuple(vname!(#name), |w| {
-                                Ok(w #( .write_field(#field_idx)? )* .complete())
-                            })?,
-                        });
-                    }
-                    Fields::Named(fields) => {
-                        let mut field_ty = Vec::with_capacity(fields.len());
-                        let mut field_name = Vec::with_capacity(fields.len());
-                        let mut field_rename = Vec::with_capacity(fields.len());
-                        for named_field in fields {
-                            let attr =
-                                FieldAttr::with(named_field.field.attr.clone(), FieldKind::Named)?;
-
-                            let ty = &named_field.field.ty;
-                            let name = &named_field.name;
-                            let rename = attr.field_name(name);
-
-                            if !attr.skip {
-                                field_ty.push(quote! { #ty });
-                                field_name.push(quote! { #name });
-                                field_rename.push(quote! { fname!(#rename) });
-                            }
-                        }
-
-                        define_variants.push(quote! {
-                            .define_struct(vname!(#name), |d| {
-                                d #( .define_field::<#field_ty>(#field_rename) )* .complete()
-                            })
-                        });
-                        write_variants.push(quote! {
-                            Self::#var_name { #( #field_name ),* } => writer.write_struct(vname!(#name), |w| {
-                                Ok(w #( .write_field(#field_rename, #field_name)? )* .complete())
-                            })?,
-                        });
-                    }
-                }
-            }
-
-            quote! {
-                #[allow(unused_imports)]
-                use #crate_name::{DefineUnion, WriteUnion, DefineTuple, DefineStruct, WriteTuple, WriteStruct, fname, vname};
-                writer.write_union::<Self>(|definer| {
-                    let writer = definer
-                        #( #define_variants )*
-                        .complete();
-
-                    Ok(match self {
-                        #( #write_variants )*
-                    }.complete())
-                })
-            }
-        };
-
-        Ok(quote! {
-            fn strict_encode<W: #crate_name::TypedWrite>(&self, writer: W) -> ::std::io::Result<W> {
-                use #crate_name::TypedWrite;
-                #inner
-            }
-        })
+    fn derive_enum_inner(&self, _variants: &Items<Variant>) -> Result<TokenStream2> {
+        Err(Error::new(Span::call_site(), "enums can't use CommitEncode strategy"))
     }
 }

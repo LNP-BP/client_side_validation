@@ -51,6 +51,8 @@ extern crate proc_macro;
 #[macro_use]
 extern crate syn;
 #[macro_use]
+extern crate amplify;
+#[macro_use]
 extern crate amplify_syn;
 
 pub(crate) mod params;

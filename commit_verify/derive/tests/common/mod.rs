@@ -51,16 +51,4 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { Some(self.0.as_ref()) }
 }
 
-impl<T> From<DataEncodingTestFailure<T>> for Error
-where T: StrictEncode + StrictDecode + PartialEq + Debug + Clone + 'static
-{
-    fn from(err: DataEncodingTestFailure<T>) -> Self { Self(Box::new(err)) }
-}
-
-/*
-impl From<strict_encoding::Error> for Error {
-    fn from(err: strict_encoding::Error) -> Self { Self(Box::new(err)) }
-}
-*/
-
 pub type Result = std::result::Result<(), Error>;

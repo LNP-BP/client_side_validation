@@ -221,7 +221,6 @@ dependencies = [
  "amplify_syn",
  "commit_verify",
  "compiletest_rs",
- "heck",
  "proc-macro2",
  "quote",
  "syn",
