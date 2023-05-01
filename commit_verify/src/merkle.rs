@@ -150,7 +150,7 @@ impl MerkleNode {
 
     fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
         tag: [u8; 16],
-        mut iter: impl MerkleIter<Leaf>,
+        mut iter: impl ExactSizeIterator<Item = Leaf>,
         depth: u4,
         offset: u16,
     ) -> Self {
@@ -185,14 +185,10 @@ impl MerkleNode {
     }
 }
 
-pub trait MerkleIter<Leaf: CommitEncode>: ExactSizeIterator<Item = Leaf> {}
-
-impl<Leaf: CommitEncode, I> MerkleIter<Leaf> for I where I: ExactSizeIterator<Item = Leaf> {}
-
 pub trait MerkleLeaves {
     type Leaf: CommitEncode;
 
-    type LeafIter: MerkleIter<Self::Leaf>;
+    type LeafIter: ExactSizeIterator<Item = Self::Leaf>;
 
     fn merkle_leaves(&self) -> Self::LeafIter;
 }
