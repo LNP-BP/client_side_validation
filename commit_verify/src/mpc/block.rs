@@ -32,8 +32,10 @@ use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
-use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
-use crate::{strategies, CommitStrategy, Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::mpc::{
+    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
+};
+use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {_0} is absent from the known part of a given
 /// LNPBP-4 Merkle block.
@@ -76,7 +78,7 @@ impl TreeNode {
     fn with(hash1: MerkleNode, hash2: MerkleNode, depth: u4, width: u16) -> TreeNode {
         TreeNode::ConcealedNode {
             depth,
-            hash: MerkleNode::branches(LNPBP4_TAG, depth, width, hash1, hash2),
+            hash: MerkleNode::branches(MERKLE_LNPBP4_TAG.to_be_bytes(), depth, width, hash1, hash2),
         }
     }
 
@@ -106,6 +108,8 @@ impl TreeNode {
 #[derive(Getters, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, conceal, strategy = strict)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleBlock {
     /// Tree depth (up to 16).
@@ -474,10 +478,6 @@ impl Conceal for MerkleBlock {
     }
 }
 
-impl CommitStrategy for MerkleBlock {
-    type Strategy = strategies::ConcealStrict;
-}
-
 impl CommitmentId for MerkleBlock {
     const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
     type Id = Commitment;
@@ -487,6 +487,8 @@ impl CommitmentId for MerkleBlock {
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleProof {
     /// Position of the leaf in the tree.

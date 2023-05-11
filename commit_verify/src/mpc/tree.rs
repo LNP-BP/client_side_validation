@@ -19,16 +19,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify::confinement::SmallOrdMap;
+use amplify::confinement::{SmallOrdMap, SmallVec};
 use amplify::num::{u256, u4};
 use amplify::Wrapper;
 
 #[cfg(feature = "rand")]
 pub use self::commit::Error;
-use crate::merkle::{MerkleLeaves, MerkleNode};
+use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
-use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId, LNPBP4_TAG};
-use crate::{strategies, CommitStrategy, CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG};
+use crate::{CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 
@@ -36,6 +36,8 @@ type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, conceal, strategy = strict)]
 pub struct MerkleTree {
     /// Tree depth (up to 16).
     pub(super) depth: u4,
@@ -51,64 +53,22 @@ pub struct MerkleTree {
 
 impl Proof for MerkleTree {}
 
-impl CommitStrategy for MerkleTree {
-    type Strategy = strategies::ConcealStrict;
-}
-
 impl CommitmentId for MerkleTree {
     const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
     type Id = Commitment;
 }
 
-pub struct IntoIter {
-    width: u16,
-    pos: u16,
-    map: OrderedMap,
-    entropy: u64,
-}
-
-impl Iterator for IntoIter {
-    type Item = Leaf;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.pos == self.width {
-            return None;
-        }
-        self.pos += 1;
-
-        let leaf = self
-            .map
-            .get(&self.pos)
-            .map(|(protocol, msg)| Leaf::inhabited(*protocol, *msg))
-            .unwrap_or_else(|| Leaf::entropy(self.entropy, self.pos));
-
-        Some(leaf)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let remains = self.map.len() - self.pos as usize;
-        (remains, Some(remains))
-    }
-}
-
-impl ExactSizeIterator for IntoIter {}
-
-impl MerkleLeaves for MerkleTree {
-    type Leaf = Leaf;
-    type LeafIter = IntoIter;
-
-    fn merkle_leaves(&self) -> Self::LeafIter {
-        IntoIter {
-            entropy: self.entropy,
-            width: self.width(),
-            pos: 0,
-            map: self.as_ordered_map().clone(), // TODO: Remove clone
-        }
-    }
-}
-
 impl MerkleTree {
-    pub fn root(&self) -> MerkleNode { MerkleNode::merklize(LNPBP4_TAG, self) }
+    pub fn root(&self) -> MerkleNode {
+        let iter = (0..self.width()).into_iter().map(|pos| {
+            self.map
+                .get(&pos)
+                .map(|(protocol, msg)| Leaf::inhabited(*protocol, *msg))
+                .unwrap_or_else(|| Leaf::entropy(self.entropy, pos))
+        });
+        let leaves = SmallVec::try_from_iter(iter).expect("u16-bound size");
+        MerkleNode::merklize(MERKLE_LNPBP4_TAG.to_be_bytes(), &leaves)
+    }
 }
 
 impl Conceal for MerkleTree {
@@ -201,6 +161,4 @@ impl MerkleTree {
     pub fn depth(&self) -> u4 { self.depth }
 
     pub fn entropy(&self) -> u64 { self.entropy }
-
-    fn as_ordered_map(&self) -> &OrderedMap { &self.map }
 }

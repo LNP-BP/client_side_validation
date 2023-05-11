@@ -19,7 +19,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeSet;
+use core::{iter, slice};
+use std::collections::{btree_set, BTreeSet};
 use std::io::Write;
 
 use amplify::confinement::Confined;
@@ -63,6 +64,8 @@ impl CommitStrategy for NodeBranching {
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = MerkleNode(default!()))]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -135,22 +138,18 @@ impl MerkleNode {
     }
 }
 
-impl CommitStrategy for MerkleNode {
-    type Strategy = strategies::Strict;
-}
-
 impl MerkleNode {
     /// Merklization procedure that uses tagged hashes with depth commitments
-    /// according to [LNPBP-81] standard of client-side-validation merklization
+    /// according to [LNPBP-81] standard of client-side-validation merklization.
     ///
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
     pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeaves) -> Self {
         Self::_merklize(tag, nodes.merkle_leaves(), u4::ZERO, 0)
     }
 
-    fn _merklize<'leaf, Leaf: CommitEncode + 'leaf>(
+    pub fn _merklize<Leaf: CommitEncode>(
         tag: [u8; 16],
-        mut iter: impl MerkleIter<Leaf>,
+        mut iter: impl ExactSizeIterator<Item = Leaf>,
         depth: u4,
         offset: u16,
     ) -> Self {
@@ -185,35 +184,30 @@ impl MerkleNode {
     }
 }
 
-pub trait MerkleIter<Leaf: CommitEncode>: ExactSizeIterator<Item = Leaf> {}
-
-impl<Leaf: CommitEncode, I> MerkleIter<Leaf> for I where I: ExactSizeIterator<Item = Leaf> {}
-
 pub trait MerkleLeaves {
     type Leaf: CommitEncode;
+    type LeafIter<'tmp>: ExactSizeIterator<Item = Self::Leaf>
+    where Self: 'tmp;
 
-    type LeafIter: MerkleIter<Self::Leaf>;
-
-    fn merkle_leaves(&self) -> Self::LeafIter;
+    fn merkle_leaves(&self) -> Self::LeafIter<'_>;
 }
 
-impl<'a, T, const MIN: usize> MerkleLeaves for &'a Confined<Vec<T>, MIN, { u16::MAX as usize }>
-where &'a T: CommitEncode
+impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u16::MAX as usize }>
+where T: CommitEncode + Copy
 {
-    type Leaf = &'a T;
-    type LeafIter = std::slice::Iter<'a, T>;
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
 
-    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
 
-impl<'a, T: Ord, const MIN: usize> MerkleLeaves
-    for &'a Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
-where &'a T: CommitEncode
+impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
+where T: CommitEncode + Copy
 {
-    type Leaf = &'a T;
-    type LeafIter = std::collections::btree_set::Iter<'a, T>;
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
 
-    fn merkle_leaves(&self) -> Self::LeafIter { self.iter() }
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
 
 /*

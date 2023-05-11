@@ -66,6 +66,8 @@ impl ProtocolId {
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -76,10 +78,6 @@ pub struct Message(
     #[from([u8; 32])]
     Bytes32,
 );
-
-impl CommitStrategy for Message {
-    type Strategy = strategies::Strict;
-}
 
 impl Message {
     pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
