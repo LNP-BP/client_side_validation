@@ -46,7 +46,8 @@ serde_crate = { package = "serde", version = "1", features = ["derive"], optiona
 
 [features]
 default = ["derive"]
-all = ["serde", "rand", "async"]
+all = ["serde", "rand", "async", "stl"]
+stl = ["commit_verify/stl"]
 async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 derive = ["commit_verify/derive"]
