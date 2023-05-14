@@ -23,7 +23,7 @@ use crate::{CommitEncode, Sha256};
 
 /// High-level API used in client-side validation for producing a single
 /// commitment to the data, which includes running all necessary procedures like
-/// concealment with [`CommitConceal`], merklization, strict encoding,
+/// concealment with [`crate::Conceal`], merklization, strict encoding,
 /// wrapped into [`CommitEncode`], followed by the actual commitment to its
 /// output.
 pub trait CommitmentId: CommitEncode {

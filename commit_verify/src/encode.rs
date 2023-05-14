@@ -144,7 +144,7 @@ pub mod strategies {
     pub enum Strict {}
 
     /// Commits to the value data by first converting them into confidential
-    /// version (*concealing*) by running [`CommitConceal::commit_conceal`]
+    /// version (*concealing*) by running [`Conceal::conceal`]
     /// first and returning its result serialized with strict encoding
     /// rules.
     ///
@@ -155,7 +155,7 @@ pub mod strategies {
     /// Commits to the value via commitment id of the type, which is serialized
     /// into the hasher.
     ///
-    /// Can apply only to types implementing [`CommitId`] trait.
+    /// Can apply only to types implementing [`CommitmentId`] trait.
     pub enum Id {}
 
     /// Commits to the value by merklizing data provided by [`MerkleLeaves`]

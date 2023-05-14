@@ -22,27 +22,27 @@
 // Coding conventions
 #![recursion_limit = "256"]
 
-//! Derivation macros for strict encoding. To learn more about the strict
-//! encoding please check `strict_encoding` crate.
+//! Derivation macros for commit encoding. To learn more about the strict
+//! commit please check `commit_verify` crate.
 //!
 //! # Derivation macros
 //!
-//! Library exports derivation macros `#[derive(`[`StrictEncode`]`)]`,
-//! `#[derive(`[`StrictDecode`]`)]`, which can be added on top of any structure
-//! you'd like to support string encoding (see Example section below).
+//! Library exports derivation macros `#[derive(`[`CommitEncode`]`)]`,
+//! which can be added on top of any structure you'd like to support commitment
+//! encoding.
 //!
 //! Encoding/decoding implemented by both of these macros may be configured at
-//! type and individual field level using `#[strict_type(...)]` attributes.
+//! type and individual field level using `#[commit_encode(...)]` attributes.
 //!
 //! # Attribute
 //!
-//! [`StrictEncode`] and [`StrictDecode`] behavior can be customized with
-//! `#[strict_encoding(...)]` attribute, which accepts different arguments
-//! depending to which part of the data type it is applied.
+//! [`CommitEncode`] behavior can be customized with `#[commit_encoding(...)]`
+//! attribute, which accepts different arguments depending to which part of the
+//! data type it is applied.
 //!
 //! ## Attribute arguments at type declaration level
 //!
-//! Derivation macros accept `#[strict_encoding()]` attribute with the following
+//! Derivation macros accept `#[commit_encoding()]` attribute with the following
 //! arguments:
 
 #[macro_use]
