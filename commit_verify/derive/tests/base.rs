@@ -53,6 +53,7 @@ fn strategy_transparent() -> common::Result {
     struct ShortLen(u16);
 
     verify_commit(ShortLen(0), [0, 0]);
+    #[allow(clippy::mixed_case_hex_literals)]
     verify_commit(ShortLen(0xFFde), [0xde, 0xFF]);
 
     Ok(())
@@ -69,6 +70,7 @@ fn strategy_into_u8() -> common::Result {
         B,
         C,
     }
+    #[allow(clippy::from_over_into)]
     impl Into<u8> for Prim {
         fn into(self) -> u8 { self as u8 }
     }

@@ -132,7 +132,7 @@ impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
         let map = &tree.map;
 
-        let iter = (0..tree.width()).into_iter().map(|pos| {
+        let iter = (0..tree.width()).map(|pos| {
             map.get(&pos)
                 .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
                     protocol_id: *protocol_id,
