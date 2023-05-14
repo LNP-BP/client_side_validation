@@ -1,5 +1,5 @@
 {-
-  Id: colony_janet_sharon_GqMjw3inQ2SqTJ7moaxrGkTTsGgf5GZ6FxnDiCSToa9R
+  Id: expand_vertigo_billy_HmAmKqZJ7XKDsyamyaikTq3PXzWgWcuVMXwe13Hzxfq4
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -8,22 +8,22 @@
   License: Apache-2.0
 -}
 
-typelib CommitVerify -- colony_janet_sharon_GqMjw3inQ2SqTJ7moaxrGkTTsGgf5GZ6FxnDiCSToa9R
+typelib CommitVerify -- expand_vertigo_billy_HmAmKqZJ7XKDsyamyaikTq3PXzWgWcuVMXwe13Hzxfq4
 
 import quota_conan_fashion_3TZmAPf8EkQZnbGS1g8uMGes6jEWPqNkFB6pLUKeoefg as Std
 
 
-data MerkleBlock      :: depth Std.u4
+data MerkleBlock      :: depth Std.U4
                        , crossSection [TreeNode]
                        , entropy U64?
-data MerkleNode       :: [U8 ^ 32]
+data MerkleNode       :: [Byte ^ 32]
 data MerkleProof      :: pos U16, path [MerkleNode]
-data MerkleTree       :: depth Std.u4
+data MerkleTree       :: depth Std.U4
                        , entropy U64
                        , messages {[Byte ^ 32] -> Message}
                        , map {U16 -> ProtocolId, Message}
-data Message          :: [U8 ^ 32]
-data ProtocolId       :: [U8 ^ 32]
-data TreeNode         :: concealedNode (depth Std.u4, hash MerkleNode)
+data Message          :: [Byte ^ 32]
+data ProtocolId       :: [Byte ^ 32]
+data TreeNode         :: concealedNode (depth Std.U4, hash MerkleNode)
                        | commitmentLeaf (protocolId ProtocolId, message Message)
 
