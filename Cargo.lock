@@ -679,7 +679,7 @@ dependencies = [
 [[package]]
 name = "strict_types"
 version = "1.1.1"
-source = "git+https://github.com/strict-types/strict-types?branch=fix/typesys-builder#bb052033aba89877b1ecef9012bff5c2a55f3e7f"
+source = "git+https://github.com/strict-types/strict-types?branch=fix/typesys-builder#649eface5c47a117ff443bfac7ba70a73de2ba27"
 dependencies = [
  "amplify",
  "baid58",
