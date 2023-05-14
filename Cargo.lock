@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "commit_encoding_derive"
-version = "0.10.0-beta.1"
+version = "0.10.0"
 dependencies = [
  "amplify",
  "amplify_syn",
