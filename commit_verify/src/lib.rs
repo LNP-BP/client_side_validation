@@ -51,6 +51,8 @@ mod convolve;
 pub(self) mod embed;
 mod encode;
 mod id;
+#[cfg(feature = "stl")]
+pub mod stl;
 
 pub mod merkle;
 pub mod mpc;

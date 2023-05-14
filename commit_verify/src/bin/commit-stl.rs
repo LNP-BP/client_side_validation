@@ -12,27 +12,17 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
-#[macro_use]
-extern crate amplify;
-#[macro_use]
-extern crate strict_types;
-
 use std::io::stdout;
 use std::{env, fs, io};
 
 use amplify::num::u24;
-use commit_verify::{mpc, LIB_NAME_COMMIT_VERIFY};
+use commit_verify::stl;
 use strict_encoding::{StrictEncode, StrictWriter};
-use strict_types::typelib::LibBuilder;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
-    let lib = LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY))
-        .process::<mpc::MerkleTree>()?
-        .process::<mpc::MerkleBlock>()?
-        .process::<mpc::MerkleProof>()?
-        .compile(none!())?;
+    let lib = stl::commit_verify_stl();
     let id = lib.id();
 
     let ext = match args.get(1).map(String::as_str) {
