@@ -74,7 +74,7 @@ impl TryFrom<&Path> for StrategyAttr {
 }
 
 impl StrategyAttr {
-    pub fn to_ident(&self) -> Ident {
+    pub fn to_ident(self) -> Ident {
         match self {
             StrategyAttr::CommitEncoding => {
                 panic!("StrategyAttr::CommitEncoding must be derived manually")

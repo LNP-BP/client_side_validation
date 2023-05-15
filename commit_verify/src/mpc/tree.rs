@@ -60,7 +60,7 @@ impl CommitmentId for MerkleTree {
 
 impl MerkleTree {
     pub fn root(&self) -> MerkleNode {
-        let iter = (0..self.width()).into_iter().map(|pos| {
+        let iter = (0..self.width()).map(|pos| {
             self.map
                 .get(&pos)
                 .map(|(protocol, msg)| Leaf::inhabited(*protocol, *msg))

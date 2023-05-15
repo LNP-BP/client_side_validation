@@ -155,7 +155,7 @@ where
     {
         let mut container_prime = proof.restore_original_container(self)?;
         let proof_prime = container_prime.embed_commit(msg)?;
-        Ok(proof_prime.verify_eq(&proof) && self.verify_eq(&container_prime))
+        Ok(proof_prime.verify_eq(proof) && self.verify_eq(&container_prime))
     }
 
     /// Phantom method used to add `Protocol` generic parameter to the trait.
@@ -264,7 +264,7 @@ pub(crate) mod test_helpers {
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!SUPPLEMENT.verify(msg, &commitment).unwrap());
+                    assert!(!SUPPLEMENT.verify(msg, commitment).unwrap());
                 });
 
                 // Detecting collision: each message should produce a unique

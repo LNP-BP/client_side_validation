@@ -73,7 +73,7 @@ where
     where
         Self: VerifyEq,
     {
-        let original = self.restore_original(&commitment);
+        let original = self.restore_original(commitment);
         let suppl = self.extract_supplement();
         let (commitment_prime, proof) = original.convolve_commit(suppl, msg)?;
         Ok(commitment.verify_eq(&commitment_prime) && self.verify_eq(&proof))

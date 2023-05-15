@@ -46,7 +46,9 @@
 //! standardizing typical workflow processes in a form of interfaces that
 //! will be nearly impossible to use in a wrong way.
 
+/// Re-export of `commit_verify` crate.
 pub extern crate commit_verify as commit;
+/// Re-export of `single_use_seals` crate.
 pub extern crate single_use_seals as seals;
 
 #[cfg(feature = "serde")]
