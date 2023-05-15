@@ -206,7 +206,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "commit_verify",
  "serde",
@@ -229,7 +229,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -656,8 +656,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "2.1.2"
-source = "git+https://github.com/strict-types/strict-encoding?branch=stl#09c260290112897b913a1fe025bb9c12c73785dd"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fff0b729ca136cddccc87481dd932a442133a12a490f349d67f5d4c20b421e5"
 dependencies = [
  "amplify",
  "half",
@@ -667,7 +668,8 @@ dependencies = [
 [[package]]
 name = "strict_encoding_derive"
 version = "2.0.0"
-source = "git+https://github.com/strict-types/strict-encoding?branch=stl#09c260290112897b913a1fe025bb9c12c73785dd"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f5adae55367464f5a229bfd539682c94f870b98a220be6e61dc43f85d612e7e"
 dependencies = [
  "amplify_syn",
  "heck",
@@ -678,8 +680,9 @@ dependencies = [
 
 [[package]]
 name = "strict_types"
-version = "1.1.1"
-source = "git+https://github.com/strict-types/strict-types?branch=fix/typesys-builder#649eface5c47a117ff443bfac7ba70a73de2ba27"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7af86f31fce50e8e4635509b6114c71aaa3a37cb3df1b8ea0ab5d5cf58afd688"
 dependencies = [
  "amplify",
  "baid58",
