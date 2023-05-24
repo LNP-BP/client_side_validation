@@ -22,9 +22,11 @@
 //! Base commit-verify scheme interface.
 
 use amplify::Bytes32;
+use sha2::Sha256;
 use strict_encoding::{StrictEncode, StrictWriter};
 
-use crate::{CommitmentProtocol, Sha256};
+use crate::digest::DigestExt;
+use crate::CommitmentProtocol;
 
 /// Trait for commit-verify scheme. A message for the commitment may be any
 /// structure that can be represented as a byte array (i.e. implements
@@ -139,11 +141,12 @@ mod test {
     use core::hash::Hash;
 
     use amplify::confinement::SmallVec;
+    use sha2::Digest;
 
     use super::test_helpers::*;
     use super::*;
     use crate::test_helpers::gen_messages;
-    use crate::{Sha256, UntaggedProtocol};
+    use crate::UntaggedProtocol;
 
     #[derive(Debug, Display, Error)]
     #[display(Debug)]
@@ -154,7 +157,7 @@ mod test {
     impl<T> CommitVerify<T, UntaggedProtocol> for DummyHashCommitment
     where T: AsRef<[u8]>
     {
-        fn commit(msg: &T) -> Self { Self(Sha256::digest(msg.as_ref())) }
+        fn commit(msg: &T) -> Self { Self(Sha256::digest(msg.as_ref()).into()) }
     }
 
     #[test]

@@ -26,9 +26,11 @@ use std::io::Write;
 use amplify::confinement::Confined;
 use amplify::num::u4;
 use amplify::{Bytes32, Wrapper};
+use sha2::Sha256;
 
+use crate::digest::DigestExt;
 use crate::encode::{strategies, CommitStrategy};
-use crate::{CommitEncode, Sha256, LIB_NAME_COMMIT_VERIFY};
+use crate::{CommitEncode, LIB_NAME_COMMIT_VERIFY};
 
 /// Type of a merkle node branching.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
