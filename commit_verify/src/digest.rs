@@ -20,8 +20,7 @@
 // limitations under the License.
 
 use amplify::num::u24;
-use sha2::Digest;
-pub use sha2::Sha256;
+pub use sha2::{Digest, Sha256};
 
 pub trait DigestExt: Digest {
     fn from_tag(tag: impl AsRef<[u8]>) -> Self;
