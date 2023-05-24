@@ -235,6 +235,7 @@ dependencies = [
  "commit_encoding_derive",
  "rand",
  "serde",
+ "sha2",
  "strict_encoding",
  "strict_types",
 ]

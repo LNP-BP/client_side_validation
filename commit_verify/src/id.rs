@@ -19,7 +19,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{CommitEncode, Sha256};
+use sha2::Sha256;
+
+use crate::digest::DigestExt;
+use crate::CommitEncode;
 
 /// High-level API used in client-side validation for producing a single
 /// commitment to the data, which includes running all necessary procedures like
