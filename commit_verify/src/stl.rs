@@ -25,16 +25,16 @@ use strict_types::TypeLib;
 use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "expand_vertigo_billy_HmAmKqZJ7XKDsyamyaikTq3PXzWgWcuVMXwe13Hzxfq4";
+    "desire_samuel_film_B36pgmaVK2ymbQzxPCTKBkkLd3BD99nuwxHDUESLdk27";
 
 fn _commit_verify_stl() -> Result<TypeLib, TranslateError> {
-    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY))
-        .transpile::<mpc::MerkleTree>()
-        .transpile::<mpc::MerkleBlock>()
-        .transpile::<mpc::MerkleProof>()
-        .compile(bset! {
-            strict_types::stl::std_stl().to_dependency()
-        })
+    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
+        strict_types::stl::std_stl().to_dependency()
+    })
+    .transpile::<mpc::MerkleTree>()
+    .transpile::<mpc::MerkleBlock>()
+    .transpile::<mpc::MerkleProof>()
+    .compile()
 }
 
 pub fn commit_verify_stl() -> TypeLib {

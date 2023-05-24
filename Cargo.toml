@@ -55,3 +55,6 @@ serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
+
+[patch.crates-io]
+strict_types = { git = "https://github.com/strict-types/strict-types" }
