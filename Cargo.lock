@@ -208,7 +208,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "client_side_validation"
 version = "0.10.2"
 dependencies = [
- "commit_verify 0.10.2",
+ "commit_verify",
  "serde",
  "single_use_seals",
 ]
@@ -219,7 +219,7 @@ version = "0.10.0"
 dependencies = [
  "amplify",
  "amplify_syn",
- "commit_verify 0.10.2",
+ "commit_verify",
  "compiletest_rs",
  "proc-macro2",
  "quote",
@@ -228,39 +228,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "commit_encoding_derive"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00033f14d67c4169d588f085ea2faeb7b610cf03a74d42ea09eeba31abef2047"
-dependencies = [
- "amplify",
- "amplify_syn",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "commit_verify"
 version = "0.10.2"
 dependencies = [
  "amplify",
- "commit_encoding_derive 0.10.0",
+ "commit_encoding_derive",
  "rand",
  "serde",
  "strict_encoding",
  "strict_types",
-]
-
-[[package]]
-name = "commit_verify"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1baccabac24e468b317b3a627fa0a07e2708f9efbad2d1b44eb64fe993f7c621"
-dependencies = [
- "amplify",
- "commit_encoding_derive 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "strict_encoding",
 ]
 
 [[package]]
@@ -290,6 +266,15 @@ name = "constant_time_eq"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13418e745008f7349ec7e449155f419a61b92b58a99cc3616942b926825ec76b"
+
+[[package]]
+name = "cpufeatures"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e4c1eaa2012c47becbbad2ab175484c2a84d1185b566fb2cc5b8707343dfe58"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "crunchy"
@@ -671,6 +656,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82e6b795fe2e3b1e845bafcb27aa35405c4d47cdfc92af5fc8d3002f76cebdc0"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
+
+[[package]]
 name = "single_use_seals"
 version = "0.10.0"
 dependencies = [
@@ -705,14 +701,14 @@ dependencies = [
 [[package]]
 name = "strict_types"
 version = "1.2.0"
-source = "git+https://github.com/strict-types/strict-types#2d8e4113fbabe9100eed4181b6949d2438cc62aa"
+source = "git+https://github.com/strict-types/strict-types#1ec42458e4a985373f967a32d43c64265472c742"
 dependencies = [
  "amplify",
  "baid58",
  "base64",
- "commit_verify 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "half",
  "indexmap",
+ "sha2",
  "strict_encoding",
 ]
 

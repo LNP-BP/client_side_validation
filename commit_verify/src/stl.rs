@@ -25,7 +25,7 @@ use strict_types::TypeLib;
 use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "desire_samuel_film_B36pgmaVK2ymbQzxPCTKBkkLd3BD99nuwxHDUESLdk27";
+    "pasta_basic_broken_3a8aYXeMqSGKyeyGrcQHUn5mh995whDbERictXFSG1GG";
 
 fn _commit_verify_stl() -> Result<TypeLib, TranslateError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
