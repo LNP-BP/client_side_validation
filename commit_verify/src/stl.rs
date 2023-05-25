@@ -19,22 +19,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use strict_types::typelib::{LibBuilder, TranslateError};
-use strict_types::TypeLib;
+use strict_types::stl::std_stl;
+use strict_types::{CompileError, LibBuilder, TranspileError, TypeLib, TypeObjects};
 
 use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "pasta_basic_broken_3a8aYXeMqSGKyeyGrcQHUn5mh995whDbERictXFSG1GG";
+    "domino_desert_pixel_CNHdcRBXQnZULbdBJ9aCwvq4fRdFYXJJxAs7Zot4Bfcd";
 
-fn _commit_verify_stl() -> Result<TypeLib, TranslateError> {
-    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
-        strict_types::stl::std_stl().to_dependency()
-    })
-    .transpile::<mpc::MerkleTree>()
-    .transpile::<mpc::MerkleBlock>()
-    .transpile::<mpc::MerkleProof>()
-    .compile()
+fn _commit_verify_sym() -> Result<TypeObjects, TranspileError> {
+    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), [std_stl().to_dependency()])
+        .transpile::<mpc::MerkleTree>()
+        .transpile::<mpc::MerkleBlock>()
+        .transpile::<mpc::MerkleProof>()
+        .compile_symbols()
+}
+fn _commit_verify_stl() -> Result<TypeLib, CompileError> { _commit_verify_sym()?.compile() }
+
+pub fn commit_verify_sym() -> TypeObjects {
+    _commit_verify_sym().expect("invalid strict type CommitVerify library")
 }
 
 pub fn commit_verify_stl() -> TypeLib {
