@@ -13,31 +13,22 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use commit_verify::stl;
-use strict_types::{parse_args, StlFormat};
+use strict_types::typelib::parse_args;
 
 fn main() {
+    let lib = stl::commit_verify_stl();
     let (format, dir) = parse_args();
-    match format {
-        StlFormat::Source => {
-            stl::commit_verify_sym()
-                .serialize(
-                    format,
-                    dir,
-                    "0.1.0",
-                    Some(
-                        "
+    lib.serialize(
+        format,
+        dir,
+        "0.1.0",
+        Some(
+            "
   Description: Client-side-validation deterministic commitments
   Author: Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
   Copyright (C) 2023 LNP/BP Standards Association. All rights reserved.
   License: Apache-2.0",
-                    ),
-                )
-                .expect("unable to write to the file");
-        }
-        StlFormat::Binary | StlFormat::Armored => {
-            stl::commit_verify_stl()
-                .serialize(format, dir, "0.1.0", None)
-                .expect("unable to write to the file");
-        }
-    }
+        ),
+    )
+    .expect("unable to write to the file");
 }
