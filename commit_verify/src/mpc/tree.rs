@@ -123,6 +123,7 @@ mod commit {
 
             let mut depth = source.min_depth;
             loop {
+                map.clear();
                 let width = 2usize.pow(depth.to_u8() as u32) as u16;
                 if source.messages.iter().all(|(protocol, message)| {
                     let pos = protocol_id_pos(*protocol, width);
