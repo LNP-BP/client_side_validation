@@ -13,7 +13,7 @@
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
 use commit_verify::stl;
-use strict_types::typelib::parse_args;
+use strict_types::parse_args;
 
 fn main() {
     let lib = stl::commit_verify_stl();

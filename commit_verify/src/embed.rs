@@ -281,12 +281,14 @@ pub(crate) mod test_helpers {
 mod test {
     use core::fmt::Debug;
 
-    use amplify::confinement::SmallVec;
+    use amplify::confinement::{SmallVec, U32};
+    use sha2::Sha256;
 
     use super::test_helpers::*;
     use super::*;
+    use crate::digest::DigestExt;
     use crate::test_helpers::gen_messages;
-    use crate::{ConvolveCommit, ConvolveCommitProof, Sha256};
+    use crate::{ConvolveCommit, ConvolveCommitProof};
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash, Error, Display)]
     #[display("error")]
@@ -334,7 +336,7 @@ mod test {
         ) -> Result<(Self::Commitment, [u8; 32]), Self::CommitError> {
             let mut engine = Sha256::default();
             engine.input_raw(supplement);
-            engine.input_with_len(msg.as_ref());
+            engine.input_with_len::<U32>(msg.as_ref());
             Ok((engine.finish(), *supplement))
         }
     }

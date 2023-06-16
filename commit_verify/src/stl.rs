@@ -19,22 +19,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use strict_types::typelib::{LibBuilder, TranslateError};
-use strict_types::TypeLib;
+use strict_types::{CompileError, LibBuilder, TypeLib};
 
 use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "expand_vertigo_billy_HmAmKqZJ7XKDsyamyaikTq3PXzWgWcuVMXwe13Hzxfq4";
+    "sensor_correct_total_6RNoZhpeu95My9KqGM7j8BcY4tcNa8rwAjXbXUGteuf9";
 
-fn _commit_verify_stl() -> Result<TypeLib, TranslateError> {
-    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY))
-        .transpile::<mpc::MerkleTree>()
-        .transpile::<mpc::MerkleBlock>()
-        .transpile::<mpc::MerkleProof>()
-        .compile(bset! {
-            strict_types::stl::std_stl().to_dependency()
-        })
+fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
+    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
+        strict_types::stl::std_stl().to_dependency()
+    })
+    .transpile::<mpc::MerkleTree>()
+    .transpile::<mpc::MerkleBlock>()
+    .transpile::<mpc::MerkleProof>()
+    .compile()
 }
 
 pub fn commit_verify_stl() -> TypeLib {

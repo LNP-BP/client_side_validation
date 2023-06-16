@@ -1,5 +1,5 @@
 {-
-  Id: expand_vertigo_billy_HmAmKqZJ7XKDsyamyaikTq3PXzWgWcuVMXwe13Hzxfq4
+  Id: sensor_correct_total_6RNoZhpeu95My9KqGM7j8BcY4tcNa8rwAjXbXUGteuf9
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -8,22 +8,32 @@
   License: Apache-2.0
 -}
 
-typelib CommitVerify -- expand_vertigo_billy_HmAmKqZJ7XKDsyamyaikTq3PXzWgWcuVMXwe13Hzxfq4
+typelib CommitVerify
 
-import quota_conan_fashion_3TZmAPf8EkQZnbGS1g8uMGes6jEWPqNkFB6pLUKeoefg as Std
+import left_pierre_food_5cmoZctpx98FbTzWTArm3G53pMzUXuRPXmMhuCd8zyXb as Std
+-- Imports:
+-- U4 := LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC
 
 
-data MerkleBlock      :: depth Std.U4
+
+-- GammaOreganoPercent0AQM6QXoLnc4uaWWEG1LotnkWXuSqc2p6kPRVuSBJ4Pa8
+data MerkleBlock      :: depth Std.U4 {- LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC -}
                        , crossSection [TreeNode]
                        , entropy U64?
+-- BazaarOrchidJacket06kxYeCatpncbA9UiTdsFbxbxJdU56x6MdmTRkEeGAv6R
 data MerkleNode       :: [Byte ^ 32]
+-- ApolloTeacherData0Febuvcuc9aB7ggdYN2snGcS8T2qbsC9KhV7BcAUEuM8G
 data MerkleProof      :: pos U16, path [MerkleNode]
-data MerkleTree       :: depth Std.U4
+-- SunsetDerbyLotus0FRXLDrgJRdG69ACAX7wUTwFjAGgjm99CjF7jZGN8sYv8
+data MerkleTree       :: depth Std.U4 {- LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC -}
                        , entropy U64
                        , messages {[Byte ^ 32] -> Message}
                        , map {U16 -> ProtocolId, Message}
+-- LondonMagnetCake04ajqScXjJ6wQ5af2zgBFzzP7k1qzD6DXXU28taQidCcA
 data Message          :: [Byte ^ 32]
+-- IndigoBuenosFriday04GenVCt5Xq6xtnJDjT98FehgCS8rTmwEzbjwGkaUVjHz
 data ProtocolId       :: [Byte ^ 32]
-data TreeNode         :: concealedNode (depth Std.U4, hash MerkleNode)
+-- ProteinBonusSmart0CLZUZvDSrWd85s7CaYnGikoTAHgihGTY7ApULVJ7Pvjq
+data TreeNode         :: concealedNode (depth Std.U4 {- LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC -}, hash MerkleNode)
                        | commitmentLeaf (protocolId ProtocolId, message Message)
 
