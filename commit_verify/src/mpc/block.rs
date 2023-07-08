@@ -93,7 +93,7 @@ impl TreeNode {
 
     pub fn is_leaf(&self) -> bool { matches!(self, TreeNode::CommitmentLeaf { .. }) }
 
-    pub fn merkle_node_with(&self) -> MerkleNode {
+    pub fn to_merkle_node(&self) -> MerkleNode {
         match self {
             TreeNode::ConcealedNode { hash, .. } => *hash,
             TreeNode::CommitmentLeaf {
@@ -242,7 +242,7 @@ impl MerkleBlock {
                     count += 1;
                     *node = TreeNode::ConcealedNode {
                         depth: self.depth,
-                        hash: node.merkle_node_with(),
+                        hash: node.to_merkle_node(),
                     };
                 }
             }
@@ -474,7 +474,7 @@ impl Conceal for MerkleBlock {
             .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
-        concealed.cross_section[0].merkle_node_with()
+        concealed.cross_section[0].to_merkle_node()
     }
 }
 
