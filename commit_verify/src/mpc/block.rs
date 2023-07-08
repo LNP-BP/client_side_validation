@@ -342,8 +342,8 @@ impl MerkleBlock {
 
         let mut cross_section =
             Vec::with_capacity(self.cross_section.len() + other.cross_section.len());
-        let mut a = self.cross_section.clone().into_iter();
-        let mut b = other.cross_section.into_iter();
+        let mut a = self.cross_section.iter().copied();
+        let mut b = other.cross_section.iter().copied();
 
         let mut last_a = a.next();
         let mut last_b = b.next();
