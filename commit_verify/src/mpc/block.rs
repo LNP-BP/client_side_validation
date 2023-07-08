@@ -361,9 +361,11 @@ impl MerkleBlock {
                         (true, false) => cross_section.push(n1),
                         (false, true) => cross_section.push(n2),
                         // If two nodes are both leafs or concealed, but not
-                        // equal to each other it means that the provided blocks
-                        // are unrelated
-                        _ => return Err(UnrelatedProof),
+                        // equal to each other it means out algorithm is broken
+                        _ => unreachable!(
+                            "two MerkleBlock's with equal commitment failed to merge.\nBlock #1: \
+                             {self:#?}\nBlock #2: {other:#?}\nFailed nodes:\n{n1:?}\n{n2:?}"
+                        ),
                     }
                     last_a = a.next();
                     last_b = b.next();
