@@ -123,8 +123,14 @@ impl MerkleNode {
     /// according to [LNPBP-81] standard of client-side-validation merklization.
     ///
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-    pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeaves) -> Self {
-        Self::_merklize(tag, nodes.merkle_leaves().map(|leaf| leaf.commitment_id()), u4::ZERO, 0)
+    pub fn merklize(tag: [u8; 16], leaves: &impl MerkleLeaves) -> Self {
+        let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commitment_id());
+        if nodes.len() == 1 {
+            // If we have just one leaf, it's MerkleNode value is the root
+            nodes.next().expect("length is 1")
+        } else {
+            Self::_merklize(tag, nodes, u4::ZERO, 0)
+        }
     }
 
     pub fn _merklize(
@@ -139,6 +145,8 @@ impl MerkleNode {
         if len <= 2 {
             match (iter.next(), iter.next()) {
                 (None, None) => MerkleNode::void(tag, depth, width),
+                // Here, a single node means Merkle tree width nonequal to the power of 2, thus we
+                // need to process it with a special encoding.
                 (Some(branch), None) => MerkleNode::single(tag, depth, width, branch),
                 (Some(branch1), Some(branch2)) => {
                     MerkleNode::branches(tag, depth, width, branch1, branch2)
