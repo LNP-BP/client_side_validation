@@ -208,8 +208,13 @@ mod test {
     use std::collections::BTreeSet;
 
     use amplify::num::u4;
+    use rand::random;
+    use sha2::Sha256;
+    use strict_encoding::StrictEncode;
 
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
+    use crate::mpc::MerkleTree;
+    use crate::{CommitEncode, CommitmentId, Conceal, DigestExt};
 
     #[test]
     fn tree_sizing() {
@@ -250,5 +255,45 @@ mod test {
             assert!(set.insert(pos));
             assert_eq!(tree.messages.get(&pid), Some(&msg));
         }
+    }
+
+    #[test]
+    fn tree_conceal() {
+        let msgs = make_random_messages(9);
+        let tree = make_random_tree(&msgs);
+        assert_eq!(tree.conceal(), tree.root());
+    }
+
+    #[test]
+    fn tree_id() {
+        let msgs = make_random_messages(9);
+        let tree = make_random_tree(&msgs);
+        let id = tree.commitment_id();
+        let root = tree.root();
+
+        let mut enc1 = vec![];
+        let mut enc2 = vec![];
+        tree.commit_encode(&mut enc1);
+        root.strict_write(usize::MAX, &mut enc2).unwrap();
+        // Commitment encoding must be equal to the value of the Merkle root
+        assert_eq!(enc1, enc2);
+
+        let mut engine = Sha256::from_tag(MerkleTree::TAG);
+        engine.input_raw(root.as_slice());
+        let cmt = engine.finish();
+        // Commitment id must be equal to the tag-hashed Merkle tree root
+        assert_eq!(id.as_slice(), &cmt);
+    }
+
+    #[test]
+    fn tree_id_entropy() {
+        let msgs = make_random_messages(9);
+        let mut tree = make_random_tree(&msgs);
+        let id1 = tree.commitment_id();
+
+        tree.entropy = random();
+        let id2 = tree.commitment_id();
+
+        assert_ne!(id1, id2);
     }
 }
