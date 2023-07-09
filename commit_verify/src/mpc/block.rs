@@ -534,3 +534,61 @@ impl MerkleProof {
         Ok(block.commitment_id())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
+
+    #[test]
+    fn commitment_id() {
+        let msgs = make_random_messages(1);
+        let tree = make_random_tree(&msgs);
+        let mut block = MerkleBlock::from(&tree);
+
+        // Check we preserve entropy value
+        assert_eq!(Some(tree.entropy), block.entropy);
+        // Check if we remove entropy the commitment doesn't change
+        let cid1 = block.commitment_id();
+        block.entropy = None;
+        let cid2 = block.commitment_id();
+        assert_eq!(cid1, cid2);
+
+        eprintln!("Messages: {msgs:#?}");
+        eprintln!("Tree: {tree:#?}");
+        eprintln!("Block: {block:#?}");
+
+        let (pid, msg) = msgs.first_key_value().unwrap();
+        let leaf = Leaf::inhabited(*pid, *msg);
+        let cid1 = block.cross_section.get(0).unwrap().to_merkle_node();
+        let cid2 = leaf.commitment_id();
+        assert_eq!(cid1, cid2);
+        eprintln!("Leaf commitment: {cid1:?}");
+
+        assert_eq!(tree.conceal(), block.conceal());
+        assert_eq!(tree.root(), block.conceal());
+        assert_eq!(tree.commitment_id(), block.commitment_id())
+    }
+
+    #[test]
+    fn merge_reveal() {
+        let msgs = make_random_messages(8);
+        let mpc_tree = make_random_tree(&msgs);
+        let mpc_block = MerkleBlock::from(mpc_tree.clone());
+
+        let proofs = msgs
+            .keys()
+            .map(|pid| mpc_block.to_merkle_proof(*pid).unwrap())
+            .collect::<Vec<_>>();
+
+        let mut iter = proofs.iter().zip(msgs.into_iter());
+        let (proof, (pid, msg)) = iter.next().unwrap();
+        let mut merged_block = MerkleBlock::with(proof, pid, msg).unwrap();
+        for (proof, (pid, msg)) in iter {
+            let block = MerkleBlock::with(proof, pid, msg).unwrap();
+            merged_block.merge_reveal(block).unwrap();
+        }
+
+        assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
+    }
+}
