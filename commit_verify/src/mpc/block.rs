@@ -541,8 +541,8 @@ mod test {
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
 
     #[test]
-    fn single_leaf_tree() {
-        let msgs = make_random_messages(1);
+    fn entropy() {
+        let msgs = make_random_messages(3);
         let tree = make_random_tree(&msgs);
         let mut block = MerkleBlock::from(&tree);
 
@@ -553,17 +553,24 @@ mod test {
         block.entropy = None;
         let cid2 = block.commitment_id();
         assert_eq!(cid1, cid2);
+    }
 
-        eprintln!("Messages: {msgs:#?}");
-        eprintln!("Tree: {tree:#?}");
-        eprintln!("Block: {block:#?}");
+    #[test]
+    fn single_leaf_tree() {
+        let msgs = make_random_messages(1);
+        let tree = make_random_tree(&msgs);
+        let block = MerkleBlock::from(&tree);
 
         let (pid, msg) = msgs.first_key_value().unwrap();
         let leaf = Leaf::inhabited(*pid, *msg);
         let cid1 = block.cross_section.get(0).unwrap().to_merkle_node();
         let cid2 = leaf.commitment_id();
         assert_eq!(cid1, cid2);
-        eprintln!("Leaf commitment: {cid1:?}");
+
+        assert_eq!(tree.conceal(), block.conceal());
+        assert_eq!(tree.root(), block.conceal());
+        assert_eq!(tree.commitment_id(), block.commitment_id())
+    }
 
         assert_eq!(tree.conceal(), block.conceal());
         assert_eq!(tree.root(), block.conceal());
