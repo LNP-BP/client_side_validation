@@ -249,10 +249,8 @@ impl MerkleBlock {
     pub fn conceal_except(
         &mut self,
         protocols: impl AsRef<[ProtocolId]>,
-    ) -> Result<usize, LeafNotKnown> {
+    ) -> Result<(), LeafNotKnown> {
         let protocols = protocols.as_ref();
-
-        let mut count = 0usize;
         let mut not_found = protocols.iter().copied().collect::<BTreeSet<_>>();
 
         self.entropy = None;
@@ -267,7 +265,6 @@ impl MerkleBlock {
                     not_found.remove(p);
                 }
                 TreeNode::CommitmentLeaf { .. } => {
-                    count += 1;
                     *node = TreeNode::ConcealedNode {
                         depth: self.depth,
                         hash: node.to_merkle_node(),
@@ -282,13 +279,15 @@ impl MerkleBlock {
 
         loop {
             debug_assert!(!self.cross_section.is_empty());
-            let prev_count = count;
+            let mut reduced = false;
             let mut offset = 0u16;
             let mut pos = 0usize;
             let mut len = self.cross_section.len();
             while pos < len {
                 let (n1, n2) = (self.cross_section[pos], self.cross_section.get(pos + 1).copied());
                 match (n1, n2) {
+                    // Two concealed nodes of the same depth: aggregate if they are on the same
+                    // branch, skip just one otherwise
                     (
                         TreeNode::ConcealedNode {
                             depth: depth1,
@@ -310,42 +309,50 @@ impl MerkleBlock {
                             self.cross_section
                                 .remove(pos + 1)
                                 .expect("we allow 0 elements");
-                            count += 1;
+                            reduced = true;
                             offset += pow;
                             len -= 1;
                         }
                     }
+                    // Two concealed nodes at different depth, or the last concealed node:
+                    // - we skip one of them and repeat
+                    (
+                        TreeNode::ConcealedNode { depth, .. },
+                        Some(TreeNode::ConcealedNode { .. }) | None,
+                    ) => {
+                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
+                    }
+                    // Two commitment leafs: skipping both
                     (TreeNode::CommitmentLeaf { .. }, Some(TreeNode::CommitmentLeaf { .. })) => {
                         offset += 2;
                         pos += 1;
                     }
-                    (
-                        TreeNode::CommitmentLeaf { .. },
-                        Some(TreeNode::ConcealedNode { depth, .. }),
-                    ) |
+                    // Concealed node followed by a leaf: skipping both
                     (
                         TreeNode::ConcealedNode { depth, .. },
                         Some(TreeNode::CommitmentLeaf { .. }),
-                    ) if depth == self.depth => {
-                        offset += 2;
+                    ) => {
+                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
+                        offset += 1;
                         pos += 1;
                     }
-                    (TreeNode::CommitmentLeaf { .. }, _) => {
+                    // Leaf followed by a concealed node: skipping leaf only, repeating
+                    (
+                        TreeNode::CommitmentLeaf { .. },
+                        Some(TreeNode::ConcealedNode { .. }) | None,
+                    ) => {
                         offset += 1;
-                    }
-                    (TreeNode::ConcealedNode { depth, .. }, _) => {
-                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
                     }
                 }
                 pos += 1;
             }
-            if count == prev_count {
+            if !reduced {
                 break;
             }
             debug_assert_eq!(offset, self.width());
         }
 
-        Ok(count)
+        Ok(())
     }
 
     /// Merges information from the given `proof` to the merkle block, revealing
