@@ -594,10 +594,6 @@ mod test {
             let tree = make_random_tree(&msgs);
             let block = MerkleBlock::from(&tree);
 
-            eprintln!("Messages: {msgs:#?}");
-            eprintln!("Tree: {tree:#?}");
-            eprintln!("Block: {block:#?}");
-
             assert_eq!(tree.conceal(), block.conceal());
             assert_eq!(tree.root(), block.conceal());
             assert_eq!(tree.commitment_id(), block.commitment_id())
