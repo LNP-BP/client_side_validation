@@ -125,11 +125,12 @@ impl MerkleNode {
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
     pub fn merklize(tag: [u8; 16], leaves: &impl MerkleLeaves) -> Self {
         let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commitment_id());
-        if nodes.len() == 1 {
+        let len = nodes.len() as u16;
+        if len == 1 {
             // If we have just one leaf, it's MerkleNode value is the root
             nodes.next().expect("length is 1")
         } else {
-            Self::_merklize(tag, nodes, u4::ZERO, 0)
+            Self::_merklize(tag, nodes, u4::ZERO, len)
         }
     }
 
@@ -137,10 +138,9 @@ impl MerkleNode {
         tag: [u8; 16],
         mut iter: impl ExactSizeIterator<Item = MerkleNode>,
         depth: u4,
-        offset: u16,
+        width: u16,
     ) -> Self {
         let len = iter.len() as u16;
-        let width = len + offset;
 
         if len <= 2 {
             match (iter.next(), iter.next()) {
@@ -164,8 +164,8 @@ impl MerkleNode {
                 // TODO: Do this without allocation
                 .collect::<Vec<_>>()
                 .into_iter();
-            let branch1 = Self::_merklize(tag, slice, depth + 1, 0);
-            let branch2 = Self::_merklize(tag, iter, depth + 1, div + 1);
+            let branch1 = Self::_merklize(tag, slice, depth + 1, width);
+            let branch2 = Self::_merklize(tag, iter, depth + 1, width);
 
             MerkleNode::branches(tag, depth, width, branch1, branch2)
         }
