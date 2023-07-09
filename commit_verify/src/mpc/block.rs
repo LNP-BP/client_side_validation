@@ -402,6 +402,8 @@ impl MerkleBlock {
         self.cross_section =
             SmallVec::try_from(cross_section).expect("tree width guarantees are broken");
 
+        debug_assert_eq!(base_root, self.commitment_id());
+
         Ok(self.cross_section.len() as u16)
     }
 
