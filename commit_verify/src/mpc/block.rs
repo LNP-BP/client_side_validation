@@ -33,7 +33,7 @@ use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{
-    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
+    Commitment, MerkleBuoy, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
 };
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
@@ -405,8 +405,10 @@ impl MerkleBlock {
                 }
                 Ordering::Less => {
                     cross_section.push(n2);
+                    let mut buoy = MerkleBuoy::new(n2_depth);
                     cross_section.extend(b.by_ref().take_while(|n| {
-                        if n.depth_or(self.depth) > n1_depth {
+                        buoy.push(n.depth_or(self.depth));
+                        if buoy.level() > n1_depth {
                             last_b = None;
                             true
                         } else {
@@ -418,8 +420,10 @@ impl MerkleBlock {
                 }
                 Ordering::Greater => {
                     cross_section.push(n1);
+                    let mut buoy = MerkleBuoy::new(n1_depth);
                     cross_section.extend(a.by_ref().take_while(|n| {
-                        if n.depth_or(self.depth) > n2_depth {
+                        buoy.push(n.depth_or(self.depth));
+                        if buoy.level() > n2_depth {
                             last_a = None;
                             true
                         } else {
