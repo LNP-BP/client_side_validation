@@ -541,7 +541,7 @@ mod test {
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
 
     #[test]
-    fn commitment_id() {
+    fn single_leaf_tree() {
         let msgs = make_random_messages(1);
         let tree = make_random_tree(&msgs);
         let mut block = MerkleBlock::from(&tree);
