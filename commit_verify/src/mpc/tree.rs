@@ -196,7 +196,7 @@ pub(crate) mod test_helpers {
 
     pub fn make_random_tree(msgs: &BTreeMap<ProtocolId, Message>) -> MerkleTree {
         let src = MultiSource {
-            min_depth: u4::with(5),
+            min_depth: u4::with(0),
             messages: Confined::try_from_iter(msgs.iter().map(|(a, b)| (*a, *b))).unwrap(),
         };
         MerkleTree::try_commit(&src).unwrap()
@@ -217,8 +217,15 @@ mod test {
     use crate::{CommitEncode, CommitmentId, Conceal, DigestExt};
 
     #[test]
+    #[should_panic(expected = "Empty")]
+    fn tree_empty() {
+        let msgs = make_random_messages(0);
+        make_random_tree(&msgs);
+    }
+
+    #[test]
     fn tree_sizing() {
-        for size in 0..16 {
+        for size in 1..16 {
             let msgs = make_random_messages(size);
             make_random_tree(&msgs);
         }
