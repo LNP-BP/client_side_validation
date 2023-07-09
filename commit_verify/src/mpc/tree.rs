@@ -163,3 +163,88 @@ impl MerkleTree {
 
     pub fn entropy(&self) -> u64 { self.entropy }
 }
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use std::collections::BTreeMap;
+
+    use amplify::confinement::Confined;
+    use amplify::Bytes32;
+    use rand::random;
+
+    use super::*;
+    use crate::mpc::MultiSource;
+    use crate::TryCommitVerify;
+
+    pub fn make_random_messages(no: u16) -> BTreeMap<ProtocolId, Message> {
+        let mut msgs = BTreeMap::new();
+        for _ in 0..no {
+            let protocol_id = random::<u32>();
+            let protocol_id = u256::from(protocol_id);
+            let msg = random::<u8>();
+            msgs.insert(
+                ProtocolId::from(protocol_id.to_le_bytes()),
+                Message::from_inner(Bytes32::with_fill(msg)),
+            );
+        }
+        msgs
+    }
+
+    pub fn make_random_tree(msgs: &BTreeMap<ProtocolId, Message>) -> MerkleTree {
+        let src = MultiSource {
+            min_depth: u4::with(5),
+            messages: Confined::try_from_iter(msgs.iter().map(|(a, b)| (*a, *b))).unwrap(),
+        };
+        MerkleTree::try_commit(&src).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeSet;
+
+    use amplify::num::u4;
+
+    use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
+
+    #[test]
+    fn tree_sizing() {
+        for size in 0..16 {
+            let msgs = make_random_messages(size);
+            make_random_tree(&msgs);
+        }
+        for exp in 5..=6 {
+            let size = 2u16.pow(exp);
+
+            let msgs = make_random_messages(size);
+            make_random_tree(&msgs);
+
+            let msgs = make_random_messages(size - 9);
+            make_random_tree(&msgs);
+
+            let msgs = make_random_messages(size + 13);
+            make_random_tree(&msgs);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "CantFitInMaxSlots(1024)")]
+    fn tree_size_limits() {
+        let msgs = make_random_messages(1024);
+        make_random_tree(&msgs);
+    }
+
+    #[test]
+    fn tree_structure() {
+        let msgs = make_random_messages(9);
+        let tree = make_random_tree(&msgs);
+        assert!(tree.depth() > u4::with(3));
+        assert!(tree.width() > 9);
+        let mut set = BTreeSet::<u16>::new();
+        for (pid, msg) in msgs {
+            let pos = tree.protocol_id_pos(pid);
+            assert!(set.insert(pos));
+            assert_eq!(tree.messages.get(&pid), Some(&msg));
+        }
+    }
+}
