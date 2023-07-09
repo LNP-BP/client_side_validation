@@ -30,7 +30,7 @@ use sha2::Sha256;
 
 use crate::digest::DigestExt;
 use crate::encode::{strategies, CommitStrategy};
-use crate::{CommitEncode, LIB_NAME_COMMIT_VERIFY};
+use crate::{CommitEncode, CommitmentId, LIB_NAME_COMMIT_VERIFY};
 
 /// Type of a merkle node branching.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -43,11 +43,8 @@ pub enum NodeBranching {
     /// Node having just a single leaf, with the second branch being void.
     Single = 0x01,
 
-    /// Node having two leafs.
-    Couple = 0x02,
-
     /// Node having two branches.
-    Branch = 0xFF,
+    Branch = 0x02,
 }
 
 impl From<NodeBranching> for u8 {
@@ -87,32 +84,19 @@ impl MerkleNode {
         Self::with(NodeBranching::Void, tag, depth, width, virt, virt)
     }
 
-    pub fn single(tag: [u8; 16], depth: u4, width: u16, leaf: &impl CommitEncode) -> Self {
+    pub fn single(tag: [u8; 16], depth: u4, width: u16, node: MerkleNode) -> Self {
         let single = NodeBranching::Single;
-        Self::with(single, tag, depth, width, Self::commit(leaf), VIRTUAL_LEAF)
-    }
-
-    pub fn couple<L: CommitEncode>(
-        tag: [u8; 16],
-        depth: u4,
-        width: u16,
-        leaf1: &L,
-        leaf2: &L,
-    ) -> Self {
-        let couple = NodeBranching::Couple;
-        let branch1 = Self::commit(leaf1);
-        let branch2 = Self::commit(leaf2);
-        Self::with(couple, tag, depth, width, branch1, branch2)
+        Self::with(single, tag, depth, width, node, VIRTUAL_LEAF)
     }
 
     pub fn branches(
         tag: [u8; 16],
         depth: u4,
         width: u16,
-        branch1: MerkleNode,
-        branch2: MerkleNode,
+        node1: MerkleNode,
+        node2: MerkleNode,
     ) -> Self {
-        Self::with(NodeBranching::Branch, tag, depth, width, branch1, branch2)
+        Self::with(NodeBranching::Branch, tag, depth, width, node1, node2)
     }
 
     fn with(
@@ -120,22 +104,16 @@ impl MerkleNode {
         tag: [u8; 16],
         depth: u4,
         width: u16,
-        branch1: MerkleNode,
-        branch2: MerkleNode,
+        node1: MerkleNode,
+        node2: MerkleNode,
     ) -> Self {
         let mut engine = Sha256::default();
         branching.commit_encode(&mut engine);
         engine.write_all(&tag).ok();
         depth.to_u8().commit_encode(&mut engine);
         width.commit_encode(&mut engine);
-        branch1.commit_encode(&mut engine);
-        branch2.commit_encode(&mut engine);
-        engine.finish().into()
-    }
-
-    pub fn commit(leaf: &impl CommitEncode) -> Self {
-        let mut engine = Sha256::default();
-        leaf.commit_encode(&mut engine);
+        node1.commit_encode(&mut engine);
+        node2.commit_encode(&mut engine);
         engine.finish().into()
     }
 }
@@ -146,12 +124,12 @@ impl MerkleNode {
     ///
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
     pub fn merklize(tag: [u8; 16], nodes: &impl MerkleLeaves) -> Self {
-        Self::_merklize(tag, nodes.merkle_leaves(), u4::ZERO, 0)
+        Self::_merklize(tag, nodes.merkle_leaves().map(|leaf| leaf.commitment_id()), u4::ZERO, 0)
     }
 
-    pub fn _merklize<Leaf: CommitEncode>(
+    pub fn _merklize(
         tag: [u8; 16],
-        mut iter: impl ExactSizeIterator<Item = Leaf>,
+        mut iter: impl ExactSizeIterator<Item = MerkleNode>,
         depth: u4,
         offset: u16,
     ) -> Self {
@@ -161,9 +139,9 @@ impl MerkleNode {
         if len <= 2 {
             match (iter.next(), iter.next()) {
                 (None, None) => MerkleNode::void(tag, depth, width),
-                (Some(branch), None) => MerkleNode::single(tag, depth, width, &branch),
+                (Some(branch), None) => MerkleNode::single(tag, depth, width, branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleNode::couple(tag, depth, width, &branch1, &branch2)
+                    MerkleNode::branches(tag, depth, width, branch1, branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
@@ -187,7 +165,7 @@ impl MerkleNode {
 }
 
 pub trait MerkleLeaves {
-    type Leaf: CommitEncode;
+    type Leaf: CommitmentId<Id = MerkleNode>;
     type LeafIter<'tmp>: ExactSizeIterator<Item = Self::Leaf>
     where Self: 'tmp;
 
@@ -195,7 +173,7 @@ pub trait MerkleLeaves {
 }
 
 impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u16::MAX as usize }>
-where T: CommitEncode + Copy
+where T: CommitmentId<Id = MerkleNode> + Copy
 {
     type Leaf = T;
     type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
@@ -204,7 +182,7 @@ where T: CommitEncode + Copy
 }
 
 impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
-where T: CommitEncode + Copy
+where T: CommitmentId<Id = MerkleNode> + Copy
 {
     type Leaf = T;
     type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
