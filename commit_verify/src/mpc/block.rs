@@ -619,7 +619,15 @@ mod test {
             let mut merged_block = MerkleBlock::with(proof, pid, msg).unwrap();
             for (proof, (pid, msg)) in iter {
                 let block = MerkleBlock::with(proof, pid, msg).unwrap();
-                merged_block.merge_reveal(block).unwrap();
+                if let Err(err) = merged_block.merge_reveal(block.clone()) {
+                    eprintln!("Error: {err}");
+                    eprintln!("Source tree: {mpc_tree:#?}");
+                    eprintln!("Source block: {mpc_block:#?}");
+                    eprintln!("Base block: {merged_block:#?}");
+                    eprintln!("Added proof: {proof:#?}");
+                    eprintln!("Added block: {block:#?}");
+                    panic!();
+                }
             }
 
             assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
