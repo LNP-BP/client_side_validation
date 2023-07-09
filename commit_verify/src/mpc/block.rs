@@ -538,7 +538,9 @@ impl MerkleProof {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
+    use crate::mpc::tree::test_helpers::{
+        make_det_messages, make_random_messages, make_random_tree,
+    };
 
     #[test]
     fn entropy() {
@@ -573,18 +575,33 @@ mod test {
     }
 
     #[test]
-    fn commitment_id() {
-        let msgs = make_random_messages(9);
-        let tree = make_random_tree(&msgs);
-        let block = MerkleBlock::from(&tree);
+    fn determin_tree() {
+        for size in 1..6 {
+            let msgs = make_det_messages(size);
+            let tree = make_random_tree(&msgs);
+            let block = MerkleBlock::from(&tree);
 
-        eprintln!("Messages: {msgs:#?}");
-        eprintln!("Tree: {tree:#?}");
-        eprintln!("Block: {block:#?}");
+            assert_eq!(tree.conceal(), block.conceal());
+            assert_eq!(tree.root(), block.conceal());
+            assert_eq!(tree.commitment_id(), block.commitment_id())
+        }
+    }
 
-        assert_eq!(tree.conceal(), block.conceal());
-        assert_eq!(tree.root(), block.conceal());
-        assert_eq!(tree.commitment_id(), block.commitment_id())
+    #[test]
+    fn sparse_tree() {
+        for size in 2..6 {
+            let msgs = make_random_messages(size);
+            let tree = make_random_tree(&msgs);
+            let block = MerkleBlock::from(&tree);
+
+            eprintln!("Messages: {msgs:#?}");
+            eprintln!("Tree: {tree:#?}");
+            eprintln!("Block: {block:#?}");
+
+            assert_eq!(tree.conceal(), block.conceal());
+            assert_eq!(tree.root(), block.conceal());
+            assert_eq!(tree.commitment_id(), block.commitment_id())
+        }
     }
 
     #[test]

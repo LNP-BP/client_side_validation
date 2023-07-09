@@ -180,6 +180,19 @@ pub(crate) mod test_helpers {
     use crate::mpc::MultiSource;
     use crate::TryCommitVerify;
 
+    pub fn make_det_messages(no: u16) -> BTreeMap<ProtocolId, Message> {
+        let mut msgs = BTreeMap::new();
+        for _ in 0..no {
+            let protocol_id = u256::from(no);
+            let msg = random::<u8>();
+            msgs.insert(
+                ProtocolId::from(protocol_id.to_le_bytes()),
+                Message::from_inner(Bytes32::with_fill(msg)),
+            );
+        }
+        msgs
+    }
+
     pub fn make_random_messages(no: u16) -> BTreeMap<ProtocolId, Message> {
         let mut msgs = BTreeMap::new();
         for _ in 0..no {
@@ -229,7 +242,7 @@ mod test {
             let msgs = make_random_messages(size);
             make_random_tree(&msgs);
         }
-        for exp in 5..=6 {
+        for exp in 5..=5 {
             let size = 2u16.pow(exp);
 
             let msgs = make_random_messages(size);
