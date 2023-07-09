@@ -602,23 +602,25 @@ mod test {
 
     #[test]
     fn merge_reveal() {
-        let msgs = make_random_messages(8);
-        let mpc_tree = make_random_tree(&msgs);
-        let mpc_block = MerkleBlock::from(mpc_tree.clone());
+        for size in 3..9 {
+            let msgs = make_random_messages(size);
+            let mpc_tree = make_random_tree(&msgs);
+            let mpc_block = MerkleBlock::from(mpc_tree.clone());
 
-        let proofs = msgs
-            .keys()
-            .map(|pid| mpc_block.to_merkle_proof(*pid).unwrap())
-            .collect::<Vec<_>>();
+            let proofs = msgs
+                .keys()
+                .map(|pid| mpc_block.to_merkle_proof(*pid).unwrap())
+                .collect::<Vec<_>>();
 
-        let mut iter = proofs.iter().zip(msgs.into_iter());
-        let (proof, (pid, msg)) = iter.next().unwrap();
-        let mut merged_block = MerkleBlock::with(proof, pid, msg).unwrap();
-        for (proof, (pid, msg)) in iter {
-            let block = MerkleBlock::with(proof, pid, msg).unwrap();
-            merged_block.merge_reveal(block).unwrap();
+            let mut iter = proofs.iter().zip(msgs.into_iter());
+            let (proof, (pid, msg)) = iter.next().unwrap();
+            let mut merged_block = MerkleBlock::with(proof, pid, msg).unwrap();
+            for (proof, (pid, msg)) in iter {
+                let block = MerkleBlock::with(proof, pid, msg).unwrap();
+                merged_block.merge_reveal(block).unwrap();
+            }
+
+            assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
         }
-
-        assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
     }
 }
