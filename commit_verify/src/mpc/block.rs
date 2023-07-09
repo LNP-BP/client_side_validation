@@ -362,6 +362,10 @@ impl MerkleBlock {
                     match (n1.is_leaf(), n2.is_leaf()) {
                         (true, false) => cross_section.push(n1),
                         (false, true) => cross_section.push(n2),
+                        (false, false) => {
+                            cross_section.push(n1);
+                            cross_section.push(n2);
+                        }
                         // If two nodes are both leafs or concealed, but not
                         // equal to each other it means out algorithm is broken
                         _ => unreachable!(
