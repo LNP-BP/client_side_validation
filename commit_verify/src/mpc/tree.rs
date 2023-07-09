@@ -99,9 +99,9 @@ mod commit {
         /// protocol limit of 2^16
         TooManyMessages(usize),
 
-        /// the provided number of messages can't fit LNPBP-4 commitment size
-        /// limits for a given set of protocol ids.
-        CantFitInMaxSlots,
+        /// the provided number of messages ({0}) can't fit LNPBP-4 commitment
+        /// size limits for a given set of protocol ids.
+        CantFitInMaxSlots(usize),
     }
 
     impl TryCommitVerify<MultiSource, UntaggedProtocol> for MerkleTree {
@@ -110,11 +110,13 @@ mod commit {
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
             use std::collections::BTreeMap;
 
+            let msg_count = source.messages.len();
+
             if source.min_depth == u4::ZERO && source.messages.is_empty() {
                 return Err(Error::Empty);
             }
-            if source.messages.len() > 2usize.pow(u4::MAX.to_u8() as u32) {
-                return Err(Error::TooManyMessages(source.messages.len()));
+            if msg_count > 2usize.pow(u4::MAX.to_u8() as u32) {
+                return Err(Error::TooManyMessages(msg_count));
             }
 
             let entropy = thread_rng().next_u64();
@@ -132,7 +134,9 @@ mod commit {
                     break;
                 }
 
-                depth += 1;
+                depth = depth
+                    .checked_add(1)
+                    .ok_or(Error::CantFitInMaxSlots(msg_count))?;
             }
 
             Ok(MerkleTree {
