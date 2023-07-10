@@ -128,10 +128,11 @@ mod commit {
             let mut map = BTreeMap::<u16, (ProtocolId, Message)>::new();
 
             let mut depth = source.min_depth;
+            let mut prev_width = 1;
             loop {
-                for cofactor in 0..=0xFF {
+                let width = 2usize.pow(depth.to_u8() as u32) as u16;
+                for cofactor in 0..=(prev_width.min(0xFF) as u8) {
                     map.clear();
-                    let width = 2usize.pow(depth.to_u8() as u32) as u16;
                     if source.messages.iter().all(|(protocol, message)| {
                         let pos = protocol_id_pos(*protocol, cofactor, width);
                         map.insert(pos, (*protocol, *message)).is_none()
@@ -146,6 +147,7 @@ mod commit {
                     }
                 }
 
+                prev_width = width;
                 depth = depth
                     .checked_add(1)
                     .ok_or(Error::CantFitInMaxSlots(msg_count))?;
