@@ -27,7 +27,7 @@ mod atoms;
 mod tree;
 mod block;
 
-pub use atoms::{Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId};
+pub use atoms::{Commitment, Leaf, MerkleBuoy, Message, MessageMap, MultiSource, ProtocolId};
 pub use block::{LeafNotKnown, MerkleBlock, MerkleProof, UnrelatedProof};
 #[cfg(feature = "rand")]
 pub use tree::Error;

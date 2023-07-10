@@ -336,7 +336,9 @@ impl MerkleBlock {
     /// Merges two merkle blocks together, joining revealed information from
     /// each one of them.
     pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, UnrelatedProof> {
-        if self.commitment_id() != other.commitment_id() {
+        let base_root = self.commitment_id();
+
+        if base_root != other.commitment_id() {
             return Err(UnrelatedProof);
         }
 
