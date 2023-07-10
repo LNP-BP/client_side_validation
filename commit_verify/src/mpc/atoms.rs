@@ -201,21 +201,27 @@ impl MerkleBuoy {
     /// The buoy surfaces each time the contents it has is reduced to two depth
     /// of the same level.
     pub fn push(&mut self, depth: u4) -> bool {
-        if depth == self.buoy {
-            self.buoy -= 1;
-            true
-        } else if let Some(stack) = self.stack.as_mut() {
-            if !stack.push(depth) {
-                false
-            } else if stack.stack.is_none() && stack.buoy == self.buoy {
+        if depth == u4::ZERO {
+            return false;
+        }
+        match self
+            .stack
+            .as_mut()
+            .map(|stack| (stack.push(depth), stack.level()))
+        {
+            None if depth == self.buoy => {
                 self.buoy -= 1;
                 true
-            } else {
+            }
+            None => {
+                self.stack = Some(Box::new(MerkleBuoy::new(depth)));
                 false
             }
-        } else {
-            self.stack = Some(Box::new(MerkleBuoy::new(depth)));
-            false
+            Some((true, level)) => {
+                self.stack = None;
+                self.push(level)
+            }
+            Some((false, _)) => false,
         }
     }
 }

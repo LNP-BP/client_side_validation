@@ -346,6 +346,8 @@ impl MerkleBlock {
     /// Merges two merkle blocks together, joining revealed information from
     /// each one of them.
     pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, UnrelatedProof> {
+        let orig = self.clone();
+
         let base_root = self.commitment_id();
 
         if base_root != other.commitment_id() {
@@ -372,10 +374,8 @@ impl MerkleBlock {
                     match (n1.is_leaf(), n2.is_leaf()) {
                         (true, false) => cross_section.push(n1),
                         (false, true) => cross_section.push(n2),
-                        (false, false) => {
-                            cross_section.push(n1);
-                            cross_section.push(n2);
-                        }
+                        // Nothing to do here, we are skipping both nodes
+                        (false, false) => {}
                         // If two nodes are both leafs or concealed, but not
                         // equal to each other it means out algorithm is broken
                         _ => unreachable!(
@@ -389,40 +389,69 @@ impl MerkleBlock {
                 Ordering::Less => {
                     cross_section.push(n2);
                     let mut buoy = MerkleBuoy::new(n2_depth);
+                    let mut stop = false;
+                    last_b = None;
                     cross_section.extend(b.by_ref().take_while(|n| {
-                        buoy.push(n.depth_or(self.depth));
-                        if buoy.level() > n1_depth {
-                            last_b = None;
-                            true
-                        } else {
+                        if stop {
                             last_b = Some(*n);
-                            false
+                            return false;
                         }
+                        buoy.push(n.depth_or(self.depth));
+                        if buoy.level() <= n1_depth {
+                            stop = true
+                        }
+                        true
                     }));
                     last_a = a.next();
                 }
                 Ordering::Greater => {
                     cross_section.push(n1);
                     let mut buoy = MerkleBuoy::new(n1_depth);
+                    let mut stop = false;
+                    last_a = None;
                     cross_section.extend(a.by_ref().take_while(|n| {
-                        buoy.push(n.depth_or(self.depth));
-                        if buoy.level() > n2_depth {
-                            last_a = None;
-                            true
-                        } else {
+                        if stop {
                             last_a = Some(*n);
-                            false
+                            return false;
                         }
+                        buoy.push(n.depth_or(self.depth));
+                        if buoy.level() <= n2_depth {
+                            stop = true
+                        }
+                        true
                     }));
                     last_b = b.next();
                 }
             }
         }
+        cross_section.extend(a);
+        cross_section.extend(b);
 
         self.cross_section =
             SmallVec::try_from(cross_section).expect("tree width guarantees are broken");
 
-        debug_assert_eq!(base_root, self.commitment_id());
+        assert_eq!(
+            self.cross_section
+                .iter()
+                .map(|n| self.depth.to_u8() - n.depth_or(self.depth).to_u8())
+                .map(|height| 2u16.pow(height as u32))
+                .sum::<u16>(),
+            self.width(),
+            "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
+             Standards Association
+Original block: {orig:#?}
+Merged-in block: {other:#?}
+Failed merge: {self:#?}"
+        );
+        assert_eq!(
+            base_root,
+            self.commitment_id(),
+            "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
+             Standards Association
+Original commitment id: {base_root}
+Changed commitment id: {}",
+            self.commitment_id()
+        );
 
         Ok(self.cross_section.len() as u16)
     }
@@ -624,7 +653,7 @@ mod test {
 
     #[test]
     fn merge_reveal() {
-        for size in 3..9 {
+        for size in 2..9 {
             let msgs = make_random_messages(size);
             let mpc_tree = make_random_tree(&msgs);
             let mpc_block = MerkleBlock::from(mpc_tree.clone());
