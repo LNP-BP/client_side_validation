@@ -332,17 +332,16 @@ mod test {
     #[test]
     fn scalability() {
         let mut depths = vec![];
-        // let mut cofacs = vec![];
+        let mut cofacs = vec![];
         for _ in 0..10 {
-            let msgs = make_random_messages(48);
+            let msgs = make_random_messages(500);
             let tree = make_random_tree(&msgs);
             depths.push(tree.depth.to_u8());
-            // cofacs.push(tree.cofactor);
+            cofacs.push(tree.cofactor);
         }
         let davg = depths.iter().map(|v| *v as u32).sum::<u32>() as f32 / 10f32;
-        // let cavg = cofacs.iter().map(|v| *v as u32).sum::<u32>() as f32 / 10f32;
         eprintln!("Depth: avg={davg:.2} {depths:?}");
-        // eprintln!("Cofactors: avg={cavg:.2} {cofacs:?}");
+        eprintln!("Cofactors: {cofacs:?}");
         assert!(davg <= 15f32);
     }
 }
