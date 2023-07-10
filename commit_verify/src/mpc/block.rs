@@ -119,7 +119,7 @@ pub struct MerkleBlock {
     /// Cofactor is used as an additive to the modulo divisor to improve packing
     /// of protocols inside a tree of a given depth.
     #[getter(as_copy)]
-    cofactor: u8,
+    cofactor: u16,
 
     /// Tree cross-section.
     #[getter(skip)]
@@ -561,7 +561,7 @@ pub struct MerkleProof {
 
     /// Cofactor used by the Merkle tree.
     #[getter(as_copy)]
-    cofactor: u8,
+    cofactor: u16,
 
     /// Merkle proof path consisting of node hashing partners.
     #[getter(skip)]

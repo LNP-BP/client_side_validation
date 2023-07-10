@@ -24,7 +24,7 @@ use strict_types::{CompileError, LibBuilder, TypeLib};
 use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "voyage_cycle_habitat_CeJQJUUYQjdFbrb98rZshpekvQpdABbtrwzjbtZG8Cqb";
+    "orca_galaxy_switch_5tHQbJnWw91SmUJ17cUbZn4dknk38tDadZLuxiMpyQVW";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {

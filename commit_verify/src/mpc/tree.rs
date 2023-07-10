@@ -47,7 +47,7 @@ pub struct MerkleTree {
 
     /// Cofactor is used as an additive to the modulo divisor to improve packing
     /// of protocols inside a tree of a given depth.
-    pub(super) cofactor: u8,
+    pub(super) cofactor: u16,
 
     /// Map of the messages by their respective protocol ids
     pub(super) messages: MessageMap,
@@ -156,7 +156,7 @@ mod commit {
     }
 }
 
-pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u8, width: u16) -> u16 {
+pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u16, width: u16) -> u16 {
     debug_assert_ne!(width, 0);
     let rem = u256::from_le_bytes((*protocol_id).into_inner()) %
         u256::from(width.saturating_sub(cofactor as u16).max(1) as u64);
