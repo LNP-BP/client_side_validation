@@ -116,6 +116,11 @@ pub struct MerkleBlock {
     #[getter(as_copy)]
     depth: u4,
 
+    /// Cofactor is used as an additive to the modulo divisor to improve packing
+    /// of protocols inside a tree of a given depth.
+    #[getter(as_copy)]
+    cofactor: u8,
+
     /// Tree cross-section.
     #[getter(skip)]
     cross_section: SmallVec<TreeNode>,
@@ -148,6 +153,7 @@ impl From<&MerkleTree> for MerkleBlock {
 
         MerkleBlock {
             depth: tree.depth,
+            cofactor: tree.cofactor,
             cross_section,
             entropy: Some(tree.entropy),
         }
@@ -169,7 +175,7 @@ impl MerkleBlock {
         let mut pos = proof.pos;
         let mut width = proof.width() as u16;
 
-        if protocol_id_pos(protocol_id, width) != pos {
+        if protocol_id_pos(protocol_id, proof.cofactor, width) != pos {
             return Err(UnrelatedProof);
         }
 
@@ -201,6 +207,7 @@ impl MerkleBlock {
 
         Ok(MerkleBlock {
             depth: u4::with(path.len() as u8),
+            cofactor: proof.cofactor,
             cross_section,
             entropy: None,
         })
@@ -480,6 +487,7 @@ Changed commitment id: {}",
         );
         Ok(MerkleProof {
             pos: self.protocol_id_pos(protocol_id),
+            cofactor: self.cofactor,
             path: SmallVec::try_from_iter(map.into_values())
                 .expect("tree width guarantees are broken"),
         })
@@ -493,7 +501,7 @@ Changed commitment id: {}",
 
     /// Computes position for a given `protocol_id` within the tree leaves.
     pub fn protocol_id_pos(&self, protocol_id: ProtocolId) -> u16 {
-        protocol_id_pos(protocol_id, self.width())
+        protocol_id_pos(protocol_id, self.cofactor, self.width())
     }
 
     /// Computes the width of the merkle tree.
@@ -550,6 +558,10 @@ pub struct MerkleProof {
     /// of the path.
     #[getter(as_copy)]
     pos: u16,
+
+    /// Cofactor used by the Merkle tree.
+    #[getter(as_copy)]
+    cofactor: u8,
 
     /// Merkle proof path consisting of node hashing partners.
     #[getter(skip)]

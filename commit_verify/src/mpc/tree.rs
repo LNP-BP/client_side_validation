@@ -45,6 +45,10 @@ pub struct MerkleTree {
     /// Entropy used for placeholders.
     pub(super) entropy: u64,
 
+    /// Cofactor is used as an additive to the modulo divisor to improve packing
+    /// of protocols inside a tree of a given depth.
+    pub(super) cofactor: u8,
+
     /// Map of the messages by their respective protocol ids
     pub(super) messages: MessageMap,
 
@@ -125,39 +129,42 @@ mod commit {
 
             let mut depth = source.min_depth;
             loop {
-                map.clear();
-                let width = 2usize.pow(depth.to_u8() as u32) as u16;
-                if source.messages.iter().all(|(protocol, message)| {
-                    let pos = protocol_id_pos(*protocol, width);
-                    map.insert(pos, (*protocol, *message)).is_none()
-                }) {
-                    break;
+                for cofactor in 0..=0xFF {
+                    map.clear();
+                    let width = 2usize.pow(depth.to_u8() as u32) as u16;
+                    if source.messages.iter().all(|(protocol, message)| {
+                        let pos = protocol_id_pos(*protocol, cofactor, width);
+                        map.insert(pos, (*protocol, *message)).is_none()
+                    }) {
+                        return Ok(MerkleTree {
+                            depth,
+                            entropy,
+                            cofactor,
+                            messages: source.messages.clone(),
+                            map: Confined::try_from(map).expect("MultiSource type guarantees"),
+                        });
+                    }
                 }
 
                 depth = depth
                     .checked_add(1)
                     .ok_or(Error::CantFitInMaxSlots(msg_count))?;
             }
-
-            Ok(MerkleTree {
-                depth,
-                messages: source.messages.clone(),
-                entropy,
-                map: Confined::try_from(map).expect("MultiSource type guarantees"),
-            })
         }
     }
 }
 
-pub(super) fn protocol_id_pos(protocol_id: ProtocolId, width: u16) -> u16 {
-    let rem = u256::from_le_bytes((*protocol_id).into_inner()) % u256::from(width as u64);
+pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u8, width: u16) -> u16 {
+    debug_assert_ne!(width, 0);
+    let rem = u256::from_le_bytes((*protocol_id).into_inner()) %
+        u256::from(width.saturating_sub(cofactor as u16).max(1) as u64);
     rem.low_u64() as u16
 }
 
 impl MerkleTree {
     /// Computes position for a given `protocol_id` within the tree leaves.
     pub fn protocol_id_pos(&self, protocol_id: ProtocolId) -> u16 {
-        protocol_id_pos(protocol_id, self.width())
+        protocol_id_pos(protocol_id, self.cofactor, self.width())
     }
 
     /// Computes the width of the merkle tree.
@@ -209,7 +216,7 @@ pub(crate) mod test_helpers {
 
     pub fn make_random_tree(msgs: &BTreeMap<ProtocolId, Message>) -> MerkleTree {
         let src = MultiSource {
-            min_depth: u4::with(0),
+            min_depth: u4::ZERO,
             messages: Confined::try_from_iter(msgs.iter().map(|(a, b)| (*a, *b))).unwrap(),
         };
         MerkleTree::try_commit(&src).unwrap()
