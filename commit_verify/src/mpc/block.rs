@@ -622,6 +622,7 @@ mod test {
 
         assert_eq!(tree.conceal(), block.conceal());
         assert_eq!(tree.root(), block.conceal());
+        assert_eq!(tree.root(), cid1);
         assert_eq!(tree.commitment_id(), block.commitment_id())
     }
 
