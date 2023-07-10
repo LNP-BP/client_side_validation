@@ -242,7 +242,7 @@ mod test {
             let msgs = make_random_messages(size);
             make_random_tree(&msgs);
         }
-        for exp in 5..=5 {
+        for exp in 5..=8 {
             let size = 2u16.pow(exp);
 
             let msgs = make_random_messages(size);
@@ -320,5 +320,22 @@ mod test {
         let id2 = tree.commitment_id();
 
         assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn scalability() {
+        let mut depths = vec![];
+        // let mut cofacs = vec![];
+        for _ in 0..10 {
+            let msgs = make_random_messages(48);
+            let tree = make_random_tree(&msgs);
+            depths.push(tree.depth.to_u8());
+            // cofacs.push(tree.cofactor);
+        }
+        let davg = depths.iter().map(|v| *v as u32).sum::<u32>() as f32 / 10f32;
+        // let cavg = cofacs.iter().map(|v| *v as u32).sum::<u32>() as f32 / 10f32;
+        eprintln!("Depth: avg={davg:.2} {depths:?}");
+        // eprintln!("Cofactors: avg={cavg:.2} {cofacs:?}");
+        assert!(davg <= 15f32);
     }
 }
