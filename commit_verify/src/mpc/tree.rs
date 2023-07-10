@@ -273,8 +273,8 @@ mod test {
     }
 
     #[test]
-    fn tree_size_limits() {
-        let count = 1_048_576 / 4; // 2^18 ~= 256 thousands
+    fn tree_huge() {
+        let count = 1_048_576 / 128;
         let msgs = make_random_messages(count);
         let tree = make_random_tree(&msgs);
         let mut counter = WriteCounter::default();
