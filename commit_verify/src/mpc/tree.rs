@@ -311,7 +311,12 @@ mod test {
         let mut tree = make_random_tree(&msgs);
         let id1 = tree.commitment_id();
 
-        tree.entropy = random();
+        tree.entropy = loop {
+            let entropy = random();
+            if entropy != tree.entropy {
+                break entropy;
+            }
+        };
         let id2 = tree.commitment_id();
 
         assert_ne!(id1, id2);
