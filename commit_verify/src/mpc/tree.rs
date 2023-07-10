@@ -135,19 +135,21 @@ mod commit {
             let mut prev_width = 1;
             loop {
                 let width = 2usize.pow(depth.to_u8() as u32) as u16;
-                for cofactor in 0..=(prev_width.min(COFACTOR_ATTEMPTS)) {
-                    map.clear();
-                    if source.messages.iter().all(|(protocol, message)| {
-                        let pos = protocol_id_pos(*protocol, cofactor, width);
-                        map.insert(pos, (*protocol, *message)).is_none()
-                    }) {
-                        return Ok(MerkleTree {
-                            depth,
-                            entropy,
-                            cofactor,
-                            messages: source.messages.clone(),
-                            map: Confined::try_from(map).expect("MultiSource type guarantees"),
-                        });
+                if width as usize >= msg_count {
+                    for cofactor in 0..=(prev_width.min(COFACTOR_ATTEMPTS)) {
+                        map.clear();
+                        if source.messages.iter().all(|(protocol, message)| {
+                            let pos = protocol_id_pos(*protocol, cofactor, width);
+                            map.insert(pos, (*protocol, *message)).is_none()
+                        }) {
+                            return Ok(MerkleTree {
+                                depth,
+                                entropy,
+                                cofactor,
+                                messages: source.messages.clone(),
+                                map: Confined::try_from(map).expect("MultiSource type guarantees"),
+                            });
+                        }
                     }
                 }
 
