@@ -21,8 +21,8 @@
 
 use std::io::Write;
 
-use amplify::confinement::SmallOrdMap;
-use amplify::num::u4;
+use amplify::confinement::MediumOrdMap;
+use amplify::num::u5;
 use amplify::{Bytes32, Wrapper};
 
 use crate::id::CommitmentId;
@@ -30,7 +30,7 @@ use crate::merkle::MerkleNode;
 use crate::{strategies, CommitEncode, CommitStrategy};
 
 /// Map from protocol ids to commitment messages.
-pub type MessageMap = SmallOrdMap<ProtocolId, Message>;
+pub type MessageMap = MediumOrdMap<ProtocolId, Message>;
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
 /// procedure.
@@ -91,12 +91,12 @@ pub enum Leaf {
     },
     Entropy {
         entropy: u64,
-        pos: u16,
+        pos: u32,
     },
 }
 
 impl Leaf {
-    pub fn entropy(entropy: u64, pos: u16) -> Self { Self::Entropy { entropy, pos } }
+    pub fn entropy(entropy: u64, pos: u32) -> Self { Self::Entropy { entropy, pos } }
 
     pub fn inhabited(protocol: ProtocolId, message: Message) -> Self {
         Self::Inhabited { protocol, message }
@@ -157,7 +157,7 @@ impl Commitment {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct MultiSource {
     /// Minimal depth of the created LNPBP-4 commitment tree
-    pub min_depth: u4,
+    pub min_depth: u5,
     /// Map of the messages by their respective protocol ids
     pub messages: MessageMap,
 }
@@ -165,7 +165,7 @@ pub struct MultiSource {
 impl Default for MultiSource {
     fn default() -> Self {
         MultiSource {
-            min_depth: u4::try_from(3).expect("hardcoded value"),
+            min_depth: u5::with(3),
             messages: Default::default(),
         }
     }
@@ -173,12 +173,12 @@ impl Default for MultiSource {
 
 /// Helper struct to track depth when merging two merkle blocks.
 pub struct MerkleBuoy {
-    buoy: u4,
+    buoy: u5,
     stack: Option<Box<MerkleBuoy>>,
 }
 
 impl MerkleBuoy {
-    pub fn new(top: u4) -> Self {
+    pub fn new(top: u5) -> Self {
         Self {
             buoy: top,
             stack: None,
@@ -186,7 +186,7 @@ impl MerkleBuoy {
     }
 
     /// Measure the current buoy level.
-    pub fn level(&self) -> u4 {
+    pub fn level(&self) -> u5 {
         self.stack
             .as_ref()
             .map(Box::as_ref)
@@ -200,8 +200,8 @@ impl MerkleBuoy {
     ///
     /// The buoy surfaces each time the contents it has is reduced to two depth
     /// of the same level.
-    pub fn push(&mut self, depth: u4) -> bool {
-        if depth == u4::ZERO {
+    pub fn push(&mut self, depth: u5) -> bool {
+        if depth == u5::ZERO {
             return false;
         }
         match self
