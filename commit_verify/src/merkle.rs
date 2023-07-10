@@ -76,6 +76,11 @@ pub struct MerkleNode(
     Bytes32,
 );
 
+impl CommitmentId for MerkleNode {
+    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0081:node:v01#23A";
+    type Id = Self;
+}
+
 const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
 
 impl MerkleNode {
