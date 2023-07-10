@@ -99,9 +99,9 @@ mod commit {
         /// protocol limit of 2^16
         TooManyMessages(usize),
 
-        /// the provided number of messages can't fit LNPBP-4 commitment size
-        /// limits for a given set of protocol ids.
-        CantFitInMaxSlots,
+        /// the provided number of messages ({0}) can't fit LNPBP-4 commitment
+        /// size limits for a given set of protocol ids.
+        CantFitInMaxSlots(usize),
     }
 
     impl TryCommitVerify<MultiSource, UntaggedProtocol> for MerkleTree {
@@ -110,11 +110,13 @@ mod commit {
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
             use std::collections::BTreeMap;
 
+            let msg_count = source.messages.len();
+
             if source.min_depth == u4::ZERO && source.messages.is_empty() {
                 return Err(Error::Empty);
             }
-            if source.messages.len() > 2usize.pow(u4::MAX.to_u8() as u32) {
-                return Err(Error::TooManyMessages(source.messages.len()));
+            if msg_count > 2usize.pow(u4::MAX.to_u8() as u32) {
+                return Err(Error::TooManyMessages(msg_count));
             }
 
             let entropy = thread_rng().next_u64();
@@ -132,7 +134,9 @@ mod commit {
                     break;
                 }
 
-                depth += 1;
+                depth = depth
+                    .checked_add(1)
+                    .ok_or(Error::CantFitInMaxSlots(msg_count))?;
             }
 
             Ok(MerkleTree {
@@ -162,4 +166,154 @@ impl MerkleTree {
     pub fn depth(&self) -> u4 { self.depth }
 
     pub fn entropy(&self) -> u64 { self.entropy }
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use std::collections::BTreeMap;
+
+    use amplify::confinement::Confined;
+    use amplify::Bytes32;
+    use rand::random;
+
+    use super::*;
+    use crate::mpc::MultiSource;
+    use crate::TryCommitVerify;
+
+    pub fn make_det_messages(no: u16) -> BTreeMap<ProtocolId, Message> {
+        let mut msgs = BTreeMap::new();
+        for _ in 0..no {
+            let protocol_id = u256::from(no);
+            let msg = random::<u8>();
+            msgs.insert(
+                ProtocolId::from(protocol_id.to_le_bytes()),
+                Message::from_inner(Bytes32::with_fill(msg)),
+            );
+        }
+        msgs
+    }
+
+    pub fn make_random_messages(no: u16) -> BTreeMap<ProtocolId, Message> {
+        let mut msgs = BTreeMap::new();
+        for _ in 0..no {
+            let protocol_id = random::<u32>();
+            let protocol_id = u256::from(protocol_id);
+            let msg = random::<u8>();
+            msgs.insert(
+                ProtocolId::from(protocol_id.to_le_bytes()),
+                Message::from_inner(Bytes32::with_fill(msg)),
+            );
+        }
+        msgs
+    }
+
+    pub fn make_random_tree(msgs: &BTreeMap<ProtocolId, Message>) -> MerkleTree {
+        let src = MultiSource {
+            min_depth: u4::with(0),
+            messages: Confined::try_from_iter(msgs.iter().map(|(a, b)| (*a, *b))).unwrap(),
+        };
+        MerkleTree::try_commit(&src).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeSet;
+
+    use amplify::num::u4;
+    use rand::random;
+    use sha2::Sha256;
+    use strict_encoding::StrictEncode;
+
+    use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
+    use crate::mpc::MerkleTree;
+    use crate::{CommitEncode, CommitmentId, Conceal, DigestExt};
+
+    #[test]
+    #[should_panic(expected = "Empty")]
+    fn tree_empty() {
+        let msgs = make_random_messages(0);
+        make_random_tree(&msgs);
+    }
+
+    #[test]
+    fn tree_sizing() {
+        for size in 1..16 {
+            let msgs = make_random_messages(size);
+            make_random_tree(&msgs);
+        }
+        for exp in 5..=5 {
+            let size = 2u16.pow(exp);
+
+            let msgs = make_random_messages(size);
+            make_random_tree(&msgs);
+
+            let msgs = make_random_messages(size - 9);
+            make_random_tree(&msgs);
+
+            let msgs = make_random_messages(size + 13);
+            make_random_tree(&msgs);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "CantFitInMaxSlots(1024)")]
+    fn tree_size_limits() {
+        let msgs = make_random_messages(1024);
+        make_random_tree(&msgs);
+    }
+
+    #[test]
+    fn tree_structure() {
+        let msgs = make_random_messages(9);
+        let tree = make_random_tree(&msgs);
+        assert!(tree.depth() > u4::with(3));
+        assert!(tree.width() > 9);
+        let mut set = BTreeSet::<u16>::new();
+        for (pid, msg) in msgs {
+            let pos = tree.protocol_id_pos(pid);
+            assert!(set.insert(pos));
+            assert_eq!(tree.messages.get(&pid), Some(&msg));
+        }
+    }
+
+    #[test]
+    fn tree_conceal() {
+        let msgs = make_random_messages(9);
+        let tree = make_random_tree(&msgs);
+        assert_eq!(tree.conceal(), tree.root());
+    }
+
+    #[test]
+    fn tree_id() {
+        let msgs = make_random_messages(9);
+        let tree = make_random_tree(&msgs);
+        let id = tree.commitment_id();
+        let root = tree.root();
+
+        let mut enc1 = vec![];
+        let mut enc2 = vec![];
+        tree.commit_encode(&mut enc1);
+        root.strict_write(usize::MAX, &mut enc2).unwrap();
+        // Commitment encoding must be equal to the value of the Merkle root
+        assert_eq!(enc1, enc2);
+
+        let mut engine = Sha256::from_tag(MerkleTree::TAG);
+        engine.input_raw(root.as_slice());
+        let cmt = engine.finish();
+        // Commitment id must be equal to the tag-hashed Merkle tree root
+        assert_eq!(id.as_slice(), &cmt);
+    }
+
+    #[test]
+    fn tree_id_entropy() {
+        let msgs = make_random_messages(9);
+        let mut tree = make_random_tree(&msgs);
+        let id1 = tree.commitment_id();
+
+        tree.entropy = random();
+        let id2 = tree.commitment_id();
+
+        assert_ne!(id1, id2);
+    }
 }

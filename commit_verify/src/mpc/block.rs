@@ -33,7 +33,7 @@ use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{
-    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
+    Commitment, MerkleBuoy, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
 };
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
@@ -93,7 +93,7 @@ impl TreeNode {
 
     pub fn is_leaf(&self) -> bool { matches!(self, TreeNode::CommitmentLeaf { .. }) }
 
-    pub fn merkle_node_with(&self) -> MerkleNode {
+    pub fn to_merkle_node(&self) -> MerkleNode {
         match self {
             TreeNode::ConcealedNode { hash, .. } => *hash,
             TreeNode::CommitmentLeaf {
@@ -242,7 +242,7 @@ impl MerkleBlock {
                     count += 1;
                     *node = TreeNode::ConcealedNode {
                         depth: self.depth,
-                        hash: node.merkle_node_with(),
+                        hash: node.to_merkle_node(),
                     };
                 }
             }
@@ -261,6 +261,8 @@ impl MerkleBlock {
             while pos < len {
                 let (n1, n2) = (self.cross_section[pos], self.cross_section.get(pos + 1).copied());
                 match (n1, n2) {
+                    // Two concealed nodes of the same depth: aggregate if they are on the same
+                    // branch, skip just one otherwise
                     (
                         TreeNode::ConcealedNode {
                             depth: depth1,
@@ -287,26 +289,34 @@ impl MerkleBlock {
                             len -= 1;
                         }
                     }
+                    // Two concealed nodes at different depth, or the last concealed node:
+                    // - we skip one of them and repeat
+                    (
+                        TreeNode::ConcealedNode { depth, .. },
+                        Some(TreeNode::ConcealedNode { .. }) | None,
+                    ) => {
+                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
+                    }
+                    // Two commitment leafs: skipping both
                     (TreeNode::CommitmentLeaf { .. }, Some(TreeNode::CommitmentLeaf { .. })) => {
                         offset += 2;
                         pos += 1;
                     }
-                    (
-                        TreeNode::CommitmentLeaf { .. },
-                        Some(TreeNode::ConcealedNode { depth, .. }),
-                    ) |
+                    // Concealed node followed by a leaf: skipping both
                     (
                         TreeNode::ConcealedNode { depth, .. },
                         Some(TreeNode::CommitmentLeaf { .. }),
-                    ) if depth == self.depth => {
-                        offset += 2;
+                    ) => {
+                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
+                        offset += 1;
                         pos += 1;
                     }
-                    (TreeNode::CommitmentLeaf { .. }, _) => {
+                    // Leaf followed by a concealed node: skipping leaf only, repeating
+                    (
+                        TreeNode::CommitmentLeaf { .. },
+                        Some(TreeNode::ConcealedNode { .. }) | None,
+                    ) => {
                         offset += 1;
-                    }
-                    (TreeNode::ConcealedNode { depth, .. }, _) => {
-                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
                     }
                 }
                 pos += 1;
@@ -336,14 +346,18 @@ impl MerkleBlock {
     /// Merges two merkle blocks together, joining revealed information from
     /// each one of them.
     pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, UnrelatedProof> {
-        if self.commitment_id() != other.commitment_id() {
+        let orig = self.clone();
+
+        let base_root = self.commitment_id();
+
+        if base_root != other.commitment_id() {
             return Err(UnrelatedProof);
         }
 
         let mut cross_section =
             Vec::with_capacity(self.cross_section.len() + other.cross_section.len());
-        let mut a = self.cross_section.clone().into_iter();
-        let mut b = other.cross_section.into_iter();
+        let mut a = self.cross_section.iter().copied();
+        let mut b = other.cross_section.iter().copied();
 
         let mut last_a = a.next();
         let mut last_b = b.next();
@@ -360,45 +374,84 @@ impl MerkleBlock {
                     match (n1.is_leaf(), n2.is_leaf()) {
                         (true, false) => cross_section.push(n1),
                         (false, true) => cross_section.push(n2),
+                        // Nothing to do here, we are skipping both nodes
+                        (false, false) => {}
                         // If two nodes are both leafs or concealed, but not
-                        // equal to each other it means that the provided blocks
-                        // are unrelated
-                        _ => return Err(UnrelatedProof),
+                        // equal to each other it means out algorithm is broken
+                        _ => unreachable!(
+                            "two MerkleBlock's with equal commitment failed to merge.\nBlock #1: \
+                             {self:#?}\nBlock #2: {other:#?}\nFailed nodes:\n{n1:?}\n{n2:?}"
+                        ),
                     }
                     last_a = a.next();
                     last_b = b.next();
                 }
                 Ordering::Less => {
                     cross_section.push(n2);
+                    let mut buoy = MerkleBuoy::new(n2_depth);
+                    let mut stop = false;
+                    last_b = None;
                     cross_section.extend(b.by_ref().take_while(|n| {
-                        if n.depth_or(self.depth) > n1_depth {
-                            last_b = None;
-                            true
-                        } else {
+                        if stop {
                             last_b = Some(*n);
-                            false
+                            return false;
                         }
+                        buoy.push(n.depth_or(self.depth));
+                        if buoy.level() <= n1_depth {
+                            stop = true
+                        }
+                        true
                     }));
                     last_a = a.next();
                 }
                 Ordering::Greater => {
                     cross_section.push(n1);
+                    let mut buoy = MerkleBuoy::new(n1_depth);
+                    let mut stop = false;
+                    last_a = None;
                     cross_section.extend(a.by_ref().take_while(|n| {
-                        if n.depth_or(self.depth) > n2_depth {
-                            last_a = None;
-                            true
-                        } else {
+                        if stop {
                             last_a = Some(*n);
-                            false
+                            return false;
                         }
+                        buoy.push(n.depth_or(self.depth));
+                        if buoy.level() <= n2_depth {
+                            stop = true
+                        }
+                        true
                     }));
                     last_b = b.next();
                 }
             }
         }
+        cross_section.extend(a);
+        cross_section.extend(b);
 
         self.cross_section =
             SmallVec::try_from(cross_section).expect("tree width guarantees are broken");
+
+        assert_eq!(
+            self.cross_section
+                .iter()
+                .map(|n| self.depth.to_u8() - n.depth_or(self.depth).to_u8())
+                .map(|height| 2u16.pow(height as u32))
+                .sum::<u16>(),
+            self.width(),
+            "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
+             Standards Association
+Original block: {orig:#?}
+Merged-in block: {other:#?}
+Failed merge: {self:#?}"
+        );
+        assert_eq!(
+            base_root,
+            self.commitment_id(),
+            "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
+             Standards Association
+Original commitment id: {base_root}
+Changed commitment id: {}",
+            self.commitment_id()
+        );
 
         Ok(self.cross_section.len() as u16)
     }
@@ -474,7 +527,7 @@ impl Conceal for MerkleBlock {
             .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
-        concealed.cross_section[0].merkle_node_with()
+        concealed.cross_section[0].to_merkle_node()
     }
 }
 
@@ -530,5 +583,103 @@ impl MerkleProof {
     ) -> Result<Commitment, UnrelatedProof> {
         let block = MerkleBlock::with(self, protocol_id, message)?;
         Ok(block.commitment_id())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::mpc::tree::test_helpers::{
+        make_det_messages, make_random_messages, make_random_tree,
+    };
+
+    #[test]
+    fn entropy() {
+        let msgs = make_random_messages(3);
+        let tree = make_random_tree(&msgs);
+        let mut block = MerkleBlock::from(&tree);
+
+        // Check we preserve entropy value
+        assert_eq!(Some(tree.entropy), block.entropy);
+        // Check if we remove entropy the commitment doesn't change
+        let cid1 = block.commitment_id();
+        block.entropy = None;
+        let cid2 = block.commitment_id();
+        assert_eq!(cid1, cid2);
+    }
+
+    #[test]
+    fn single_leaf_tree() {
+        let msgs = make_random_messages(1);
+        let tree = make_random_tree(&msgs);
+        let block = MerkleBlock::from(&tree);
+
+        let (pid, msg) = msgs.first_key_value().unwrap();
+        let leaf = Leaf::inhabited(*pid, *msg);
+        let cid1 = block.cross_section.get(0).unwrap().to_merkle_node();
+        let cid2 = leaf.commitment_id();
+        assert_eq!(cid1, cid2);
+
+        assert_eq!(tree.conceal(), block.conceal());
+        assert_eq!(tree.root(), block.conceal());
+        assert_eq!(tree.commitment_id(), block.commitment_id())
+    }
+
+    #[test]
+    fn determin_tree() {
+        for size in 1..6 {
+            let msgs = make_det_messages(size);
+            let tree = make_random_tree(&msgs);
+            let block = MerkleBlock::from(&tree);
+
+            assert_eq!(tree.conceal(), block.conceal());
+            assert_eq!(tree.root(), block.conceal());
+            assert_eq!(tree.commitment_id(), block.commitment_id())
+        }
+    }
+
+    #[test]
+    fn sparse_tree() {
+        for size in 2..6 {
+            let msgs = make_random_messages(size);
+            let tree = make_random_tree(&msgs);
+            let block = MerkleBlock::from(&tree);
+
+            assert_eq!(tree.conceal(), block.conceal());
+            assert_eq!(tree.root(), block.conceal());
+            assert_eq!(tree.commitment_id(), block.commitment_id())
+        }
+    }
+
+    #[test]
+    fn merge_reveal() {
+        for size in 2..9 {
+            let msgs = make_random_messages(size);
+            let mpc_tree = make_random_tree(&msgs);
+            let mpc_block = MerkleBlock::from(mpc_tree.clone());
+
+            let proofs = msgs
+                .keys()
+                .map(|pid| mpc_block.to_merkle_proof(*pid).unwrap())
+                .collect::<Vec<_>>();
+
+            let mut iter = proofs.iter().zip(msgs.into_iter());
+            let (proof, (pid, msg)) = iter.next().unwrap();
+            let mut merged_block = MerkleBlock::with(proof, pid, msg).unwrap();
+            for (proof, (pid, msg)) in iter {
+                let block = MerkleBlock::with(proof, pid, msg).unwrap();
+                if let Err(err) = merged_block.merge_reveal(block.clone()) {
+                    eprintln!("Error: {err}");
+                    eprintln!("Source tree: {mpc_tree:#?}");
+                    eprintln!("Source block: {mpc_block:#?}");
+                    eprintln!("Base block: {merged_block:#?}");
+                    eprintln!("Added proof: {proof:#?}");
+                    eprintln!("Added block: {block:#?}");
+                    panic!();
+                }
+            }
+
+            assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
+        }
     }
 }

@@ -170,3 +170,58 @@ impl Default for MultiSource {
         }
     }
 }
+
+/// Helper struct to track depth when merging two merkle blocks.
+pub struct MerkleBuoy {
+    buoy: u4,
+    stack: Option<Box<MerkleBuoy>>,
+}
+
+impl MerkleBuoy {
+    pub fn new(top: u4) -> Self {
+        Self {
+            buoy: top,
+            stack: None,
+        }
+    }
+
+    /// Measure the current buoy level.
+    pub fn level(&self) -> u4 {
+        self.stack
+            .as_ref()
+            .map(Box::as_ref)
+            .map(MerkleBuoy::level)
+            .unwrap_or(self.buoy)
+    }
+
+    /// Add new item to the buoy.
+    ///
+    /// Returns whether the buoy have surfaced in a result.
+    ///
+    /// The buoy surfaces each time the contents it has is reduced to two depth
+    /// of the same level.
+    pub fn push(&mut self, depth: u4) -> bool {
+        if depth == u4::ZERO {
+            return false;
+        }
+        match self
+            .stack
+            .as_mut()
+            .map(|stack| (stack.push(depth), stack.level()))
+        {
+            None if depth == self.buoy => {
+                self.buoy -= 1;
+                true
+            }
+            None => {
+                self.stack = Some(Box::new(MerkleBuoy::new(depth)));
+                false
+            }
+            Some((true, level)) => {
+                self.stack = None;
+                self.push(level)
+            }
+            Some((false, _)) => false,
+        }
+    }
+}

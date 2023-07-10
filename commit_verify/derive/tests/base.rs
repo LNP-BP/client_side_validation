@@ -34,7 +34,7 @@ use amplify::confinement::SmallVec;
 use amplify::Wrapper;
 use commit_verify::merkle::MerkleNode;
 use commit_verify::mpc::MERKLE_LNPBP4_TAG;
-use commit_verify::{CommitEncode, Conceal};
+use commit_verify::{CommitEncode, CommitmentId, Conceal};
 use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
 
 const TEST_LIB: &str = "TestLib";
@@ -406,10 +406,18 @@ fn merklize() -> common::Result {
     #[derive(CommitEncode)]
     struct Tree {
         #[commit_encode(merklize = MERKLE_LNPBP4_TAG)]
-        leaves: SmallVec<u16>,
+        leaves: SmallVec<Leaf>,
     }
 
-    let test_vec = small_vec!(0, 1, 2, 3);
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+    #[derive(CommitEncode)]
+    pub struct Leaf(u16);
+    impl CommitmentId for Leaf {
+        const TAG: [u8; 32] = [0u8; 32];
+        type Id = MerkleNode;
+    }
+
+    let test_vec = small_vec!(Leaf(0), Leaf(1), Leaf(2), Leaf(3));
     verify_commit(
         Tree {
             leaves: test_vec.clone(),
