@@ -30,6 +30,10 @@ use crate::mpc::atoms::Leaf;
 use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG};
 use crate::{CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
+/// Number of cofactor variants tried before moving to the next tree depth.
+#[allow(dead_code)]
+const COFACTOR_ATTEMPTS: u16 = 500;
+
 type OrderedMap = SmallOrdMap<u16, (ProtocolId, Message)>;
 
 /// Complete information about LNPBP-4 merkle tree.
@@ -131,7 +135,7 @@ mod commit {
             let mut prev_width = 1;
             loop {
                 let width = 2usize.pow(depth.to_u8() as u32) as u16;
-                for cofactor in 0..=(prev_width.min(0xFF) as u8) {
+                for cofactor in 0..=(prev_width.min(COFACTOR_ATTEMPTS)) {
                     map.clear();
                     if source.messages.iter().all(|(protocol, message)| {
                         let pos = protocol_id_pos(*protocol, cofactor, width);
