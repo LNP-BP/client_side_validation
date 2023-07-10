@@ -261,6 +261,8 @@ impl MerkleBlock {
             while pos < len {
                 let (n1, n2) = (self.cross_section[pos], self.cross_section.get(pos + 1).copied());
                 match (n1, n2) {
+                    // Two concealed nodes of the same depth: aggregate if they are on the same
+                    // branch, skip just one otherwise
                     (
                         TreeNode::ConcealedNode {
                             depth: depth1,
@@ -287,26 +289,34 @@ impl MerkleBlock {
                             len -= 1;
                         }
                     }
+                    // Two concealed nodes at different depth, or the last concealed node:
+                    // - we skip one of them and repeat
+                    (
+                        TreeNode::ConcealedNode { depth, .. },
+                        Some(TreeNode::ConcealedNode { .. }) | None,
+                    ) => {
+                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
+                    }
+                    // Two commitment leafs: skipping both
                     (TreeNode::CommitmentLeaf { .. }, Some(TreeNode::CommitmentLeaf { .. })) => {
                         offset += 2;
                         pos += 1;
                     }
-                    (
-                        TreeNode::CommitmentLeaf { .. },
-                        Some(TreeNode::ConcealedNode { depth, .. }),
-                    ) |
+                    // Concealed node followed by a leaf: skipping both
                     (
                         TreeNode::ConcealedNode { depth, .. },
                         Some(TreeNode::CommitmentLeaf { .. }),
-                    ) if depth == self.depth => {
-                        offset += 2;
+                    ) => {
+                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
+                        offset += 1;
                         pos += 1;
                     }
-                    (TreeNode::CommitmentLeaf { .. }, _) => {
+                    // Leaf followed by a concealed node: skipping leaf only, repeating
+                    (
+                        TreeNode::CommitmentLeaf { .. },
+                        Some(TreeNode::ConcealedNode { .. }) | None,
+                    ) => {
                         offset += 1;
-                    }
-                    (TreeNode::ConcealedNode { depth, .. }, _) => {
-                        offset += 2u16.pow(self.depth.to_u8() as u32 - depth.to_u8() as u32);
                     }
                 }
                 pos += 1;
