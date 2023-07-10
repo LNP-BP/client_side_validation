@@ -48,6 +48,11 @@ pub struct LeafNotKnown(ProtocolId);
 /// {width}.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 pub struct InvalidProof {
     protocol_id: ProtocolId,
     expected: u16,
