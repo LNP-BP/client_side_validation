@@ -24,7 +24,7 @@ use std::collections::{btree_set, BTreeSet};
 use std::io::Write;
 
 use amplify::confinement::Confined;
-use amplify::num::u4;
+use amplify::num::u5;
 use amplify::{Bytes32, Wrapper};
 use sha2::Sha256;
 
@@ -84,20 +84,20 @@ impl CommitmentId for MerkleNode {
 const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
 
 impl MerkleNode {
-    pub fn void(tag: [u8; 16], depth: u4, width: u16) -> Self {
+    pub fn void(tag: [u8; 16], depth: u5, width: u32) -> Self {
         let virt = VIRTUAL_LEAF;
         Self::with(NodeBranching::Void, tag, depth, width, virt, virt)
     }
 
-    pub fn single(tag: [u8; 16], depth: u4, width: u16, node: MerkleNode) -> Self {
+    pub fn single(tag: [u8; 16], depth: u5, width: u32, node: MerkleNode) -> Self {
         let single = NodeBranching::Single;
         Self::with(single, tag, depth, width, node, VIRTUAL_LEAF)
     }
 
     pub fn branches(
         tag: [u8; 16],
-        depth: u4,
-        width: u16,
+        depth: u5,
+        width: u32,
         node1: MerkleNode,
         node2: MerkleNode,
     ) -> Self {
@@ -107,8 +107,8 @@ impl MerkleNode {
     fn with(
         branching: NodeBranching,
         tag: [u8; 16],
-        depth: u4,
-        width: u16,
+        depth: u5,
+        width: u32,
         node1: MerkleNode,
         node2: MerkleNode,
     ) -> Self {
@@ -130,20 +130,20 @@ impl MerkleNode {
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
     pub fn merklize(tag: [u8; 16], leaves: &impl MerkleLeaves) -> Self {
         let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commitment_id());
-        let len = nodes.len() as u16;
+        let len = nodes.len() as u32;
         if len == 1 {
             // If we have just one leaf, it's MerkleNode value is the root
             nodes.next().expect("length is 1")
         } else {
-            Self::_merklize(tag, nodes, u4::ZERO, len)
+            Self::_merklize(tag, nodes, u5::ZERO, len)
         }
     }
 
     pub fn _merklize(
         tag: [u8; 16],
         mut iter: impl ExactSizeIterator<Item = MerkleNode>,
-        depth: u4,
-        width: u16,
+        depth: u5,
+        width: u32,
     ) -> Self {
         let len = iter.len() as u16;
 
