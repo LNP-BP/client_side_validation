@@ -1,5 +1,5 @@
 {-
-  Id: voyage_cycle_habitat_CeJQJUUYQjdFbrb98rZshpekvQpdABbtrwzjbtZG8Cqb
+  Id: melody_arctic_labor_ZtHaBzu9ojbDahaGKEXe5v9DfSDxLERbLkEB23R6Q6V
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -10,36 +10,36 @@
 
 typelib CommitVerify
 
-import left_pierre_food_5cmoZctpx98FbTzWTArm3G53pMzUXuRPXmMhuCd8zyXb as Std
+import lagoon_rodent_option_9KALDYR8Nyjq4FdMW6kYoL7vdkWnqPqNuFnmE9qHpNjZ as Std
 -- Imports:
--- U4 := LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC
+-- U5 := CafeAverageCompass03MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf
 
 
 
 -- ComplexSecondJason0F8mU5NPc8Z5CMnkSFGdF5UxrPsdcBS6B5DCyP5kJPgWc
 data Commitment       :: [Byte ^ 32]
--- CalypsoHorizonDrum0BMAswZq7JFahXpvDc3ykvYgNZL9wNqSo3uG8AYqEp5XG
-data MerkleBlock      :: depth Std.U4 {- LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC -}
-                       , cofactor U8
-                       , crossSection [TreeNode]
+-- CannonFreddieRodeo0qp6pMjMCcukxxZdkM2PtfNWfJjXKoVHXtXSBCsYjQwY
+data MerkleBlock      :: depth Std.U5 {- CafeAverageCompass03MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf -}
+                       , cofactor U16
+                       , crossSection [TreeNode ^ ..0xffffffff]
                        , entropy U64?
 -- BazaarOrchidJacket06kxYeCatpncbA9UiTdsFbxbxJdU56x6MdmTRkEeGAv6R
 data MerkleNode       :: [Byte ^ 32]
--- AcrobatWesternRondo0ERsXQXKGftFKWFGLNpVc6EXue4sBLc27rbzH8GrMRrAm
-data MerkleProof      :: pos U16
-                       , cofactor U8
-                       , path [MerkleNode]
--- StudioRocketSoviet08kSHwezrxSX871UmePuTnF8Dgmsk8HBg4X5hxszg1Ydr
-data MerkleTree       :: depth Std.U4 {- LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC -}
+-- MillionTruckWeather09FbrjZLnMDfbrN9gEbWij5HNkxqAVaZBkoW2UvKdYw4B
+data MerkleProof      :: pos U32
+                       , cofactor U16
+                       , path [MerkleNode ^ ..0x20]
+-- IngridSincereNavy057jCv2LWrdn89GzuSYaH17f21N3su76uM2tEaG1dwwoT
+data MerkleTree       :: depth Std.U5 {- CafeAverageCompass03MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf -}
                        , entropy U64
-                       , cofactor U8
-                       , messages {[Byte ^ 32] -> Message}
-                       , map {U16 -> ProtocolId, Message}
+                       , cofactor U16
+                       , messages {ProtocolId -> ^ ..0xffffff Message}
+                       , map {U32 -> ^ ..0xffffff ProtocolId, Message}
 -- LondonMagnetCake04ajqScXjJ6wQ5af2zgBFzzP7k1qzD6DXXU28taQidCcA
 data Message          :: [Byte ^ 32]
 -- IndigoBuenosFriday04GenVCt5Xq6xtnJDjT98FehgCS8rTmwEzbjwGkaUVjHz
 data ProtocolId       :: [Byte ^ 32]
--- ProteinBonusSmart0CLZUZvDSrWd85s7CaYnGikoTAHgihGTY7ApULVJ7Pvjq
-data TreeNode         :: concealedNode (depth Std.U4 {- LemonMimosaOrder0Be5p7K6Qec6irJPaXb91KNSg5S9bQRAbCaa88E1MmFTC -}, hash MerkleNode)
+-- AxiomPenguinTicket0D7Q2eTnYyjN6gMZnZYrMG6gmRwmtnxyGLeqBbki8DFLv
+data TreeNode         :: concealedNode (depth Std.U5 {- CafeAverageCompass03MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf -}, hash MerkleNode)
                        | commitmentLeaf (protocolId ProtocolId, message Message)
 
