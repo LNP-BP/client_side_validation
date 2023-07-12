@@ -206,7 +206,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.10.3"
+version = "0.10.4"
 dependencies = [
  "commit_verify",
  "serde",
@@ -229,7 +229,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.10.3"
+version = "0.10.4"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -674,9 +674,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "2.3.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0be9dd3df80dc083d4e20ac87246a67f42b3a5016375ae5a48f292e85ccfb1bd"
+checksum = "23b1c91b79e62afc09025d828fa0b8dbf4105513de38f126a017919c09bca472"
 dependencies = [
  "amplify",
  "half",
@@ -698,9 +698,9 @@ dependencies = [
 
 [[package]]
 name = "strict_types"
-version = "1.3.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e611df6ed5752860c760c94509b838cd225e9e9e5de301517db195cf6f1f2cd"
+checksum = "75574939fc4c5a13ab4f49d06e965a9d4bd0aa1deff4e227a2afb6dbebff1249"
 dependencies = [
  "amplify",
  "baid58",

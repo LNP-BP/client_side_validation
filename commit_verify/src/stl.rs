@@ -24,7 +24,7 @@ use strict_types::{CompileError, LibBuilder, TypeLib};
 use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "sensor_correct_total_6RNoZhpeu95My9KqGM7j8BcY4tcNa8rwAjXbXUGteuf9";
+    "melody_arctic_labor_ZtHaBzu9ojbDahaGKEXe5v9DfSDxLERbLkEB23R6Q6V";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
@@ -33,6 +33,7 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     .transpile::<mpc::MerkleTree>()
     .transpile::<mpc::MerkleBlock>()
     .transpile::<mpc::MerkleProof>()
+    .transpile::<mpc::Commitment>()
     .compile()
 }
 
