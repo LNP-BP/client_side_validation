@@ -16,7 +16,7 @@ default-members = [
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
-rust-version = "1.66" # Due to strict encoding library (caused by GAD)
+rust-version = "1.67" # Due to strict encoding library (caused by GAD)
 edition = "2021"
 license = "Apache-2.0"
 
@@ -55,7 +55,3 @@ serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = [ "all" ]
-
-[patch.crates-io]
-strict_encoding = { git = "https://github.com/strict-types/strict-encoding", branch = "u5" }
-strict_types = { git = "https://github.com/strict-types/strict-types", branch = "u5" }
