@@ -1,6 +1,6 @@
 [package]
 name = "commit_verify"
-version = "0.10.3"
+version = "0.10.4"
 description = "Commit-verify API for client-side validation"
 keywords = ["lnp-bp", "smart-contracts", "blockchain", "commitments"]
 categories = ["cryptography"]
