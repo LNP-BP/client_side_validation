@@ -37,16 +37,43 @@ use crate::mpc::{
 };
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
-/// commitment under protocol id {_0} is absent from the known part of a given
+/// commitment under protocol id {0} is absent from the known part of a given
 /// LNPBP-4 Merkle block.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
 pub struct LeafNotKnown(ProtocolId);
 
-/// attempt to merge unrelated LNPBP-4 proof.
+/// the provided merkle proof protocol id {protocol_id} position {actual}
+/// doesn't match the expected position {expected} within the tree of width
+/// {width}.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
-pub struct UnrelatedProof;
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
+pub struct InvalidProof {
+    protocol_id: ProtocolId,
+    expected: u32,
+    actual: u32,
+    width: u32,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error, From)]
+#[display(doc_comments)]
+pub enum MergeError {
+    #[from]
+    #[display(inner)]
+    InvalidProof(InvalidProof),
+
+    /// attempt to merge two unrelated LNPBP-4 blocks with different Merkle
+    /// roots (base {base_root}, merged-in {merged_root}).
+    UnrelatedBlocks {
+        base_root: Commitment,
+        merged_root: Commitment,
+    },
+}
 
 /// LNPBP-4 Merkle tree node.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -170,13 +197,19 @@ impl MerkleBlock {
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
-    ) -> Result<Self, UnrelatedProof> {
+    ) -> Result<Self, InvalidProof> {
         let path = proof.as_path();
         let mut pos = proof.pos;
         let mut width = proof.width();
 
-        if protocol_id_pos(protocol_id, proof.cofactor, width) != pos {
-            return Err(UnrelatedProof);
+        let expected = protocol_id_pos(protocol_id, proof.cofactor, width);
+        if expected != pos {
+            return Err(InvalidProof {
+                protocol_id,
+                expected,
+                actual: pos,
+                width,
+            });
         }
 
         let mut dir = Vec::with_capacity(path.len());
@@ -345,20 +378,22 @@ impl MerkleBlock {
         proof: &MerkleProof,
         protocol_id: ProtocolId,
         message: Message,
-    ) -> Result<u16, UnrelatedProof> {
+    ) -> Result<u16, MergeError> {
         let block = MerkleBlock::with(proof, protocol_id, message)?;
         self.merge_reveal(block)
     }
 
     /// Merges two merkle blocks together, joining revealed information from
     /// each one of them.
-    pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, UnrelatedProof> {
+    pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, MergeError> {
         let orig = self.clone();
-
         let base_root = self.commitment_id();
-
-        if base_root != other.commitment_id() {
-            return Err(UnrelatedProof);
+        let merged_root = other.commitment_id();
+        if base_root != merged_root {
+            return Err(MergeError::UnrelatedBlocks {
+                base_root,
+                merged_root,
+            });
         }
 
         let mut cross_section =
@@ -592,7 +627,7 @@ impl MerkleProof {
         &self,
         protocol_id: ProtocolId,
         message: Message,
-    ) -> Result<Commitment, UnrelatedProof> {
+    ) -> Result<Commitment, InvalidProof> {
         let block = MerkleBlock::with(self, protocol_id, message)?;
         Ok(block.commitment_id())
     }
