@@ -1,8 +1,8 @@
 -----BEGIN STRICT TYPE LIB-----
-Id: melody_arctic_labor_ZtHaBzu9ojbDahaGKEXe5v9DfSDxLERbLkEB23R6Q6V
+Id: urn:ubideco:stl:ZtHaBzu9ojbDahaGKEXe5v9DfSDxLERbLkEB23R6Q6V
 Name: CommitVerify
 Dependencies: 
-  Std@lagoon_rodent_option_9KALDYR8Nyjq4FdMW6kYoL7vdkWnqPqNuFnmE9qHpNjZ
+  urn:ubideco:stl:9KALDYR8Nyjq4FdMW6kYoL7vdkWnqPqNuFnmE9qHpNjZ
 
 DENvbW1pdFZlcmlmeQF7hIA8nvriESWnfCw5vHDS/ej5Q64N/Zz05oLtx2bKcANT
 dGQBA1N0ZAEAIuTglum9fVyG9eHfXXcBav45xzzZNIVQlECJjKijeV4CVTUIAApD
