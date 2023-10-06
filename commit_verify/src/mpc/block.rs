@@ -430,7 +430,7 @@ impl MerkleBlock {
                 }
                 Ordering::Less => {
                     cross_section.push(n2);
-                    let mut buoy = MerkleBuoy::new(n2_depth);
+                    let mut buoy = MerkleBuoy::<u5>::new(n2_depth);
                     let mut stop = false;
                     last_b = None;
                     cross_section.extend(b.by_ref().take_while(|n| {
@@ -448,7 +448,7 @@ impl MerkleBlock {
                 }
                 Ordering::Greater => {
                     cross_section.push(n1);
-                    let mut buoy = MerkleBuoy::new(n1_depth);
+                    let mut buoy = MerkleBuoy::<u5>::new(n1_depth);
                     let mut stop = false;
                     last_a = None;
                     cross_section.extend(a.by_ref().take_while(|n| {
