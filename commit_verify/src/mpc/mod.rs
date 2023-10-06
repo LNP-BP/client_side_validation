@@ -27,11 +27,14 @@ mod atoms;
 mod tree;
 mod block;
 
-pub use atoms::{Commitment, Leaf, MerkleBuoy, Message, MessageMap, MultiSource, ProtocolId};
+pub use atoms::{Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId};
 pub use block::{InvalidProof, LeafNotKnown, MergeError, MerkleBlock, MerkleProof};
 #[cfg(feature = "rand")]
 pub use tree::Error;
 pub use tree::MerkleTree;
+
+#[deprecated(since = "0.10.6", note = "use commit_verify::merkle::MerkleBuoy instead")]
+pub use crate::merkle::MerkleBuoy;
 
 pub const MERKLE_LNPBP4_TAG: u128 = u128::from_le_bytes(*b"urn:lnpbp:lnpbp4");
 

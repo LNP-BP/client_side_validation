@@ -29,11 +29,11 @@ use amplify::num::u5;
 use strict_encoding::StrictEncode;
 
 use crate::id::CommitmentId;
-use crate::merkle::MerkleNode;
+use crate::merkle::{MerkleBuoy, MerkleNode};
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{
-    Commitment, MerkleBuoy, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
+    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
 };
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
