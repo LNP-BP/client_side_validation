@@ -20,6 +20,7 @@
 // limitations under the License.
 
 use std::io::Write;
+use std::ops::SubAssign;
 
 use amplify::confinement::MediumOrdMap;
 use amplify::num::u5;
@@ -171,14 +172,15 @@ impl Default for MultiSource {
     }
 }
 
-/// Helper struct to track depth when merging two merkle blocks.
-pub struct MerkleBuoy {
-    buoy: u5,
-    stack: Option<Box<MerkleBuoy>>,
+/// Helper struct to track depth when working with Merkle blocks.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default = u5> {
+    buoy: D,
+    stack: Option<Box<MerkleBuoy<D>>>,
 }
 
-impl MerkleBuoy {
-    pub fn new(top: u5) -> Self {
+impl<D: Copy + Eq + SubAssign<u8> + Default> MerkleBuoy<D> {
+    pub fn new(top: D) -> Self {
         Self {
             buoy: top,
             stack: None,
@@ -186,7 +188,7 @@ impl MerkleBuoy {
     }
 
     /// Measure the current buoy level.
-    pub fn level(&self) -> u5 {
+    pub fn level(&self) -> D {
         self.stack
             .as_ref()
             .map(Box::as_ref)
@@ -200,8 +202,8 @@ impl MerkleBuoy {
     ///
     /// The buoy surfaces each time the contents it has is reduced to two depth
     /// of the same level.
-    pub fn push(&mut self, depth: u5) -> bool {
-        if depth == u5::ZERO {
+    pub fn push(&mut self, depth: D) -> bool {
+        if depth == D::default() {
             return false;
         }
         match self
