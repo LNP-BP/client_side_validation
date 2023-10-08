@@ -20,9 +20,10 @@
 // limitations under the License.
 
 use amplify::num::u24;
+pub use ripemd::Ripemd160;
 pub use sha2::{Digest, Sha256};
 
-pub trait DigestExt: Digest {
+pub trait DigestExt<const BYTE_LEN: usize = 32>: Digest {
     fn from_tag(tag: impl AsRef<[u8]>) -> Self;
     fn input_raw(&mut self, data: &[u8]);
     fn input_with_len<const MAX: usize>(&mut self, data: &[u8]) {
@@ -36,7 +37,7 @@ pub trait DigestExt: Digest {
         }
         self.input_raw(data);
     }
-    fn finish(self) -> [u8; 32];
+    fn finish(self) -> [u8; BYTE_LEN];
 }
 
 impl DigestExt for Sha256 {
@@ -54,4 +55,21 @@ impl DigestExt for Sha256 {
     fn input_raw(&mut self, data: &[u8]) { self.update(data); }
 
     fn finish(self) -> [u8; 32] { self.finalize().into() }
+}
+
+impl DigestExt<20> for Ripemd160 {
+    fn from_tag(tag: impl AsRef<[u8]>) -> Self {
+        let mut tagger = Ripemd160::default();
+        tagger.update(tag);
+        let tag = tagger.finalize();
+
+        let mut engine = Ripemd160::default();
+        engine.update(tag);
+        engine.update(tag);
+        engine
+    }
+
+    fn input_raw(&mut self, data: &[u8]) { self.update(data); }
+
+    fn finish(self) -> [u8; 20] { self.finalize().into() }
 }
