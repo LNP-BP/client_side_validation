@@ -197,7 +197,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.10.5"
+version = "0.10.6"
 dependencies = [
  "commit_verify",
  "serde",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.10.5"
+version = "0.10.6"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
