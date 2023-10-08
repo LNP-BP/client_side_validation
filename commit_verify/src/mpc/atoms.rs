@@ -23,7 +23,7 @@ use std::io::Write;
 
 use amplify::confinement::MediumOrdMap;
 use amplify::num::u5;
-use amplify::{Bytes32, Wrapper};
+use amplify::{Bytes32, FromSliceError, Wrapper};
 
 use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
@@ -56,7 +56,13 @@ impl CommitStrategy for ProtocolId {
 }
 
 impl ProtocolId {
-    pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
+    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
+    pub fn from_slice(slice: &[u8]) -> Option<Self> {
+        Bytes32::copy_from_slice(slice).ok().map(Self)
+    }
+    pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
+        Bytes32::copy_from_slice(slice).map(Self)
+    }
 }
 
 /// Original message participating in multi-message commitment.
@@ -80,7 +86,13 @@ pub struct Message(
 );
 
 impl Message {
-    pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
+    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
+    pub fn from_slice(slice: &[u8]) -> Option<Self> {
+        Bytes32::copy_from_slice(slice).ok().map(Self)
+    }
+    pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
+        Bytes32::copy_from_slice(slice).map(Self)
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, From)]
@@ -149,7 +161,13 @@ impl CommitStrategy for Commitment {
 }
 
 impl Commitment {
-    pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
+    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
+    pub fn from_slice(slice: &[u8]) -> Option<Self> {
+        Bytes32::copy_from_slice(slice).ok().map(Self)
+    }
+    pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
+        Bytes32::copy_from_slice(slice).map(Self)
+    }
 }
 
 // TODO: Either this type or [`MerkleTree`] should remain
