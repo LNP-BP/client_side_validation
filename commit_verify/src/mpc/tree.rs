@@ -23,7 +23,6 @@ use amplify::confinement::{MediumOrdMap, SmallVec};
 use amplify::num::{u256, u5};
 use amplify::Wrapper;
 
-#[cfg(feature = "rand")]
 pub use self::commit::Error;
 use crate::merkle::MerkleNode;
 use crate::mpc::atoms::Leaf;
@@ -85,10 +84,10 @@ impl Conceal for MerkleTree {
     fn conceal(&self) -> Self::Concealed { self.root() }
 }
 
-#[cfg(feature = "rand")]
 mod commit {
+    use std::collections::BTreeMap;
+
     use amplify::confinement::Confined;
-    use rand::{thread_rng, RngCore};
 
     use super::*;
     use crate::mpc::MultiSource;
@@ -112,11 +111,16 @@ mod commit {
         CantFitInMaxSlots(usize),
     }
 
+    /// # Panics
+    ///
+    /// Panics if the crate is compiled without `rand` feature enabled and the
+    /// MultiSource doesn't contain a static entropy.
     impl TryCommitVerify<MultiSource, UntaggedProtocol> for MerkleTree {
         type Error = Error;
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
-            use std::collections::BTreeMap;
+            #[cfg(feature = "rand")]
+            use rand::{thread_rng, RngCore};
 
             let msg_count = source.messages.len();
 
@@ -127,7 +131,15 @@ mod commit {
                 return Err(Error::TooManyMessages(msg_count));
             }
 
-            let entropy = thread_rng().next_u64();
+            #[cfg(feature = "rand")]
+            let entropy = source
+                .static_entropy
+                .unwrap_or_else(|| thread_rng().next_u64());
+            #[cfg(not(feature = "rand"))]
+            let entropy = source.static_entropy.expect(
+                "use must use `rand` feature for crate commit_verify if you do not provide with a \
+                 static entropy information in `MultiSource`",
+            );
 
             let mut map = BTreeMap::<u32, (ProtocolId, Message)>::new();
 
@@ -226,6 +238,7 @@ pub(crate) mod test_helpers {
         let src = MultiSource {
             min_depth: u5::ZERO,
             messages: Confined::try_from_iter(msgs.iter().map(|(a, b)| (*a, *b))).unwrap(),
+            static_entropy: None,
         };
         MerkleTree::try_commit(&src).unwrap()
     }

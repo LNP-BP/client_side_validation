@@ -152,7 +152,6 @@ impl Commitment {
     pub fn from_slice(slice: &[u8]) -> Option<Self> { Bytes32::from_slice(slice).map(Self) }
 }
 
-// TODO: Either this type or [`MerkleTree`] should remain
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct MultiSource {
@@ -160,13 +159,26 @@ pub struct MultiSource {
     pub min_depth: u5,
     /// Map of the messages by their respective protocol ids
     pub messages: MessageMap,
+    pub static_entropy: Option<u64>,
 }
 
 impl Default for MultiSource {
+    #[inline]
     fn default() -> Self {
         MultiSource {
             min_depth: u5::with(3),
             messages: Default::default(),
+            static_entropy: None,
+        }
+    }
+}
+
+impl MultiSource {
+    #[inline]
+    pub fn with_static_entropy(static_entropy: u64) -> Self {
+        MultiSource {
+            static_entropy: Some(static_entropy),
+            ..default!()
         }
     }
 }
