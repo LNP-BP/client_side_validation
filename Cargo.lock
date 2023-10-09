@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "amplify"
-version = "4.3.0"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16a7164b219700bd9a4b8708bf4784b974d079c8c8b761b9f18a0c45ece214cb"
+checksum = "8629db306c0bbeb0a402e2918bdcf0026b5ddb24c46460f3bf5410b350d98710"
 dependencies = [
  "amplify_apfloat",
  "amplify_derive",
@@ -42,9 +42,9 @@ dependencies = [
 
 [[package]]
 name = "amplify_derive"
-version = "4.0.0-alpha.6"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01c4835e964725149d7961ec5af2ca1302f6f68c8c738b4acb06185f596c3333"
+checksum = "759dcbfaf94d838367a86d493ec34ccc8aa6fe365cb7880d6bf89006de24d9c1"
 dependencies = [
  "amplify_syn",
  "proc-macro2",
@@ -691,11 +691,11 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.21"
+version = "0.9.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9d684e3ec7de3bf5466b32bd75303ac16f0736426e5a4e0d6e489559ce1249c"
+checksum = "1a49e178e4452f45cb61d0cd8cebc1b0fafd3e41929e996cef79aa3aca91f574"
 dependencies = [
- "indexmap 1.9.3",
+ "indexmap 2.0.2",
  "itoa",
  "ryu",
  "serde",
@@ -715,7 +715,7 @@ dependencies = [
 
 [[package]]
 name = "single_use_seals"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "amplify_derive",
  "async-trait",

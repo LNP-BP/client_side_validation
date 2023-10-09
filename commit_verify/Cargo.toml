@@ -22,7 +22,7 @@ name = "commit-stl"
 required-features = ["stl"]
 
 [dependencies]
-amplify = { version = "4.3.0", features = ["hex", "apfloat"] }
+amplify = { version = "4.5.0", features = ["hex", "apfloat"] }
 commit_encoding_derive = { version = "0.10.0", path = "derive" }
 strict_encoding = "2.6.0"
 strict_types = { version = "1.6.2", optional = true }
