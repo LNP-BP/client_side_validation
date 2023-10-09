@@ -45,10 +45,10 @@ extern crate core;
 #[cfg(feature = "derive")]
 pub use commit_encoding_derive::CommitEncode;
 
-pub(self) mod commit;
+mod commit;
 mod conceal;
 mod convolve;
-pub(self) mod embed;
+mod embed;
 mod encode;
 mod id;
 #[cfg(feature = "stl")]
