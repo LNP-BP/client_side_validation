@@ -29,11 +29,11 @@ use amplify::num::u5;
 use strict_encoding::StrictEncode;
 
 use crate::id::CommitmentId;
-use crate::merkle::MerkleNode;
+use crate::merkle::{MerkleBuoy, MerkleNode};
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{
-    Commitment, MerkleBuoy, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
+    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
 };
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
@@ -430,7 +430,7 @@ impl MerkleBlock {
                 }
                 Ordering::Less => {
                     cross_section.push(n2);
-                    let mut buoy = MerkleBuoy::new(n2_depth);
+                    let mut buoy = MerkleBuoy::<u5>::new(n2_depth);
                     let mut stop = false;
                     last_b = None;
                     cross_section.extend(b.by_ref().take_while(|n| {
@@ -448,7 +448,7 @@ impl MerkleBlock {
                 }
                 Ordering::Greater => {
                     cross_section.push(n1);
-                    let mut buoy = MerkleBuoy::new(n1_depth);
+                    let mut buoy = MerkleBuoy::<u5>::new(n1_depth);
                     let mut stop = false;
                     last_a = None;
                     cross_section.extend(a.by_ref().take_while(|n| {

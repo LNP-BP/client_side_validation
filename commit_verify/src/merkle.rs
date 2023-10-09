@@ -22,6 +22,7 @@
 use core::{iter, slice};
 use std::collections::{btree_set, BTreeSet};
 use std::io::Write;
+use std::ops::SubAssign;
 
 use amplify::confinement::Confined;
 use amplify::num::u5;
@@ -201,4 +202,61 @@ where T: CommitmentId<Id = MerkleNode> + Copy
     type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+/// Helper struct to track depth when working with Merkle blocks.
+// TODO: v0.11 Remove default generic from MerkleBuoy
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default = u5> {
+    buoy: D,
+    stack: Option<Box<MerkleBuoy<D>>>,
+}
+
+impl<D: Copy + Eq + SubAssign<u8> + Default> MerkleBuoy<D> {
+    pub fn new(top: D) -> Self {
+        Self {
+            buoy: top,
+            stack: None,
+        }
+    }
+
+    /// Measure the current buoy level.
+    pub fn level(&self) -> D {
+        self.stack
+            .as_ref()
+            .map(Box::as_ref)
+            .map(MerkleBuoy::level)
+            .unwrap_or(self.buoy)
+    }
+
+    /// Add new item to the buoy.
+    ///
+    /// Returns whether the buoy have surfaced in a result.
+    ///
+    /// The buoy surfaces each time the contents it has is reduced to two depth
+    /// of the same level.
+    pub fn push(&mut self, depth: D) -> bool {
+        if depth == D::default() {
+            return false;
+        }
+        match self
+            .stack
+            .as_mut()
+            .map(|stack| (stack.push(depth), stack.level()))
+        {
+            None if depth == self.buoy => {
+                self.buoy -= 1;
+                true
+            }
+            None => {
+                self.stack = Some(Box::new(MerkleBuoy::new(depth)));
+                false
+            }
+            Some((true, level)) => {
+                self.stack = None;
+                self.push(level)
+            }
+            Some((false, _)) => false,
+        }
+    }
 }
