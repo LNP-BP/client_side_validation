@@ -43,6 +43,8 @@ where Self: Eq + Sized
     /// Verifies commitment against the message; default implementation just
     /// repeats the commitment to the message and check it against the `self`.
     #[inline]
+    #[must_use = "the boolean inside Ok(_) must be used since it carries the result of the \
+                  validation"]
     fn verify(&self, msg: &Msg) -> bool { Self::commit(msg) == *self }
 }
 
@@ -63,6 +65,8 @@ where Self: Eq + Sized
     /// just repeats the commitment to the message and check it against the
     /// `self`.
     #[inline]
+    #[must_use = "the boolean inside Ok(_) must be used since it carries the result of the \
+                  validation"]
     fn try_verify(&self, msg: &Msg) -> Result<bool, Self::Error> {
         Ok(Self::try_commit(msg)? == *self)
     }
