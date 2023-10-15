@@ -49,34 +49,19 @@ where
     /// that the resulting commitment matches the provided one in the
     /// `commitment` parameter.
     ///
-    /// Errors if the commitment can't be created, i.e. the
-    /// [`ConvolveCommit::convolve_commit`] procedure for the original,
-    /// restored from the proof, can't be performed. This means that the
-    /// verification has failed and the commitment and/or the proof are
-    /// invalid. The function returns error in this case (ano not simply
-    /// `false`) since this usually means the software error in managing
-    /// container and proof data, or selection of a different commitment
-    /// protocol parameters comparing to the ones used during commitment
-    /// creation. In all these cases we'd like to provide devs with more
-    /// information for debugging.
-    ///
-    /// The proper way of using the function in a well-debugged software should
-    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
-    /// However if the proofs are provided by some sort of user/network input
-    /// from an untrusted party, a proper form would be
-    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
-    fn verify(
-        &self,
-        msg: &Msg,
-        commitment: &Source::Commitment,
-    ) -> Result<bool, Source::CommitError>
-    where
-        Self: VerifyEq,
-    {
+    /// Returns `false` if the commitment doesn't pass the verification or can't
+    /// be replicated, i.e. the [`ConvolveCommit::convolve_commit`]
+    /// procedure for the original, restored from the proof, can't be
+    /// performed. This means that the verification has failed and the
+    /// commitment and/or the proof are invalid.
+    #[must_use = "the boolean carries the result of the verification"]
+    fn verify(&self, msg: &Msg, commitment: &Source::Commitment) -> bool {
         let original = self.restore_original(commitment);
         let suppl = self.extract_supplement();
-        let (commitment_prime, proof) = original.convolve_commit(suppl, msg)?;
-        Ok(commitment.verify_eq(&commitment_prime) && self.verify_eq(&proof))
+        let Ok((commitment_prime, proof)) = original.convolve_commit(suppl, msg) else {
+            return false;
+        };
+        commitment.verify_eq(&commitment_prime) && self.verify_eq(&proof)
     }
 }
 

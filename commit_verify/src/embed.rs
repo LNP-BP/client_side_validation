@@ -47,10 +47,9 @@ where
 {
     /// Restores original container before the commitment from the proof data
     /// and a container containing embedded commitment.
-    fn restore_original_container(
-        &self,
-        commit_container: &Container,
-    ) -> Result<Container, Container::VerifyError>;
+    ///
+    /// Can fail if the container data are not match proof data.
+    fn restore_original_container(&self, commit_container: &Container) -> Option<Container>;
 }
 
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
@@ -113,10 +112,6 @@ where
     /// invalid and the commitment can't be re-created.
     type CommitError: std::error::Error;
 
-    /// Error type that may be reported during [`Self::verify`] procedure.
-    /// It must be a subset of [`Self::CommitError`].
-    type VerifyError: std::error::Error + From<Self::CommitError>;
-
     /// Creates a commitment to a message and embeds it into the provided
     /// container (`self`) by mutating it and returning commitment proof.
     ///
@@ -131,31 +126,26 @@ where
     /// [`Self::embed_commit`] procedure checking that the resulting proof and
     /// commitment matches the provided `self` and `proof`.
     ///
-    /// Errors if the provided commitment can't be created, i.e. the
-    /// [`Self::embed_commit`] procedure for the original container, restored
-    /// from the proof and current container, can't be performed. This means
-    /// that the verification has failed and the commitment and proof are
-    /// invalid. The function returns error in this case (ano not simply
-    /// `false`) since this usually means the software error in managing
-    /// container and proof data, or selection of a different commitment
-    /// protocol parameters comparing to the ones used during commitment
-    /// creation. In all these cases we'd like to provide devs with more
-    /// information for debugging.
-    ///
-    /// The proper way of using the function in a well-debugged software should
-    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
-    /// However if the proofs are provided by some sort of user/network input
-    /// from an untrusted party, a proper form would be
-    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
+    /// Returns `false` if the if the commitment doesn't pass the verification
+    /// or can't be replicated, i.e. the original container can't be restored
+    /// from the proof, or [`Self::embed_commit`] procedure for the original
+    /// container, restored from the proof and current container, can't be
+    /// performed. All of these options mean that the verification has failed
+    /// and the commitment or the proof is invalid.
     #[inline]
-    fn verify(&self, msg: &Msg, proof: &Self::Proof) -> Result<bool, Self::VerifyError>
+    #[must_use = "the boolean carries the result of the verification"]
+    fn verify(&self, msg: &Msg, proof: &Self::Proof) -> bool
     where
         Self: VerifyEq,
         Self::Proof: VerifyEq,
     {
-        let mut container_prime = proof.restore_original_container(self)?;
-        let proof_prime = container_prime.embed_commit(msg)?;
-        Ok(proof_prime.verify_eq(proof) && self.verify_eq(&container_prime))
+        let Some(mut container_prime) = proof.restore_original_container(self) else {
+            return false;
+        };
+        let Ok(proof_prime) = container_prime.embed_commit(msg) else {
+            return false;
+        };
+        proof_prime.verify_eq(proof) && self.verify_eq(&container_prime)
     }
 
     /// Phantom method used to add `Protocol` generic parameter to the trait.

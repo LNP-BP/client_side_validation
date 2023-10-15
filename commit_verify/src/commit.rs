@@ -43,6 +43,7 @@ where Self: Eq + Sized
     /// Verifies commitment against the message; default implementation just
     /// repeats the commitment to the message and check it against the `self`.
     #[inline]
+    #[must_use = "the boolean carries the result of the verification"]
     fn verify(&self, msg: &Msg) -> bool { Self::commit(msg) == *self }
 }
 
@@ -59,12 +60,15 @@ where Self: Eq + Sized
     /// Tries to create commitment to a byte representation of a given message
     fn try_commit(msg: &Msg) -> Result<Self, Self::Error>;
 
-    /// Tries to verify commitment against the message; default implementation
+    /// Verifies commitment against the message; default implementation
     /// just repeats the commitment to the message and check it against the
     /// `self`.
     #[inline]
-    fn try_verify(&self, msg: &Msg) -> Result<bool, Self::Error> {
-        Ok(Self::try_commit(msg)? == *self)
+    #[must_use = "the boolean carries the result of the verification"]
+    fn verify(&self, msg: &Msg) -> bool {
+        Self::try_commit(msg)
+            .map(|other| other == *self)
+            .unwrap_or(false)
     }
 }
 
