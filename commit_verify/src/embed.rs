@@ -197,18 +197,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(commitment.clone().verify(msg, &proof).unwrap());
+                assert!(commitment.clone().verify(msg, &proof));
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(commitment.clone().verify(m, &proof).unwrap(), m == msg);
+                    assert_eq!(commitment.clone().verify(m, &proof), m == msg);
                 });
 
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt.clone().verify(msg, &proof).unwrap());
+                    assert!(!cmt.clone().verify(msg, &proof));
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -243,18 +243,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(SUPPLEMENT.verify(msg, &commitment).unwrap());
+                assert!(SUPPLEMENT.verify(msg, &commitment));
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(SUPPLEMENT.verify(m, &commitment).unwrap(), m == msg);
+                    assert_eq!(SUPPLEMENT.verify(m, &commitment), m == msg);
                 });
 
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!SUPPLEMENT.verify(msg, commitment).unwrap());
+                    assert!(!SUPPLEMENT.verify(msg, commitment));
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -293,8 +293,8 @@ mod test {
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
     where T: AsRef<[u8]> + Clone + CommitEncode
     {
-        fn restore_original_container(&self, _: &DummyVec) -> Result<DummyVec, Error> {
-            Ok(DummyVec(self.0.clone()))
+        fn restore_original_container(&self, _: &DummyVec) -> Option<DummyVec> {
+            Some(DummyVec(self.0.clone()))
         }
     }
 
@@ -303,7 +303,6 @@ mod test {
     {
         type Proof = DummyProof;
         type CommitError = Error;
-        type VerifyError = Error;
 
         fn embed_commit(&mut self, msg: &T) -> Result<Self::Proof, Self::CommitError> {
             let proof = self.0.clone();
