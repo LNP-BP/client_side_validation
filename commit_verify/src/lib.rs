@@ -62,7 +62,7 @@ pub use commit::{CommitVerify, StrictEncodedProtocol, TryCommitVerify, VerifyErr
 pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof, ConvolveVerifyError};
 pub use digest::{Digest, DigestExt, Ripemd160, Sha256};
-pub use embed::{EmbedCommitProof, EmbedCommitVerify, VerifyEq};
+pub use embed::{EmbedCommitProof, EmbedCommitVerify, EmbedVerifyError, VerifyEq};
 pub use encode::{strategies, CommitEncode, CommitStrategy};
 pub use id::CommitmentId;
 
