@@ -148,6 +148,8 @@ where
     /// from an untrusted party, a proper form would be
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
     #[inline]
+    #[must_use = "the boolean inside Ok(_) must be used since it carries the result of the \
+                  validation"]
     fn verify(&self, msg: &Msg, proof: &Self::Proof) -> Result<bool, Self::VerifyError>
     where
         Self: VerifyEq,

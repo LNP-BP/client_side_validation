@@ -65,6 +65,8 @@ where
     /// However if the proofs are provided by some sort of user/network input
     /// from an untrusted party, a proper form would be
     /// `if commitment.verify(...).unwrap_or(false) { .. }`.
+    #[must_use = "the boolean inside Ok(_) must be used since it carries the result of the \
+                  validation"]
     fn verify(
         &self,
         msg: &Msg,
