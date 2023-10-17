@@ -139,7 +139,7 @@ pub(crate) mod test_helpers {
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt.verify(msg).is_ok());
+                    assert!(cmt.verify(msg).is_err());
                 });
 
                 // Detecting collision

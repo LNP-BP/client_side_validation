@@ -240,7 +240,7 @@ pub(crate) mod test_helpers {
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt.clone().verify(msg, &proof).is_ok());
+                    assert!(cmt.clone().verify(msg, &proof).is_err());
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -286,7 +286,7 @@ pub(crate) mod test_helpers {
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!SUPPLEMENT.verify(msg, commitment).is_ok());
+                    assert!(SUPPLEMENT.verify(msg, commitment).is_err());
                 });
 
                 // Detecting collision: each message should produce a unique
