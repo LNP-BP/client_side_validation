@@ -28,9 +28,18 @@ use strict_encoding::{StrictEncode, StrictWriter};
 use crate::digest::DigestExt;
 use crate::CommitmentProtocol;
 
-/// Trait for commit-verify scheme. A message for the commitment may be any
-/// structure that can be represented as a byte array (i.e. implements
-/// `AsRef<[u8]>`).
+/// Error during commitment verification
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
+#[display(doc_comments)]
+pub enum VerifyError {
+    /// The verified commitment doesn't commit to the provided message.
+    InvalidCommitment,
+    /// The message is invalid since a commitment to it can't be created /
+    /// exist.
+    InvalidMessage,
+}
+
+/// Trait for commit-verify scheme.
 pub trait CommitVerify<Msg, Protocol: CommitmentProtocol>
 where Self: Eq + Sized
 {
@@ -43,28 +52,34 @@ where Self: Eq + Sized
     /// Verifies commitment against the message; default implementation just
     /// repeats the commitment to the message and check it against the `self`.
     #[inline]
-    fn verify(&self, msg: &Msg) -> bool { Self::commit(msg) == *self }
+    fn verify(&self, msg: &Msg) -> Result<(), VerifyError> {
+        match Self::commit(msg) == *self {
+            false => Err(VerifyError::InvalidCommitment),
+            true => Ok(()),
+        }
+    }
 }
 
-/// Trait for a failable version of commit-verify scheme. A message for the
-/// commitment may be any structure that can be represented as a byte array
-/// (i.e. implements `AsRef<[u8]>`).
+/// Trait for a failable version of commit-verify scheme.
 pub trait TryCommitVerify<Msg, Protocol: CommitmentProtocol>
 where Self: Eq + Sized
 {
-    /// Error type that may be reported during [`TryCommitVerify::try_commit`]
-    /// and [`TryCommitVerify::try_verify`] procedures
+    /// Error type that may be reported during [`TryCommitVerify::try_commit`].
     type Error: std::error::Error;
 
-    /// Tries to create commitment to a byte representation of a given message
+    /// Tries to create commitment to a byte representation of a given message.
     fn try_commit(msg: &Msg) -> Result<Self, Self::Error>;
 
-    /// Tries to verify commitment against the message; default implementation
+    /// Verifies the commitment against the message; default implementation
     /// just repeats the commitment to the message and check it against the
     /// `self`.
     #[inline]
-    fn try_verify(&self, msg: &Msg) -> Result<bool, Self::Error> {
-        Ok(Self::try_commit(msg)? == *self)
+    fn verify(&self, msg: &Msg) -> Result<(), VerifyError> {
+        let other_commitment = Self::try_commit(msg).map_err(|_| VerifyError::InvalidMessage)?;
+        if other_commitment != *self {
+            return Err(VerifyError::InvalidCommitment);
+        }
+        Ok(())
     }
 }
 
@@ -113,18 +128,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(commitment.verify(msg));
+                assert!(commitment.verify(msg).is_ok());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(commitment.verify(m), m == msg);
+                    assert_eq!(commitment.verify(m).is_ok(), m == msg);
                 });
 
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt.verify(msg));
+                    assert!(cmt.verify(msg).is_err());
                 });
 
                 // Detecting collision

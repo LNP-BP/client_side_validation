@@ -23,6 +23,21 @@
 
 use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
 
+/// Error during commitment verification
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
+#[display(doc_comments)]
+#[allow(clippy::enum_variant_names)]
+pub enum ConvolveVerifyError {
+    /// The verified commitment doesn't commit to the provided message.
+    InvalidCommitment,
+    /// The message is invalid since a commitment to it can't be created /
+    /// exist.
+    InvalidMessage,
+    /// The proof of the commitment is invalid and the commitment can't be
+    /// verified.
+    InvalidProof,
+}
+
 /// Proof type used by [`ConvolveCommit`] protocol.
 pub trait ConvolveCommitProof<Msg, Source, Protocol>
 where
@@ -49,34 +64,30 @@ where
     /// that the resulting commitment matches the provided one in the
     /// `commitment` parameter.
     ///
-    /// Errors if the commitment can't be created, i.e. the
-    /// [`ConvolveCommit::convolve_commit`] procedure for the original,
-    /// restored from the proof, can't be performed. This means that the
-    /// verification has failed and the commitment and/or the proof are
-    /// invalid. The function returns error in this case (ano not simply
-    /// `false`) since this usually means the software error in managing
-    /// container and proof data, or selection of a different commitment
-    /// protocol parameters comparing to the ones used during commitment
-    /// creation. In all these cases we'd like to provide devs with more
-    /// information for debugging.
+    /// # Errors
     ///
-    /// The proper way of using the function in a well-debugged software should
-    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
-    /// However if the proofs are provided by some sort of user/network input
-    /// from an untrusted party, a proper form would be
-    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
+    /// Errors if the commitment doesn't pass the validation (see
+    /// [`ConvolveVerifyError`] variants for the cases when this may happen).
     fn verify(
         &self,
         msg: &Msg,
         commitment: &Source::Commitment,
-    ) -> Result<bool, Source::CommitError>
+    ) -> Result<(), ConvolveVerifyError>
     where
         Self: VerifyEq,
     {
         let original = self.restore_original(commitment);
         let suppl = self.extract_supplement();
-        let (commitment_prime, proof) = original.convolve_commit(suppl, msg)?;
-        Ok(commitment.verify_eq(&commitment_prime) && self.verify_eq(&proof))
+        let (commitment_prime, proof) = original
+            .convolve_commit(suppl, msg)
+            .map_err(|_| ConvolveVerifyError::InvalidMessage)?;
+        if !self.verify_eq(&proof) {
+            return Err(ConvolveVerifyError::InvalidProof);
+        }
+        if !commitment.verify_eq(&commitment_prime) {
+            return Err(ConvolveVerifyError::InvalidCommitment);
+        }
+        Ok(())
     }
 }
 

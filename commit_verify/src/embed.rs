@@ -23,7 +23,30 @@
 
 use crate::{CommitEncode, CommitmentProtocol};
 
-/// Trait for equivalence verification. Implemented for all types implemeting
+/// Error during commitment verification
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error, From)]
+#[display(doc_comments)]
+pub enum EmbedVerifyError<E: std::error::Error> {
+    /// The verified commitment doesn't commit to the provided message.
+    CommitmentMismatch,
+
+    /// The message is invalid since a commitment to it can't be created /
+    /// exist.
+    ///
+    /// Details: {0}
+    #[from]
+    InvalidMessage(E),
+
+    /// The proof of the commitment is invalid and the commitment can't be
+    /// verified since the original container can't be restored from it.
+    InvalidProof,
+
+    /// The proof of the commitment does not match to the proof generated for
+    /// the same message during the verification.
+    ProofMismatch,
+}
+
+/// Trait for equivalence verification. Implemented for all types implementing
 /// `Eq`. For non-`Eq` types this trait provides way to implement custom
 /// equivalence verification used during commitment verification procedure.
 pub trait VerifyEq {
@@ -47,10 +70,15 @@ where
 {
     /// Restores original container before the commitment from the proof data
     /// and a container containing embedded commitment.
+    ///
+    /// # Error
+    ///
+    /// If the container can't be restored from the proof returns
+    /// [`EmbedVerifyError::InvalidProof`].
     fn restore_original_container(
         &self,
         commit_container: &Container,
-    ) -> Result<Container, Container::VerifyError>;
+    ) -> Result<Container, EmbedVerifyError<Container::CommitError>>;
 }
 
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
@@ -82,7 +110,7 @@ where
 ///   combination of the same message and container type (each of each will have
 ///   its own `Proof` type defined as an associated generic).
 ///
-/// Usually represents an uninstantiable type, but may be a structure
+/// Usually represents a non-instantiable type, but may be a structure
 /// containing commitment protocol configuration or context objects.
 ///
 /// ```
@@ -109,13 +137,10 @@ where
     type Proof: EmbedCommitProof<Msg, Self, Protocol>;
 
     /// Error type that may be reported during [`Self::embed_commit`] procedure.
-    /// It may also be returned from [`Self::verify`] in case the proof data are
-    /// invalid and the commitment can't be re-created.
+    /// It may also be returned from [`Self::verify`] (wrapped into
+    /// [`EmbedVerifyError`] in case the proof data are invalid and the
+    /// commitment can't be re-created.
     type CommitError: std::error::Error;
-
-    /// Error type that may be reported during [`Self::verify`] procedure.
-    /// It must be a subset of [`Self::CommitError`].
-    type VerifyError: std::error::Error + From<Self::CommitError>;
 
     /// Creates a commitment to a message and embeds it into the provided
     /// container (`self`) by mutating it and returning commitment proof.
@@ -131,31 +156,28 @@ where
     /// [`Self::embed_commit`] procedure checking that the resulting proof and
     /// commitment matches the provided `self` and `proof`.
     ///
-    /// Errors if the provided commitment can't be created, i.e. the
-    /// [`Self::embed_commit`] procedure for the original container, restored
-    /// from the proof and current container, can't be performed. This means
-    /// that the verification has failed and the commitment and proof are
-    /// invalid. The function returns error in this case (ano not simply
-    /// `false`) since this usually means the software error in managing
-    /// container and proof data, or selection of a different commitment
-    /// protocol parameters comparing to the ones used during commitment
-    /// creation. In all these cases we'd like to provide devs with more
-    /// information for debugging.
+    /// # Errors
     ///
-    /// The proper way of using the function in a well-debugged software should
-    /// be `if commitment.verify(...).expect("proof managing system") { .. }`.
-    /// However if the proofs are provided by some sort of user/network input
-    /// from an untrusted party, a proper form would be
-    /// `if commitment.verify(...).unwrap_or(false) { .. }`.
-    #[inline]
-    fn verify(&self, msg: &Msg, proof: &Self::Proof) -> Result<bool, Self::VerifyError>
+    /// Errors if the commitment doesn't pass the validation (see
+    /// [`EmbedVerifyError`] variants for the cases when this may happen).
+    fn verify(
+        &self,
+        msg: &Msg,
+        proof: &Self::Proof,
+    ) -> Result<(), EmbedVerifyError<Self::CommitError>>
     where
         Self: VerifyEq,
         Self::Proof: VerifyEq,
     {
         let mut container_prime = proof.restore_original_container(self)?;
         let proof_prime = container_prime.embed_commit(msg)?;
-        Ok(proof_prime.verify_eq(proof) && self.verify_eq(&container_prime))
+        if !proof_prime.verify_eq(proof) {
+            return Err(EmbedVerifyError::InvalidProof);
+        }
+        if !self.verify_eq(&container_prime) {
+            return Err(EmbedVerifyError::CommitmentMismatch);
+        }
+        Ok(())
     }
 
     /// Phantom method used to add `Protocol` generic parameter to the trait.
@@ -207,18 +229,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(commitment.clone().verify(msg, &proof).unwrap());
+                assert!(commitment.clone().verify(msg, &proof).is_ok());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(commitment.clone().verify(m, &proof).unwrap(), m == msg);
+                    assert_eq!(commitment.clone().verify(m, &proof).is_ok(), m == msg);
                 });
 
                 acc.iter().for_each(|cmt| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!cmt.clone().verify(msg, &proof).unwrap());
+                    assert!(cmt.clone().verify(msg, &proof).is_err());
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -253,18 +275,18 @@ pub(crate) mod test_helpers {
                 });
 
                 // Testing verification
-                assert!(SUPPLEMENT.verify(msg, &commitment).unwrap());
+                assert!(SUPPLEMENT.verify(msg, &commitment).is_ok());
 
                 messages.iter().for_each(|m| {
                     // Testing that commitment verification succeeds only
                     // for the original message and fails for the rest
-                    assert_eq!(SUPPLEMENT.verify(m, &commitment).unwrap(), m == msg);
+                    assert_eq!(SUPPLEMENT.verify(m, &commitment).is_ok(), m == msg);
                 });
 
                 acc.iter().for_each(|commitment| {
                     // Testing that verification against other commitments
                     // returns `false`
-                    assert!(!SUPPLEMENT.verify(msg, commitment).unwrap());
+                    assert!(SUPPLEMENT.verify(msg, commitment).is_err());
                 });
 
                 // Detecting collision: each message should produce a unique
@@ -303,7 +325,10 @@ mod test {
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
     where T: AsRef<[u8]> + Clone + CommitEncode
     {
-        fn restore_original_container(&self, _: &DummyVec) -> Result<DummyVec, Error> {
+        fn restore_original_container(
+            &self,
+            _: &DummyVec,
+        ) -> Result<DummyVec, EmbedVerifyError<Error>> {
             Ok(DummyVec(self.0.clone()))
         }
     }
@@ -313,7 +338,6 @@ mod test {
     {
         type Proof = DummyProof;
         type CommitError = Error;
-        type VerifyError = Error;
 
         fn embed_commit(&mut self, msg: &T) -> Result<Self::Proof, Self::CommitError> {
             let proof = self.0.clone();
