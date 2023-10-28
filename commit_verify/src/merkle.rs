@@ -205,9 +205,8 @@ where T: CommitmentId<Id = MerkleNode> + Copy
 }
 
 /// Helper struct to track depth when working with Merkle blocks.
-// TODO: v0.11 Remove default generic from MerkleBuoy
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
-pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default = u5> {
+pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default> {
     buoy: D,
     stack: Option<Box<MerkleBuoy<D>>>,
 }
