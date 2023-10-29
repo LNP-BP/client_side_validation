@@ -25,7 +25,7 @@ use std::io::Write;
 use std::ops::SubAssign;
 
 use amplify::confinement::Confined;
-use amplify::num::u5;
+use amplify::num::{u256, u5};
 use amplify::{Bytes32, Wrapper};
 use sha2::Sha256;
 
@@ -85,20 +85,25 @@ impl CommitmentId for MerkleNode {
 const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
 
 impl MerkleNode {
-    pub fn void(tag: [u8; 16], depth: u5, width: u32) -> Self {
+    pub fn void(tag: [u8; 16], depth: impl Into<u8>, width: impl Into<u256>) -> Self {
         let virt = VIRTUAL_LEAF;
         Self::with(NodeBranching::Void, tag, depth, width, virt, virt)
     }
 
-    pub fn single(tag: [u8; 16], depth: u5, width: u32, node: MerkleNode) -> Self {
+    pub fn single(
+        tag: [u8; 16],
+        depth: impl Into<u8>,
+        width: impl Into<u256>,
+        node: MerkleNode,
+    ) -> Self {
         let single = NodeBranching::Single;
         Self::with(single, tag, depth, width, node, VIRTUAL_LEAF)
     }
 
     pub fn branches(
         tag: [u8; 16],
-        depth: u5,
-        width: u32,
+        depth: impl Into<u8>,
+        width: impl Into<u256>,
         node1: MerkleNode,
         node2: MerkleNode,
     ) -> Self {
@@ -108,16 +113,16 @@ impl MerkleNode {
     fn with(
         branching: NodeBranching,
         tag: [u8; 16],
-        depth: u5,
-        width: u32,
+        depth: impl Into<u8>,
+        width: impl Into<u256>,
         node1: MerkleNode,
         node2: MerkleNode,
     ) -> Self {
         let mut engine = Sha256::default();
-        branching.commit_encode(&mut engine);
         engine.write_all(&tag).ok();
-        depth.to_u8().commit_encode(&mut engine);
-        width.commit_encode(&mut engine);
+        depth.into().commit_encode(&mut engine);
+        width.into().commit_encode(&mut engine);
+        branching.commit_encode(&mut engine);
         node1.commit_encode(&mut engine);
         node2.commit_encode(&mut engine);
         engine.finish().into()
