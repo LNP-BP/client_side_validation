@@ -26,13 +26,18 @@ use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
 /// Error during commitment verification
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
 #[display(doc_comments)]
-#[allow(clippy::enum_variant_names)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 pub enum ConvolveVerifyError {
     /// The verified commitment doesn't commit to the provided message.
-    InvalidCommitment,
-    /// The message is invalid since a commitment to it can't be created /
-    /// exist.
-    InvalidMessage,
+    CommitmentMismatch,
+
+    /// The message is invalid since a valid commitment to it can't be created.
+    ImpossibleMessage,
+
     /// The proof of the commitment is invalid and the commitment can't be
     /// verified.
     InvalidProof,
@@ -80,12 +85,12 @@ where
         let suppl = self.extract_supplement();
         let (commitment_prime, proof) = original
             .convolve_commit(suppl, msg)
-            .map_err(|_| ConvolveVerifyError::InvalidMessage)?;
+            .map_err(|_| ConvolveVerifyError::ImpossibleMessage)?;
         if !self.verify_eq(&proof) {
             return Err(ConvolveVerifyError::InvalidProof);
         }
         if !commitment.verify_eq(&commitment_prime) {
-            return Err(ConvolveVerifyError::InvalidCommitment);
+            return Err(ConvolveVerifyError::CommitmentMismatch);
         }
         Ok(())
     }
