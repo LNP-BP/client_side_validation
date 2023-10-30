@@ -120,15 +120,13 @@ impl TreeNode {
 
     pub fn is_leaf(&self) -> bool { matches!(self, TreeNode::CommitmentLeaf { .. }) }
 
-    // TODO: Remove in v0.11 and change the function signature
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_merkle_node(&self) -> MerkleNode {
+    pub fn to_merkle_node(self) -> MerkleNode {
         match self {
-            TreeNode::ConcealedNode { hash, .. } => *hash,
+            TreeNode::ConcealedNode { hash, .. } => hash,
             TreeNode::CommitmentLeaf {
                 protocol_id,
                 message,
-            } => Leaf::inhabited(*protocol_id, *message).commitment_id(),
+            } => Leaf::inhabited(protocol_id, message).commitment_id(),
         }
     }
 }

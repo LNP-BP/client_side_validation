@@ -424,8 +424,8 @@ mod test {
             type Message = Vec<u8>;
             type Error = Issue;
 
-            fn verify_seal(&self, _seal: &Seal, _msg: &Self::Message) -> Result<bool, Self::Error> {
-                Ok(true)
+            fn verify_seal(&self, _seal: &Seal, _msg: &Self::Message) -> Result<(), Self::Error> {
+                Ok(())
             }
         }
 

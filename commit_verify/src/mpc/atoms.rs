@@ -119,10 +119,14 @@ impl CommitEncode for Leaf {
     fn commit_encode(&self, e: &mut impl Write) {
         match self {
             Leaf::Inhabited { protocol, message } => {
+                // We use this constant since we'd like to be distinct from NodeBranching values
+                0x10.commit_encode(e);
                 protocol.commit_encode(e);
                 message.commit_encode(e);
             }
             Leaf::Entropy { entropy, pos } => {
+                // We use this constant since we'd like to be distinct from NodeBranching values
+                0x11.commit_encode(e);
                 entropy.commit_encode(e);
                 pos.commit_encode(e);
             }

@@ -264,7 +264,7 @@ pub trait SealWitness<Seal> {
 
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
-    fn verify_seal(&self, seal: &Seal, msg: &Self::Message) -> Result<bool, Self::Error>;
+    fn verify_seal(&self, seal: &Seal, msg: &Self::Message) -> Result<(), Self::Error>;
 
     /// Performs batch verification of the seals.
     ///
@@ -275,16 +275,14 @@ pub trait SealWitness<Seal> {
         &self,
         seals: impl IntoIterator<Item = &'seal Seal>,
         msg: &Self::Message,
-    ) -> Result<bool, Self::Error>
+    ) -> Result<(), Self::Error>
     where
         Seal: 'seal,
     {
         for seal in seals {
-            if !self.verify_seal(seal, msg)? {
-                return Ok(false);
-            }
+            self.verify_seal(seal, msg)?;
         }
-        Ok(true)
+        Ok(())
     }
 }
 
@@ -436,11 +434,7 @@ where Seal: Sync + Send
 
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
-    async fn verify_seal_async(
-        &self,
-        seal: &Seal,
-        msg: &Self::Message,
-    ) -> Result<bool, Self::Error>;
+    async fn verify_seal_async(&self, seal: &Seal, msg: &Self::Message) -> Result<(), Self::Error>;
 
     /// Performs batch verification of the seals.
     ///
@@ -451,18 +445,16 @@ where Seal: Sync + Send
         &self,
         seals: I,
         msg: &Self::Message,
-    ) -> Result<bool, Self::Error>
+    ) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = &'seal Seal> + Send,
         I::IntoIter: Send,
         Seal: 'seal,
     {
         for seal in seals {
-            if !self.verify_seal_async(seal, msg).await? {
-                return Ok(false);
-            }
+            self.verify_seal_async(seal, msg).await?;
         }
-        return Ok(true);
+        return Ok(());
     }
 }
 
