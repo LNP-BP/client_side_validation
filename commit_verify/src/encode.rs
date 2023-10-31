@@ -234,6 +234,9 @@ pub mod strategies {
         fn commit_encode(&self, e: &mut impl io::Write) { Holder::new(self).commit_encode(e) }
     }
 
+    impl CommitStrategy for bool {
+        type Strategy = Strict;
+    }
     impl CommitStrategy for u8 {
         type Strategy = Strict;
     }
