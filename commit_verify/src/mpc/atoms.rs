@@ -29,6 +29,8 @@ use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::{strategies, CommitEncode, CommitStrategy};
 
+pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
+
 /// Map from protocol ids to commitment messages.
 pub type MessageMap = MediumOrdMap<ProtocolId, Message>;
 
@@ -188,7 +190,7 @@ impl Default for MultiSource {
     #[inline]
     fn default() -> Self {
         MultiSource {
-            min_depth: u5::with(3),
+            min_depth: MPC_MINIMAL_DEPTH,
             messages: Default::default(),
             static_entropy: None,
         }

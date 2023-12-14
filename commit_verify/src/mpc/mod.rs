@@ -27,7 +27,9 @@ mod atoms;
 mod tree;
 mod block;
 
-pub use atoms::{Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId};
+pub use atoms::{
+    Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId, MPC_MINIMAL_DEPTH,
+};
 pub use block::{InvalidProof, LeafNotKnown, MergeError, MerkleBlock, MerkleProof};
 pub use tree::{Error, MerkleTree};
 
