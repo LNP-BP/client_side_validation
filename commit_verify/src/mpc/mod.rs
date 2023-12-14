@@ -33,9 +33,6 @@ pub use atoms::{
 pub use block::{InvalidProof, LeafNotKnown, MergeError, MerkleBlock, MerkleProof};
 pub use tree::{Error, MerkleTree};
 
-#[deprecated(since = "0.10.6", note = "use commit_verify::merkle::MerkleBuoy instead")]
-pub use crate::merkle::MerkleBuoy;
-
 pub const MERKLE_LNPBP4_TAG: u128 = u128::from_le_bytes(*b"urn:lnpbp:lnpbp4");
 
 /// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the

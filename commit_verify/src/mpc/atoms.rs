@@ -58,10 +58,6 @@ impl CommitStrategy for ProtocolId {
 }
 
 impl ProtocolId {
-    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        Bytes32::copy_from_slice(slice).ok().map(Self)
-    }
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -88,10 +84,6 @@ pub struct Message(
 );
 
 impl Message {
-    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        Bytes32::copy_from_slice(slice).ok().map(Self)
-    }
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -167,10 +159,6 @@ impl CommitStrategy for Commitment {
 }
 
 impl Commitment {
-    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        Bytes32::copy_from_slice(slice).ok().map(Self)
-    }
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
