@@ -26,7 +26,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use amplify::confinement::{Confined, LargeVec};
 use amplify::num::u5;
-use strict_encoding::StrictEncode;
+use strict_encoding::{StrictDeserialize, StrictEncode, StrictSerialize};
 
 use crate::id::CommitmentId;
 use crate::merkle::{MerkleBuoy, MerkleNode};
@@ -157,6 +157,9 @@ pub struct MerkleBlock {
     #[getter(as_copy)]
     entropy: Option<u64>,
 }
+
+impl StrictSerialize for MerkleBlock {}
+impl StrictDeserialize for MerkleBlock {}
 
 impl Proof for MerkleBlock {}
 
