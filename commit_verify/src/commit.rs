@@ -32,10 +32,9 @@ use crate::CommitmentProtocol;
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
 #[display(doc_comments)]
 pub enum VerifyError {
-    /// The verified commitment doesn't commit to the provided message.
+    /// commitment doesn't match the message.
     InvalidCommitment,
-    /// The message is invalid since a commitment to it can't be created /
-    /// exist.
+    /// the message is invalid since a valid commitment to it can't be created.
     InvalidMessage,
 }
 

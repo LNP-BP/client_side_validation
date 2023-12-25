@@ -29,6 +29,8 @@ use crate::id::CommitmentId;
 use crate::merkle::MerkleNode;
 use crate::{strategies, CommitEncode, CommitStrategy};
 
+pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
+
 /// Map from protocol ids to commitment messages.
 pub type MessageMap = MediumOrdMap<ProtocolId, Message>;
 
@@ -56,10 +58,6 @@ impl CommitStrategy for ProtocolId {
 }
 
 impl ProtocolId {
-    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        Bytes32::copy_from_slice(slice).ok().map(Self)
-    }
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -86,10 +84,6 @@ pub struct Message(
 );
 
 impl Message {
-    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        Bytes32::copy_from_slice(slice).ok().map(Self)
-    }
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -165,10 +159,6 @@ impl CommitStrategy for Commitment {
 }
 
 impl Commitment {
-    #[deprecated(since = "0.10.6", note = "use copy_from_slice")]
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        Bytes32::copy_from_slice(slice).ok().map(Self)
-    }
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -188,7 +178,7 @@ impl Default for MultiSource {
     #[inline]
     fn default() -> Self {
         MultiSource {
-            min_depth: u5::with(3),
+            min_depth: MPC_MINIMAL_DEPTH,
             messages: Default::default(),
             static_entropy: None,
         }

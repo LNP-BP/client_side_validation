@@ -27,22 +27,21 @@ use crate::{CommitEncode, CommitmentProtocol};
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum EmbedVerifyError<E: std::error::Error> {
-    /// The verified commitment doesn't commit to the provided message.
+    /// commitment doesn't match the message.
     CommitmentMismatch,
 
-    /// The message is invalid since a commitment to it can't be created /
-    /// exist.
+    /// the message is invalid since a valid commitment to it can't be created.
     ///
     /// Details: {0}
     #[from]
     InvalidMessage(E),
 
-    /// The proof of the commitment is invalid and the commitment can't be
-    /// verified since the original container can't be restored from it.
+    /// the proof is invalid and the commitment can't be verified since the
+    /// original container can't be restored from it.
     InvalidProof,
 
-    /// The proof of the commitment does not match to the proof generated for
-    /// the same message during the verification.
+    /// the proof does not match to the proof generated for the same message
+    /// during the verification.
     ProofMismatch,
 }
 
