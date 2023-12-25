@@ -1,6 +1,6 @@
 [package]
 name = "single_use_seals"
-version = "0.11.0-beta.1"
+version = { workspace = true }
 description = "Single-use-seals foundation API"
 keywords = ["lnp-bp", "smart-contracts", "blockchain", "single-use-seals"]
 categories = ["cryptography"]
