@@ -32,14 +32,13 @@ use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
     serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 pub enum ConvolveVerifyError {
-    /// The verified commitment doesn't commit to the provided message.
+    /// commitment doesn't match the message.
     CommitmentMismatch,
 
-    /// The message is invalid since a valid commitment to it can't be created.
+    /// the message is invalid since a valid commitment to it can't be created.
     ImpossibleMessage,
 
-    /// The proof of the commitment is invalid and the commitment can't be
-    /// verified.
+    /// the proof is invalid and the commitment can't be verified.
     InvalidProof,
 }
 
