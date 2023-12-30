@@ -666,7 +666,7 @@ mod test {
 
         let (pid, msg) = msgs.first_key_value().unwrap();
         let leaf = Leaf::inhabited(*pid, *msg);
-        let cid1 = block.cross_section.get(0).unwrap().to_merkle_node();
+        let cid1 = block.cross_section.first().unwrap().to_merkle_node();
         let cid2 = leaf.commitment_id();
         assert_eq!(cid1, cid2);
 

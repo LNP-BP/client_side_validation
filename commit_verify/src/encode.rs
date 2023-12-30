@@ -63,6 +63,7 @@
 //! [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
 
 use std::io;
+use std::marker::PhantomData;
 
 use crate::id::CommitmentId;
 use crate::Conceal;
@@ -335,4 +336,9 @@ pub mod strategies {
 
 impl CommitEncode for [u8; 32] {
     fn commit_encode(&self, e: &mut impl io::Write) { e.write_all(self).ok(); }
+}
+
+impl<T> CommitEncode for PhantomData<T> {
+    fn commit_encode(&self, _: &mut impl io::Write) { /* nothing to do */
+    }
 }
