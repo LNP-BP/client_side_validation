@@ -32,7 +32,8 @@ use crate::CommitmentProtocol;
 /// structure that can be represented as a byte array (i.e. implements
 /// `AsRef<[u8]>`).
 pub trait CommitVerify<Msg, Protocol: CommitmentProtocol>
-where Self: Eq + Sized
+where
+    Self: Eq + Sized,
 {
     // We use `Protocol` as a generic parameter, and not as an associated type
     // to allow downstream to implement the trait on foreign types.
@@ -43,14 +44,17 @@ where Self: Eq + Sized
     /// Verifies commitment against the message; default implementation just
     /// repeats the commitment to the message and check it against the `self`.
     #[inline]
-    fn verify(&self, msg: &Msg) -> bool { Self::commit(msg) == *self }
+    fn verify(&self, msg: &Msg) -> bool {
+        Self::commit(msg) == *self
+    }
 }
 
 /// Trait for a failable version of commit-verify scheme. A message for the
 /// commitment may be any structure that can be represented as a byte array
 /// (i.e. implements `AsRef<[u8]>`).
 pub trait TryCommitVerify<Msg, Protocol: CommitmentProtocol>
-where Self: Eq + Sized
+where
+    Self: Eq + Sized,
 {
     /// Error type that may be reported during [`TryCommitVerify::try_commit`]
     /// and [`TryCommitVerify::try_verify`] procedures
@@ -67,6 +71,23 @@ where Self: Eq + Sized
         Ok(Self::try_commit(msg)? == *self)
     }
 }
+/// Static entropy version of TryCommitVerify
+pub trait TryCommitVerifyStatic<Msg, Protocol: CommitmentProtocol>
+where
+    Self: Eq + Sized,
+{
+    /// Error type that may be reported during [`TryCommitVerifyStatic::try_commit`]
+    /// and [`TryCommitVerifyStatic::try_verify`] procedures
+    type Error: std::error::Error;
+
+    /// Static entropy vesion of [`TryCommitVerify::try_commit`]
+    fn try_commit_static(msg: &Msg) -> Result<Self, Self::Error>;
+
+    /// Static entropy vesion of [`TryCommitVerify::try_verify`]
+    fn try_verify_static(&self, msg: &Msg) -> Result<bool, Self::Error> {
+        Ok(Self::try_commit_static(msg)? == *self)
+    }
+}
 
 /// Commitment protocol which writes strict-encoded data into a hasher.
 pub struct StrictEncodedProtocol;
@@ -74,7 +95,8 @@ pub struct StrictEncodedProtocol;
 impl CommitmentProtocol for StrictEncodedProtocol {}
 
 impl<T> CommitVerify<T, StrictEncodedProtocol> for Bytes32
-where T: StrictEncode
+where
+    T: StrictEncode,
 {
     fn commit(msg: &T) -> Self {
         let mut engine = Sha256::from_tag(*b"urn:lnpbp:lnpbp0007:strict:v01#A");
@@ -155,9 +177,12 @@ mod test {
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     struct DummyHashCommitment([u8; 32]);
     impl<T> CommitVerify<T, UntaggedProtocol> for DummyHashCommitment
-    where T: AsRef<[u8]>
+    where
+        T: AsRef<[u8]>,
     {
-        fn commit(msg: &T) -> Self { Self(Sha256::digest(msg.as_ref()).into()) }
+        fn commit(msg: &T) -> Self {
+            Self(Sha256::digest(msg.as_ref()).into())
+        }
     }
 
     #[test]

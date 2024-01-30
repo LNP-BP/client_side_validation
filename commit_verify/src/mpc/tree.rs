@@ -82,7 +82,9 @@ impl MerkleTree {
 impl Conceal for MerkleTree {
     type Concealed = MerkleNode;
 
-    fn conceal(&self) -> Self::Concealed { self.root() }
+    fn conceal(&self) -> Self::Concealed {
+        self.root()
+    }
 }
 
 #[cfg(feature = "rand")]
@@ -92,7 +94,7 @@ mod commit {
 
     use super::*;
     use crate::mpc::MultiSource;
-    use crate::{TryCommitVerify, UntaggedProtocol};
+    use crate::{TryCommitVerify, TryCommitVerifyStatic, UntaggedProtocol};
 
     /// Errors generated during multi-message commitment process by
     /// [`MerkleTree::try_commit`]
@@ -160,12 +162,61 @@ mod commit {
             }
         }
     }
+
+    impl TryCommitVerifyStatic<MultiSource, UntaggedProtocol> for MerkleTree {
+        type Error = Error;
+
+        fn try_commit_static(source: &MultiSource) -> Result<Self, Error> {
+            use std::collections::BTreeMap;
+
+            let msg_count = source.messages.len();
+
+            if source.min_depth == u5::ZERO && source.messages.is_empty() {
+                return Err(Error::Empty);
+            }
+            if msg_count > 2usize.pow(u5::MAX.to_u8() as u32) {
+                return Err(Error::TooManyMessages(msg_count));
+            }
+
+            let entropy = 1;
+
+            let mut map = BTreeMap::<u32, (ProtocolId, Message)>::new();
+
+            let mut depth = source.min_depth;
+            let mut prev_width = 1u32;
+            loop {
+                let width = 2u32.pow(depth.to_u8() as u32);
+                if width as usize >= msg_count {
+                    for cofactor in 0..=(prev_width.min(COFACTOR_ATTEMPTS as u32) as u16) {
+                        map.clear();
+                        if source.messages.iter().all(|(protocol, message)| {
+                            let pos = protocol_id_pos(*protocol, cofactor, width);
+                            map.insert(pos, (*protocol, *message)).is_none()
+                        }) {
+                            return Ok(MerkleTree {
+                                depth,
+                                entropy,
+                                cofactor,
+                                messages: source.messages.clone(),
+                                map: Confined::try_from(map).expect("MultiSource type guarantees"),
+                            });
+                        }
+                    }
+                }
+
+                prev_width = width;
+                depth = depth
+                    .checked_add(1)
+                    .ok_or(Error::CantFitInMaxSlots(msg_count))?;
+            }
+        }
+    }
 }
 
 pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u16, width: u32) -> u32 {
     debug_assert_ne!(width, 0);
-    let rem = u256::from_le_bytes((*protocol_id).into_inner()) %
-        u256::from(width.saturating_sub(cofactor as u32).max(1) as u64);
+    let rem = u256::from_le_bytes((*protocol_id).into_inner())
+        % u256::from(width.saturating_sub(cofactor as u32).max(1) as u64);
     rem.low_u64() as u32
 }
 
@@ -176,11 +227,17 @@ impl MerkleTree {
     }
 
     /// Computes the width of the merkle tree.
-    pub fn width(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
+    pub fn width(&self) -> u32 {
+        2u32.pow(self.depth.to_u8() as u32)
+    }
 
-    pub fn depth(&self) -> u5 { self.depth }
+    pub fn depth(&self) -> u5 {
+        self.depth
+    }
 
-    pub fn entropy(&self) -> u64 { self.entropy }
+    pub fn entropy(&self) -> u64 {
+        self.entropy
+    }
 }
 
 #[cfg(test)]

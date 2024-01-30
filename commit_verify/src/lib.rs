@@ -58,7 +58,7 @@ pub mod merkle;
 pub mod mpc;
 mod digest;
 
-pub use commit::{CommitVerify, StrictEncodedProtocol, TryCommitVerify};
+pub use commit::{CommitVerify, StrictEncodedProtocol, TryCommitVerify, TryCommitVerifyStatic};
 pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof};
 pub use digest::{Digest, DigestExt, Ripemd160, Sha256};
