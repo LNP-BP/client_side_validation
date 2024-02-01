@@ -26,7 +26,7 @@ use amplify::Wrapper;
 pub use self::commit::Error;
 use crate::merkle::MerkleHash;
 use crate::mpc::atoms::Leaf;
-use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId};
+use crate::mpc::{Commitment, MerkleBlock, Message, MessageMap, Proof, ProtocolId};
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// Number of cofactor variants tried before moving to the next tree depth.
@@ -74,9 +74,9 @@ impl MerkleTree {
 }
 
 impl Conceal for MerkleTree {
-    type Concealed = MerkleHash;
+    type Concealed = MerkleBlock;
 
-    fn conceal(&self) -> Self::Concealed { self.root() }
+    fn conceal(&self) -> Self::Concealed { MerkleBlock::from(self.clone()).conceal() }
 }
 
 mod commit {
@@ -249,6 +249,7 @@ mod test {
     use strict_encoding::StrictEncode;
 
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
+    use crate::mpc::MerkleBlock;
     use crate::{CommitId, Conceal};
 
     #[test]
@@ -309,7 +310,7 @@ mod test {
     fn tree_conceal() {
         let msgs = make_random_messages(9);
         let tree = make_random_tree(&msgs);
-        assert_eq!(tree.conceal(), tree.root());
+        assert_eq!(tree.conceal(), MerkleBlock::from(tree.clone()).conceal());
     }
 
     #[test]

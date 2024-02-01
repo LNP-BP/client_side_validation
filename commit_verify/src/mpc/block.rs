@@ -562,7 +562,7 @@ Changed commitment id: {}",
 }
 
 impl Conceal for MerkleBlock {
-    type Concealed = MerkleHash;
+    type Concealed = Self;
 
     /// Reduces merkle tree into merkle tree root.
     fn conceal(&self) -> Self::Concealed {
@@ -571,7 +571,7 @@ impl Conceal for MerkleBlock {
             .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
-        concealed.cross_section[0].to_merkle_node()
+        concealed
     }
 }
 
@@ -662,7 +662,6 @@ mod test {
         assert_eq!(cid1, cid2);
 
         assert_eq!(tree.conceal(), block.conceal());
-        assert_eq!(tree.root(), block.conceal());
         assert_eq!(tree.root(), cid1);
         assert_eq!(tree.commit_id(), block.commit_id())
     }
@@ -675,7 +674,6 @@ mod test {
             let block = MerkleBlock::from(&tree);
 
             assert_eq!(tree.conceal(), block.conceal());
-            assert_eq!(tree.root(), block.conceal());
             assert_eq!(tree.commit_id(), block.commit_id())
         }
     }
@@ -688,7 +686,6 @@ mod test {
             let block = MerkleBlock::from(&tree);
 
             assert_eq!(tree.conceal(), block.conceal());
-            assert_eq!(tree.root(), block.conceal());
             assert_eq!(tree.commit_id(), block.commit_id())
         }
     }
