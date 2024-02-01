@@ -49,7 +49,6 @@ mod commit;
 mod conceal;
 mod convolve;
 mod embed;
-mod encode;
 mod id;
 #[cfg(feature = "stl")]
 pub mod stl;
@@ -63,8 +62,7 @@ pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof, ConvolveVerifyError};
 pub use digest::{Digest, DigestExt, Ripemd160, Sha256};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, EmbedVerifyError, VerifyEq};
-pub use encode::{CommitEncode, CommitEngine};
-pub use id::CommitmentId;
+pub use id::{CommitEncode, CommitEngine, CommitmentId, CommitmentLayout};
 pub use merkle::{MerkleBuoy, MerkleHash, MerkleLeaves, MerkleNode, NodeBranching};
 
 pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
