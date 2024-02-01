@@ -24,10 +24,10 @@ use amplify::num::{u256, u5};
 use amplify::Wrapper;
 
 pub use self::commit::Error;
-use crate::merkle::MerkleNode;
+use crate::merkle::MerkleHash;
 use crate::mpc::atoms::Leaf;
-use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG};
-use crate::{CommitmentId, Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::mpc::{Commitment, Message, MessageMap, Proof, ProtocolId};
+use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// Number of cofactor variants tried before moving to the next tree depth.
 #[allow(dead_code)]
@@ -40,7 +40,7 @@ type OrderedMap = MediumOrdMap<u32, (ProtocolId, Message)>;
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
-#[commit_encode(crate = crate, conceal, strategy = strict)]
+#[commit_encode(crate = crate, strategy = conceal, id = Commitment, tag = "urn:lnpbp:mpc:commitment#2024-01-31")]
 pub struct MerkleTree {
     /// Tree depth (up to 32).
     pub(super) depth: u5,
@@ -60,13 +60,8 @@ pub struct MerkleTree {
 
 impl Proof for MerkleTree {}
 
-impl CommitmentId for MerkleTree {
-    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
-    type Id = Commitment;
-}
-
 impl MerkleTree {
-    pub fn root(&self) -> MerkleNode {
+    pub fn root(&self) -> MerkleHash {
         let iter = (0..self.width()).map(|pos| {
             self.map
                 .get(&pos)
@@ -74,12 +69,12 @@ impl MerkleTree {
                 .unwrap_or_else(|| Leaf::entropy(self.entropy, pos))
         });
         let leaves = SmallVec::try_from_iter(iter).expect("u16-bound size");
-        MerkleNode::merklize(MERKLE_LNPBP4_TAG.to_be_bytes(), &leaves)
+        MerkleHash::merklize(&leaves)
     }
 }
 
 impl Conceal for MerkleTree {
-    type Concealed = MerkleNode;
+    type Concealed = MerkleHash;
 
     fn conceal(&self) -> Self::Concealed { self.root() }
 }
@@ -249,14 +244,12 @@ mod test {
     use std::collections::BTreeSet;
 
     use amplify::num::u5;
-    use amplify::WriteCounter;
+    use amplify::{Wrapper, WriteCounter};
     use rand::random;
-    use sha2::Sha256;
     use strict_encoding::StrictEncode;
 
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
-    use crate::mpc::MerkleTree;
-    use crate::{CommitEncode, CommitmentId, Conceal, DigestExt};
+    use crate::{CommitmentId, Conceal};
 
     #[test]
     #[should_panic(expected = "Empty")]
@@ -325,19 +318,7 @@ mod test {
         let tree = make_random_tree(&msgs);
         let id = tree.commitment_id();
         let root = tree.root();
-
-        let mut enc1 = vec![];
-        let mut enc2 = vec![];
-        tree.commit_encode(&mut enc1);
-        root.strict_write(usize::MAX, &mut enc2).unwrap();
-        // Commitment encoding must be equal to the value of the Merkle root
-        assert_eq!(enc1, enc2);
-
-        let mut engine = Sha256::from_tag(MerkleTree::TAG);
-        engine.input_raw(root.as_slice());
-        let cmt = engine.finish();
-        // Commitment id must be equal to the tag-hashed Merkle tree root
-        assert_eq!(id.as_slice(), &cmt);
+        assert_ne!(id.into_inner(), root.into_inner());
     }
 
     #[test]

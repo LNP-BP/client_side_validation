@@ -33,15 +33,9 @@ pub use atoms::{
 pub use block::{InvalidProof, LeafNotKnown, MergeError, MerkleBlock, MerkleProof};
 pub use tree::{Error, MerkleTree};
 
-pub const MERKLE_LNPBP4_TAG: u128 = u128::from_le_bytes(*b"urn:lnpbp:lnpbp4");
-
 /// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the
 /// amount of concealed information.
 pub trait Proof:
-    strict_encoding::StrictEncode
-    + strict_encoding::StrictDecode
-    + crate::CommitEncode
-    + Eq
-    + std::fmt::Debug
+    strict_encoding::StrictEncode + strict_encoding::StrictDecode + Eq + std::fmt::Debug
 {
 }

@@ -21,7 +21,7 @@
 
 //! Embedded commitments (commit-embed-verify scheme).
 
-use crate::{CommitEncode, CommitmentProtocol};
+use crate::CommitmentProtocol;
 
 /// Error during commitment verification
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error, From)]
@@ -64,7 +64,6 @@ pub trait EmbedCommitProof<Msg, Container, Protocol>
 where
     Self: Sized + VerifyEq,
     Container: EmbedCommitVerify<Msg, Protocol>,
-    Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
     /// Restores original container before the commitment from the proof data
@@ -127,7 +126,6 @@ where
 pub trait EmbedCommitVerify<Msg, Protocol>
 where
     Self: Sized,
-    Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
     /// The proof of the commitment produced as a result of
@@ -209,7 +207,7 @@ pub(crate) mod test_helpers {
     /// and provided container.
     pub fn embed_commit_verify_suite<Msg, Container>(messages: Vec<Msg>, container: Container)
     where
-        Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
+        Msg: AsRef<[u8]> + Eq + Clone,
         Container: EmbedCommitVerify<Msg, TestProtocol> + Eq + Hash + Debug + Clone,
         Container::Proof: Clone,
     {
@@ -255,7 +253,7 @@ pub(crate) mod test_helpers {
     /// and provided container.
     pub fn convolve_commit_verify_suite<Msg, Source>(messages: Vec<Msg>, container: Source)
     where
-        Msg: AsRef<[u8]> + CommitEncode + Eq + Clone,
+        Msg: AsRef<[u8]> + Eq + Clone,
         Source: ConvolveCommit<Msg, [u8; 32], TestProtocol> + VerifyEq + Eq + Hash + Debug + Clone,
         Source::Commitment: Clone + Debug + Hash + VerifyEq + Eq,
         [u8; 32]: ConvolveCommitProof<Msg, Source, TestProtocol, Suppl = [u8; 32]>,
@@ -302,7 +300,7 @@ pub(crate) mod test_helpers {
 mod test {
     use core::fmt::Debug;
 
-    use amplify::confinement::{SmallVec, U32};
+    use amplify::confinement::{SmallBlob, SmallVec, U32};
     use sha2::Sha256;
 
     use super::test_helpers::*;
@@ -316,13 +314,13 @@ mod test {
     struct Error;
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-    struct DummyVec(SmallVec<u8>);
+    struct DummyVec(SmallBlob);
 
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-    struct DummyProof(SmallVec<u8>);
+    struct DummyProof(SmallBlob);
 
     impl<T> EmbedCommitProof<T, DummyVec, TestProtocol> for DummyProof
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where T: AsRef<[u8]> + Clone
     {
         fn restore_original_container(
             &self,
@@ -333,7 +331,7 @@ mod test {
     }
 
     impl<T> EmbedCommitVerify<T, TestProtocol> for DummyVec
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where T: AsRef<[u8]> + Clone
     {
         type Proof = DummyProof;
         type CommitError = Error;
@@ -347,7 +345,7 @@ mod test {
     }
 
     impl<T> ConvolveCommit<T, [u8; 32], TestProtocol> for DummyVec
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where T: AsRef<[u8]> + Clone
     {
         type Commitment = [u8; 32];
         type CommitError = Error;
@@ -365,7 +363,7 @@ mod test {
     }
 
     impl<T> ConvolveCommitProof<T, DummyVec, TestProtocol> for [u8; 32]
-    where T: AsRef<[u8]> + Clone + CommitEncode
+    where T: AsRef<[u8]> + Clone
     {
         type Suppl = [u8; 32];
 

@@ -20,9 +20,18 @@
 // limitations under the License.
 
 use sha2::Sha256;
+use strict_encoding::StrictType;
+use strict_types::typesys::TypeFqn;
 
-use crate::digest::DigestExt;
+use crate::encode::CommitEngine;
 use crate::CommitEncode;
+
+#[derive(Getters, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct CommitmentLayout {
+    ty: TypeFqn,
+    tag: &'static str,
+    fields: Vec<TypeFqn>,
+}
 
 /// High-level API used in client-side validation for producing a single
 /// commitment to the data, which includes running all necessary procedures like
@@ -30,16 +39,39 @@ use crate::CommitEncode;
 /// wrapped into [`CommitEncode`], followed by the actual commitment to its
 /// output.
 pub trait CommitmentId: CommitEncode {
-    const TAG: [u8; 32];
-
     /// Type of the resulting commitment.
-    type Id: From<[u8; 32]>;
+    type Id: From<Sha256>;
+
+    fn commit(&self) -> CommitEngine;
+
+    fn commitment_layout(&self) -> CommitmentLayout;
 
     /// Performs commitment to client-side-validated data
-    #[inline]
-    fn commitment_id(&self) -> Self::Id {
-        let mut engine = Sha256::from_tag(Self::TAG);
+    fn commitment_id(&self) -> Self::Id;
+}
+
+impl<T: CommitEncode> CommitmentId for T {
+    type Id = T::CommitmentId;
+
+    fn commit(&self) -> CommitEngine {
+        let mut engine = CommitEngine::new(T::COMMITMENT_TAG);
         self.commit_encode(&mut engine);
-        engine.finish().into()
+        engine.set_finished();
+        engine
     }
+
+    fn commitment_layout(&self) -> CommitmentLayout {
+        let fields = self.commit().into_layout();
+        CommitmentLayout {
+            ty: TypeFqn::with(
+                libname!(Self::CommitmentId::STRICT_LIB_NAME),
+                Self::CommitmentId::strict_name()
+                    .expect("commitment types must have explicit type name"),
+            ),
+            tag: T::COMMITMENT_TAG,
+            fields,
+        }
+    }
+
+    fn commitment_id(&self) -> Self::Id { self.commit().finish().into() }
 }

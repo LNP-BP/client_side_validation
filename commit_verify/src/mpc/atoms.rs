@@ -19,15 +19,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::io::Write;
-
 use amplify::confinement::MediumOrdMap;
 use amplify::num::u5;
 use amplify::{Bytes32, FromSliceError, Wrapper};
+use sha2::Sha256;
+use strict_encoding::StrictDumb;
 
-use crate::id::CommitmentId;
-use crate::merkle::MerkleNode;
-use crate::{strategies, CommitEncode, CommitStrategy};
+use crate::merkle::MerkleHash;
+use crate::DigestExt;
 
 pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
 
@@ -53,10 +52,6 @@ pub struct ProtocolId(
     Bytes32,
 );
 
-impl CommitStrategy for ProtocolId {
-    type Strategy = strategies::Strict;
-}
-
 impl ProtocolId {
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
@@ -70,8 +65,6 @@ impl ProtocolId {
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY)]
-#[derive(CommitEncode)]
-#[commit_encode(crate = crate, strategy = strict)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -90,15 +83,20 @@ impl Message {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, From)]
+#[derive(StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY, tags = custom)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict, tag = "urn:lnpbp:mpc:tree:leaf#2024-01-31", id = MerkleHash)]
 pub enum Leaf {
+    // We use this constant since we'd like to be distinct from NodeBranching values
+    #[strict_type(tag = 0x10)]
     Inhabited {
         protocol: ProtocolId,
         message: Message,
     },
-    Entropy {
-        entropy: u64,
-        pos: u32,
-    },
+    // We use this constant since we'd like to be distinct from NodeBranching values
+    #[strict_type(tag = 0x11)]
+    Entropy { entropy: u64, pos: u32 },
 }
 
 impl Leaf {
@@ -109,28 +107,8 @@ impl Leaf {
     }
 }
 
-impl CommitEncode for Leaf {
-    fn commit_encode(&self, e: &mut impl Write) {
-        match self {
-            Leaf::Inhabited { protocol, message } => {
-                // We use this constant since we'd like to be distinct from NodeBranching values
-                0x10.commit_encode(e);
-                protocol.commit_encode(e);
-                message.commit_encode(e);
-            }
-            Leaf::Entropy { entropy, pos } => {
-                // We use this constant since we'd like to be distinct from NodeBranching values
-                0x11.commit_encode(e);
-                entropy.commit_encode(e);
-                pos.commit_encode(e);
-            }
-        }
-    }
-}
-
-impl CommitmentId for Leaf {
-    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:leaf:v01#23A";
-    type Id = MerkleNode;
+impl StrictDumb for Leaf {
+    fn strict_dumb() -> Self { Self::Entropy { entropy: 0, pos: 0 } }
 }
 
 /// Final [LNPBP-4] commitment value.
@@ -154,14 +132,14 @@ pub struct Commitment(
     Bytes32,
 );
 
-impl CommitStrategy for Commitment {
-    type Strategy = strategies::Strict;
-}
-
 impl Commitment {
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
+}
+
+impl From<Sha256> for Commitment {
+    fn from(hasher: Sha256) -> Self { hasher.finish().into() }
 }
 
 /// Structured source multi-message data for commitment creation

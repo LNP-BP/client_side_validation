@@ -1,6 +1,6 @@
 [package]
 name = "commit_encoding_derive"
-version = "0.10.0"
+version = { workspace = true }
 description = "Commitment encoding derivation macros"
 keywords = ["commitments", "proc-macro"]
 categories = ["development-tools", "encoding"]
