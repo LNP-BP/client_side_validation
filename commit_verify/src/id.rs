@@ -69,10 +69,8 @@ impl CommitEngine {
 /// necessary conceal and merklization procedures, and them performing strict
 /// encoding for the resulted data.
 pub trait CommitEncode {
-    const COMMITMENT_TAG: &'static str;
-
     /// Type of the resulting commitment.
-    type CommitmentId: From<Sha256> + StrictType;
+    type CommitmentId: CommitmentId;
 
     /// Encodes the data for the commitment by writing them directly into a
     /// [`io::Write`] writer instance
@@ -86,28 +84,27 @@ pub struct CommitmentLayout {
     fields: Vec<TypeFqn>,
 }
 
+pub trait CommitmentId: Copy + Ord + From<Sha256> + StrictType {
+    const TAG: &'static str;
+}
+
 /// High-level API used in client-side validation for producing a single
 /// commitment to the data, which includes running all necessary procedures like
 /// concealment with [`crate::Conceal`], merklization, strict encoding,
 /// wrapped into [`CommitEncode`], followed by the actual commitment to its
 /// output.
-pub trait CommitmentId: CommitEncode {
-    /// Type of the resulting commitment.
-    type Id: From<Sha256>;
-
+pub trait CommitId: CommitEncode {
     fn commit(&self) -> CommitEngine;
 
     fn commitment_layout(&self) -> CommitmentLayout;
 
     /// Performs commitment to client-side-validated data
-    fn commitment_id(&self) -> Self::Id;
+    fn commit_id(&self) -> Self::CommitmentId;
 }
 
-impl<T: CommitEncode> CommitmentId for T {
-    type Id = T::CommitmentId;
-
+impl<T: CommitEncode> CommitId for T {
     fn commit(&self) -> CommitEngine {
-        let mut engine = CommitEngine::new(T::COMMITMENT_TAG);
+        let mut engine = CommitEngine::new(T::CommitmentId::TAG);
         self.commit_encode(&mut engine);
         engine.set_finished();
         engine
@@ -121,10 +118,10 @@ impl<T: CommitEncode> CommitmentId for T {
                 Self::CommitmentId::strict_name()
                     .expect("commitment types must have explicit type name"),
             ),
-            tag: T::COMMITMENT_TAG,
+            tag: T::CommitmentId::TAG,
             fields,
         }
     }
 
-    fn commitment_id(&self) -> Self::Id { self.commit().finish().into() }
+    fn commit_id(&self) -> Self::CommitmentId { self.commit().finish().into() }
 }

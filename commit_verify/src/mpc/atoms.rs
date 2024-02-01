@@ -26,7 +26,7 @@ use sha2::Sha256;
 use strict_encoding::StrictDumb;
 
 use crate::merkle::MerkleHash;
-use crate::DigestExt;
+use crate::{CommitmentId, DigestExt};
 
 pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
 
@@ -86,7 +86,7 @@ impl Message {
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY, tags = custom)]
 #[derive(CommitEncode)]
-#[commit_encode(crate = crate, strategy = strict, tag = "urn:lnpbp:mpc:tree:leaf#2024-01-31", id = MerkleHash)]
+#[commit_encode(crate = crate, strategy = strict, id = MerkleHash)]
 pub enum Leaf {
     // We use this constant since we'd like to be distinct from NodeBranching values
     #[strict_type(tag = 0x10)]
@@ -131,6 +131,10 @@ pub struct Commitment(
     #[from([u8; 32])]
     Bytes32,
 );
+
+impl CommitmentId for Commitment {
+    const TAG: &'static str = "urn:lnpbp:mpc:commitment#2024-01-31";
+}
 
 impl Commitment {
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {

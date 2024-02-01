@@ -19,14 +19,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify_syn::{ArgValueReq, AttrReq, DataType, LiteralClass, ParametrizedAttr, TypeClass};
+use amplify_syn::{ArgValueReq, AttrReq, DataType, ParametrizedAttr, TypeClass};
 use proc_macro2::Span;
 use quote::ToTokens;
-use syn::{DeriveInput, Error, LitStr, Path, Result};
+use syn::{DeriveInput, Error, Path, Result};
 
 const ATTR: &str = "commit_encode";
 const ATTR_CRATE: &str = "crate";
-const ATTR_TAG: &str = "tag";
 const ATTR_ID: &str = "id";
 const ATTR_STRATEGY: &str = "strategy";
 const ATTR_STRATEGY_STRICT: &str = "strict";
@@ -37,7 +36,6 @@ const ATTR_STRATEGY_MERKLIZE: &str = "merklize";
 pub struct ContainerAttr {
     pub commit_crate: Path,
     pub strategy: StrategyAttr,
-    pub tag: LitStr,
     pub id: Path,
 }
 
@@ -77,14 +75,12 @@ impl TryFrom<ParametrizedAttr> for ContainerAttr {
         let req = AttrReq::with(map![
             ATTR_CRATE => ArgValueReq::optional(TypeClass::Path),
             ATTR_ID => ArgValueReq::required(TypeClass::Path),
-            ATTR_TAG => ArgValueReq::required(LiteralClass::Str),
             ATTR_STRATEGY => ArgValueReq::required(TypeClass::Path),
         ]);
         params.check(req)?;
 
         let path = params.arg_value(ATTR_STRATEGY).expect("must be present");
         let strategy = StrategyAttr::try_from(&path)?;
-        let tag = params.arg_value(ATTR_TAG).expect("must be present");
         let id = params.arg_value(ATTR_ID).expect("must be present");
 
         Ok(ContainerAttr {
@@ -92,7 +88,6 @@ impl TryFrom<ParametrizedAttr> for ContainerAttr {
                 .arg_value(ATTR_CRATE)
                 .unwrap_or_else(|_| path!(commit_verify)),
             strategy,
-            tag,
             id,
         })
     }

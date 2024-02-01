@@ -29,7 +29,6 @@ impl CommitDerive {
         let (impl_generics, ty_generics, where_clause) = self.data.generics.split_for_impl();
         let trait_crate = &self.conf.commit_crate;
         let commitment_id = &self.conf.id;
-        let tag = &self.conf.tag;
         let ident_name = &self.data.name;
 
         let inner = match self.conf.strategy {
@@ -53,7 +52,6 @@ impl CommitDerive {
         Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #trait_crate::CommitEncode for #ident_name #ty_generics #where_clause {
-                const COMMITMENT_TAG: &'static str = #tag;
                 type CommitmentId = #commitment_id;
 
                 fn commit_encode(&self, engine: &mut #trait_crate::CommitEngine) {

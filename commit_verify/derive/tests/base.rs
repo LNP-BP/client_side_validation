@@ -31,7 +31,7 @@ mod common;
 use std::fmt::Display;
 
 use amplify::{Bytes32, Wrapper};
-use commit_verify::{CommitEncode, CommitmentId, Conceal, DigestExt, Sha256};
+use commit_verify::{CommitEncode, CommitId, CommitmentId, Conceal, DigestExt, Sha256};
 use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
 
 const TEST_LIB: &str = "TestLib";
@@ -46,20 +46,24 @@ struct DumbId(
     Bytes32,
 );
 
+impl CommitmentId for DumbId {
+    const TAG: &'static str = "";
+}
+
 impl From<Sha256> for DumbId {
     fn from(value: Sha256) -> Self { value.finish().into() }
 }
 
-fn verify_commit<T: CommitmentId>(value: T, expect: &'static str)
-where T::Id: Display {
-    assert_eq!(&value.commitment_id().to_string(), expect, "invalid commitment");
+fn verify_commit<T: CommitId>(value: T, expect: &'static str)
+where T::CommitmentId: Display {
+    assert_eq!(&value.commit_id().to_string(), expect, "invalid commitment");
 }
 
 #[test]
 fn strategy_transparent() -> common::Result {
     #[derive(Wrapper, Clone, PartialEq, Eq, Debug, From)]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = transparent, tag = "", id = DumbId)]
+    #[commit_encode(strategy = transparent, id = DumbId)]
     struct ShortLen(u16);
 
     verify_commit(ShortLen(0), "2bb00b2f346511235882255a898a224b6858e18ebec0a11967eb51f0ed1a2ff5");
@@ -78,7 +82,7 @@ fn strategy_strict_enum() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = repr, into_u8, try_from_u8)]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = strict, tag = "", id = DumbId)]
+    #[commit_encode(strategy = strict, id = DumbId)]
     #[repr(u8)]
     enum Prim {
         #[strict_type(dumb)]
@@ -100,7 +104,7 @@ fn strategy_strict_tuple() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB)]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = strict, tag = "", id = DumbId)]
+    #[commit_encode(strategy = strict, id = DumbId)]
     struct TaggedInfo(u16, u64);
 
     verify_commit(
@@ -117,7 +121,7 @@ fn strategy_strict_struct() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB)]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = strict, tag = "", id = DumbId)]
+    #[commit_encode(strategy = strict, id = DumbId)]
     struct TaggedInfo {
         a: u16,
         b: u64,
@@ -141,7 +145,7 @@ fn enum_associated() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = order)]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = strict, tag = "", id = DumbId)]
+    #[commit_encode(strategy = strict, id = DumbId)]
     enum Assoc {
         One {
             hash: [u8; 32],
@@ -172,7 +176,7 @@ fn enum_custom_tags() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = order)]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = strict, tag = "", id = DumbId)]
+    #[commit_encode(strategy = strict, id = DumbId)]
     enum Assoc {
         #[strict_type(tag = 8)]
         One { hash: [u8; 32], ord: u8 },
@@ -205,7 +209,7 @@ fn conceal() -> common::Result {
     #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = TEST_LIB, tags = order, dumb = { Self::Concealed(0) })]
     #[derive(CommitEncode)]
-    #[commit_encode(strategy = conceal, tag = "", id = DumbId)]
+    #[commit_encode(strategy = conceal, id = DumbId)]
     enum Data {
         Revealed(u128),
         Concealed(u8),

@@ -28,7 +28,7 @@ use amplify::confinement::{Confined, LargeVec};
 use amplify::num::u5;
 use strict_encoding::{StrictDeserialize, StrictEncode, StrictSerialize};
 
-use crate::id::CommitmentId;
+use crate::id::CommitId;
 use crate::merkle::{MerkleBuoy, MerkleHash};
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
@@ -124,7 +124,7 @@ impl TreeNode {
             TreeNode::CommitmentLeaf {
                 protocol_id,
                 message,
-            } => Leaf::inhabited(protocol_id, message).commitment_id(),
+            } => Leaf::inhabited(protocol_id, message).commit_id(),
         }
     }
 }
@@ -134,7 +134,7 @@ impl TreeNode {
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
-#[commit_encode(crate = crate, strategy = conceal, id = Commitment, tag = "urn:lnpbp:mpc:commitment#2024-01-31")]
+#[commit_encode(crate = crate, strategy = conceal, id = Commitment)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleBlock {
     /// Tree depth (up to 16).
@@ -173,7 +173,7 @@ impl From<&MerkleTree> for MerkleBlock {
                 })
                 .unwrap_or_else(|| TreeNode::ConcealedNode {
                     depth: tree.depth,
-                    hash: Leaf::entropy(tree.entropy, pos).commitment_id(),
+                    hash: Leaf::entropy(tree.entropy, pos).commit_id(),
                 })
         });
         let cross_section =
@@ -388,8 +388,8 @@ impl MerkleBlock {
     /// each one of them.
     pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, MergeError> {
         let orig = self.clone();
-        let base_root = self.commitment_id();
-        let merged_root = other.commitment_id();
+        let base_root = self.commit_id();
+        let merged_root = other.commit_id();
         if base_root != merged_root {
             return Err(MergeError::UnrelatedBlocks {
                 base_root,
@@ -488,12 +488,12 @@ Failed merge: {self:#?}"
         );
         assert_eq!(
             base_root,
-            self.commitment_id(),
+            self.commit_id(),
             "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
              Standards Association
 Original commitment id: {base_root}
 Changed commitment id: {}",
-            self.commitment_id()
+            self.commit_id()
         );
 
         Ok(self.cross_section.len() as u16)
@@ -623,7 +623,7 @@ impl MerkleProof {
         message: Message,
     ) -> Result<Commitment, InvalidProof> {
         let block = MerkleBlock::with(self, protocol_id, message)?;
-        Ok(block.commitment_id())
+        Ok(block.commit_id())
     }
 }
 
@@ -643,9 +643,9 @@ mod test {
         // Check we preserve entropy value
         assert_eq!(Some(tree.entropy), block.entropy);
         // Check if we remove entropy the commitment doesn't change
-        let cid1 = block.commitment_id();
+        let cid1 = block.commit_id();
         block.entropy = None;
-        let cid2 = block.commitment_id();
+        let cid2 = block.commit_id();
         assert_eq!(cid1, cid2);
     }
 
@@ -658,13 +658,13 @@ mod test {
         let (pid, msg) = msgs.first_key_value().unwrap();
         let leaf = Leaf::inhabited(*pid, *msg);
         let cid1 = block.cross_section.first().unwrap().to_merkle_node();
-        let cid2 = leaf.commitment_id();
+        let cid2 = leaf.commit_id();
         assert_eq!(cid1, cid2);
 
         assert_eq!(tree.conceal(), block.conceal());
         assert_eq!(tree.root(), block.conceal());
         assert_eq!(tree.root(), cid1);
-        assert_eq!(tree.commitment_id(), block.commitment_id())
+        assert_eq!(tree.commit_id(), block.commit_id())
     }
 
     #[test]
@@ -676,7 +676,7 @@ mod test {
 
             assert_eq!(tree.conceal(), block.conceal());
             assert_eq!(tree.root(), block.conceal());
-            assert_eq!(tree.commitment_id(), block.commitment_id())
+            assert_eq!(tree.commit_id(), block.commit_id())
         }
     }
 
@@ -689,7 +689,7 @@ mod test {
 
             assert_eq!(tree.conceal(), block.conceal());
             assert_eq!(tree.root(), block.conceal());
-            assert_eq!(tree.commitment_id(), block.commitment_id())
+            assert_eq!(tree.commit_id(), block.commit_id())
         }
     }
 
@@ -721,7 +721,7 @@ mod test {
                 }
             }
 
-            assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
+            assert_eq!(merged_block.commit_id(), mpc_tree.commit_id());
         }
     }
 }

@@ -40,7 +40,7 @@ type OrderedMap = MediumOrdMap<u32, (ProtocolId, Message)>;
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
-#[commit_encode(crate = crate, strategy = conceal, id = Commitment, tag = "urn:lnpbp:mpc:commitment#2024-01-31")]
+#[commit_encode(crate = crate, strategy = conceal, id = Commitment)]
 pub struct MerkleTree {
     /// Tree depth (up to 32).
     pub(super) depth: u5,
@@ -249,7 +249,7 @@ mod test {
     use strict_encoding::StrictEncode;
 
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
-    use crate::{CommitmentId, Conceal};
+    use crate::{CommitId, Conceal};
 
     #[test]
     #[should_panic(expected = "Empty")]
@@ -316,7 +316,7 @@ mod test {
     fn tree_id() {
         let msgs = make_random_messages(9);
         let tree = make_random_tree(&msgs);
-        let id = tree.commitment_id();
+        let id = tree.commit_id();
         let root = tree.root();
         assert_ne!(id.into_inner(), root.into_inner());
     }
@@ -325,7 +325,7 @@ mod test {
     fn tree_id_entropy() {
         let msgs = make_random_messages(9);
         let mut tree = make_random_tree(&msgs);
-        let id1 = tree.commitment_id();
+        let id1 = tree.commit_id();
 
         tree.entropy = loop {
             let entropy = random();
@@ -333,7 +333,7 @@ mod test {
                 break entropy;
             }
         };
-        let id2 = tree.commitment_id();
+        let id2 = tree.commit_id();
 
         assert_ne!(id1, id2);
     }
