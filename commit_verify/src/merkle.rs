@@ -32,7 +32,7 @@ use strict_encoding::StrictEncode;
 use crate::digest::DigestExt;
 use crate::{CommitId, CommitmentId, LIB_NAME_COMMIT_VERIFY};
 
-/// Type of a merkle node branching.
+/// Type of merkle node branching.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY, tags = repr, into_u8, try_from_u8)]
@@ -106,7 +106,7 @@ impl MerkleNode {
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-#[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = Self(default!()))]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
