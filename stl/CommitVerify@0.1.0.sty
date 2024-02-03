@@ -1,5 +1,5 @@
 {-
-  Id: urn:ubideco:stl:ZtHaBzu9ojbDahaGKEXe5v9DfSDxLERbLkEB23R6Q6V#rhino-cover-frog
+  Id: urn:ubideco:stl:4SZ2EgWWtC5LsNXmNpAzogNHZoaZNTCwU3SQhAYwDX6A#citizen-fiction-corner
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -8,38 +8,45 @@
   License: Apache-2.0
 -}
 
+@context
 typelib CommitVerify
 
-import urn:ubideco:stl:9KALDYR8Nyjq4FdMW6kYoL7vdkWnqPqNuFnmE9qHpNjZ#justice-rocket-type as Std
--- Imports:
--- U5 := urn:ubideco:semid:3MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf#ground-volume-singer
+import Std#55f8bsTvyh7zAeYAiNwL9G1DxgwXzDvE8edcTFJz3Q9H#milan-poncho-gray
+  use U5#nitro-george-nebula
 
 
+@mnemonic(ventura-equal-think)
+data Commitment        : [Byte ^ 32]
 
--- urn:ubideco:semid:F8mU5NPc8Z5CMnkSFGdF5UxrPsdcBS6B5DCyP5kJPgWc#ventura-equal-think
-data Commitment       :: [Byte ^ 32]
--- urn:ubideco:semid:qp6pMjMCcukxxZdkM2PtfNWfJjXKoVHXtXSBCsYjQwY#transit-bogart-nissan
-data MerkleBlock      :: depth Std.U5 {- urn:ubideco:semid:3MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf#ground-volume-singer -}
+@mnemonic(iris-explore-script)
+data MerkleBlock       : depth Std.U5#nitro-george-nebula
                        , cofactor U16
                        , crossSection [TreeNode ^ ..0xffffffff]
                        , entropy U64?
--- urn:ubideco:semid:6kxYeCatpncbA9UiTdsFbxbxJdU56x6MdmTRkEeGAv6R#iceberg-rocket-velvet
-data MerkleNode       :: [Byte ^ 32]
--- urn:ubideco:semid:9FbrjZLnMDfbrN9gEbWij5HNkxqAVaZBkoW2UvKdYw4B#canyon-exhibit-ravioli
-data MerkleProof      :: pos U32
+
+@mnemonic(culture-metro-modular)
+data MerkleHash        : [Byte ^ 32]
+
+@mnemonic(father-adios-common)
+data MerkleProof       : pos U32
                        , cofactor U16
-                       , path [MerkleNode ^ ..0x20]
--- urn:ubideco:semid:57jCv2LWrdn89GzuSYaH17f21N3su76uM2tEaG1dwwoT#russian-wedding-florida
-data MerkleTree       :: depth Std.U5 {- urn:ubideco:semid:3MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf#ground-volume-singer -}
+                       , path [MerkleHash ^ ..0x20]
+
+@mnemonic(civil-left-nova)
+data MerkleTree        : depth Std.U5#nitro-george-nebula
                        , entropy U64
                        , cofactor U16
                        , messages {ProtocolId -> ^ ..0xffffff Message}
                        , map {U32 -> ^ ..0xffffff ProtocolId, Message}
--- urn:ubideco:semid:4ajqScXjJ6wQ5af2zgBFzzP7k1qzD6DXXU28taQidCcA#shampoo-bishop-morgan
-data Message          :: [Byte ^ 32]
--- urn:ubideco:semid:4GenVCt5Xq6xtnJDjT98FehgCS8rTmwEzbjwGkaUVjHz#gamma-banjo-corona
-data ProtocolId       :: [Byte ^ 32]
--- urn:ubideco:semid:D7Q2eTnYyjN6gMZnZYrMG6gmRwmtnxyGLeqBbki8DFLv#greek-decimal-quiz
-data TreeNode         :: concealedNode (depth Std.U5 {- urn:ubideco:semid:3MDHMYsJt8d1gUiyx5vGCWcNLQ7biek6UTjHg3ksW4Bf#ground-volume-singer -}, hash MerkleNode)
+
+@mnemonic(shampoo-bishop-morgan)
+data Message           : [Byte ^ 32]
+
+@mnemonic(gamma-banjo-corona)
+data ProtocolId        : [Byte ^ 32]
+
+@mnemonic(empty-active-truck)
+data TreeNode          : concealedNode (depth Std.U5#nitro-george-nebula, hash MerkleHash)
                        | commitmentLeaf (protocolId ProtocolId, message Message)
+
 

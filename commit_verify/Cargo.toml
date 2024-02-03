@@ -22,9 +22,9 @@ name = "commit-stl"
 required-features = ["stl"]
 
 [dependencies]
-amplify = { version = "4.5.0", features = ["hex", "apfloat"] }
+amplify = { version = "4.5.1", features = ["hex", "apfloat"] }
 commit_encoding_derive = { version = "0.11.0-beta.3", path = "derive" }
-strict_encoding = "2.6.1"
+strict_encoding = "2.6.2"
 strict_types = { version = "1.6.3" }
 sha2 = "0.10.8"
 ripemd = "0.1.3"
@@ -38,7 +38,7 @@ rand = "0.8.5"
 default = ["derive"]
 all = ["rand", "serde", "stl", "derive"]
 serde = ["serde_crate", "amplify/serde"]
-stl = ["strict_types/base64"]
+stl = ["strict_types/base85"]
 derive = []
 
 [package.metadata.docs.rs]
