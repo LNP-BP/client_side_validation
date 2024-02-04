@@ -26,7 +26,7 @@ fn main() {
             "
   Description: Client-side-validation deterministic commitments
   Author: Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
-  Copyright (C) 2023 LNP/BP Standards Association. All rights reserved.
+  Copyright (C) 2023-2024 LNP/BP Standards Association. All rights reserved.
   License: Apache-2.0",
         ),
     )
