@@ -19,11 +19,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use amplify::Bytes32;
 use sha2::Sha256;
 use strict_encoding::{StrictEncode, StrictType};
 use strict_types::typesys::TypeFqn;
 
-use crate::DigestExt;
+use crate::{DigestExt, LIB_NAME_COMMIT_VERIFY};
 
 pub struct CommitEngine {
     finished: bool,
@@ -124,4 +125,27 @@ impl<T: CommitEncode> CommitId for T {
     }
 
     fn commit_id(&self) -> Self::CommitmentId { self.commit().finish().into() }
+}
+
+#[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
+#[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
+#[derive(StrictDumb, strict_encoding::StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", transparent)
+)]
+pub struct StrictHash(
+    #[from]
+    #[from([u8; 32])]
+    Bytes32,
+);
+
+impl CommitmentId for StrictHash {
+    const TAG: &'static str = "urn:ubideco:strict-types:value-hash#2024-02-10";
+}
+
+impl From<Sha256> for StrictHash {
+    fn from(hash: Sha256) -> Self { hash.finish().into() }
 }
