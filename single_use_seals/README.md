@@ -90,7 +90,7 @@ way of generating new single-use-seals:
 **Witness**: data produced with closing of a single use seal which are
   required and sufficient for an independent party to verify that the seal
   was indeed closed over a given message (i.e. the commitment to the message
-  had being created according to the seal definition).
+  had been created according to the seal definition).
 
 NB: It's important to note, that while its possible to deterministically
   define was a given seal closed it yet may be not possible to find out
