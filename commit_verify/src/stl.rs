@@ -21,10 +21,10 @@
 
 use strict_types::{CompileError, LibBuilder, TypeLib};
 
-use crate::{mpc, LIB_NAME_COMMIT_VERIFY};
+use crate::{mpc, MerkleHash, MerkleNode, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "urn:ubideco:stl:4SZ2EgWWtC5LsNXmNpAzogNHZoaZNTCwU3SQhAYwDX6A#citizen-fiction-corner";
+    "urn:ubideco:stl:DYafq9UACuYbTpduhcqywBGH97wHYtSUNPiXh5v2Zub9#drama-imagine-extreme";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
@@ -34,6 +34,9 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     .transpile::<mpc::MerkleBlock>()
     .transpile::<mpc::MerkleProof>()
     .transpile::<mpc::Commitment>()
+    .transpile::<MerkleNode>()
+    .transpile::<MerkleHash>()
+    .transpile::<StrictHash>()
     .compile()
 }
 

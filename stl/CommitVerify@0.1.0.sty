@@ -1,5 +1,5 @@
 {-
-  Id: urn:ubideco:stl:4SZ2EgWWtC5LsNXmNpAzogNHZoaZNTCwU3SQhAYwDX6A#citizen-fiction-corner
+  Id: urn:ubideco:stl:DYafq9UACuYbTpduhcqywBGH97wHYtSUNPiXh5v2Zub9#drama-imagine-extreme
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -27,6 +27,13 @@ data MerkleBlock       : depth Std.U5#nitro-george-nebula
 @mnemonic(culture-metro-modular)
 data MerkleHash        : [Byte ^ 32]
 
+@mnemonic(input-mouse-amber)
+data MerkleNode        : branching NodeBranching
+                       , depth U8
+                       , width U16
+                       , node1 MerkleHash
+                       , node2 MerkleHash
+
 @mnemonic(father-adios-common)
 data MerkleProof       : pos U32
                        , cofactor U16
@@ -42,8 +49,15 @@ data MerkleTree        : depth Std.U5#nitro-george-nebula
 @mnemonic(shampoo-bishop-morgan)
 data Message           : [Byte ^ 32]
 
+@mnemonic(food-amanda-burger)
+data NodeBranching     : void | single | branch
+
+
 @mnemonic(gamma-banjo-corona)
 data ProtocolId        : [Byte ^ 32]
+
+@mnemonic(cheese-final-locate)
+data StrictHash        : [Byte ^ 32]
 
 @mnemonic(empty-active-truck)
 data TreeNode          : concealedNode (depth Std.U5#nitro-george-nebula, hash MerkleHash)

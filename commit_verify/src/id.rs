@@ -94,7 +94,12 @@ pub trait CommitmentId: Copy + Ord + From<Sha256> + StrictType {
 /// concealment with [`crate::Conceal`], merklization, strict encoding,
 /// wrapped into [`CommitEncode`], followed by the actual commitment to its
 /// output.
+///
+/// The trait is separate from the `CommitEncode` to prevent custom
+/// implementation of its methods, since `CommitId` can't be manually
+/// implemented for any type since it has a generic blanket implementation.
 pub trait CommitId: CommitEncode {
+    #[doc = hidden]
     fn commit(&self) -> CommitEngine;
 
     fn commitment_layout(&self) -> CommitmentLayout;
