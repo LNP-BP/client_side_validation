@@ -244,9 +244,9 @@ mod test {
     use std::collections::BTreeSet;
 
     use amplify::num::u5;
-    use amplify::{Wrapper, WriteCounter};
+    use amplify::Wrapper;
     use rand::random;
-    use strict_encoding::StrictEncode;
+    use strict_encoding::{StreamWriter, StrictEncode};
 
     use crate::mpc::tree::test_helpers::{make_random_messages, make_random_tree};
     use crate::mpc::MerkleBlock;
@@ -284,11 +284,14 @@ mod test {
         let count = 1_048_576 / 128;
         let msgs = make_random_messages(count);
         let tree = make_random_tree(&msgs);
-        let mut counter = WriteCounter::default();
-        tree.strict_write(usize::MAX, &mut counter).unwrap();
+        let mut counter = StreamWriter::counter::<{ usize::MAX }>();
+        tree.strict_write(&mut counter).unwrap();
         eprintln!(
             "Tree with {} protocol-messages: depth {}, cofactor {}. Serialized length {} bytes",
-            count, tree.depth, tree.cofactor, counter.count
+            count,
+            tree.depth,
+            tree.cofactor,
+            counter.unconfine().count
         );
     }
 

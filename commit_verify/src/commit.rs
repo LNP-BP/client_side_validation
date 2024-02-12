@@ -21,11 +21,6 @@
 
 //! Base commit-verify scheme interface.
 
-use amplify::Bytes32;
-use sha2::Sha256;
-use strict_encoding::{StrictEncode, StrictWriter};
-
-use crate::digest::DigestExt;
 use crate::CommitmentProtocol;
 
 /// Error during commitment verification
@@ -82,22 +77,6 @@ where Self: Eq + Sized
     }
 }
 
-/// Commitment protocol which writes strict-encoded data into a hasher.
-pub struct StrictEncodedProtocol;
-
-impl CommitmentProtocol for StrictEncodedProtocol {}
-
-impl<T> CommitVerify<T, StrictEncodedProtocol> for Bytes32
-where T: StrictEncode
-{
-    fn commit(msg: &T) -> Self {
-        let mut engine = Sha256::from_tag(*b"urn:lnpbp:lnpbp0007:strict:v01#A");
-        let w = StrictWriter::with(u32::MAX as usize, &mut engine);
-        msg.strict_encode(w).ok();
-        engine.finish().into()
-    }
-}
-
 /// Helpers for writing test functions working with commit-verify scheme
 #[cfg(test)]
 pub(crate) mod test_helpers {
@@ -146,36 +125,5 @@ pub(crate) mod test_helpers {
 
                 acc
             });
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use core::fmt::Debug;
-    use core::hash::Hash;
-
-    use amplify::confinement::SmallVec;
-    use sha2::Digest;
-
-    use super::test_helpers::*;
-    use super::*;
-    use crate::test_helpers::gen_messages;
-    use crate::UntaggedProtocol;
-
-    #[derive(Debug, Display, Error)]
-    #[display(Debug)]
-    struct Error;
-
-    #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-    struct DummyHashCommitment([u8; 32]);
-    impl<T> CommitVerify<T, UntaggedProtocol> for DummyHashCommitment
-    where T: AsRef<[u8]>
-    {
-        fn commit(msg: &T) -> Self { Self(Sha256::digest(msg.as_ref()).into()) }
-    }
-
-    #[test]
-    fn test_commit_verify() {
-        commit_verify_suite::<SmallVec<u8>, DummyHashCommitment>(gen_messages());
     }
 }

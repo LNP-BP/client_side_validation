@@ -19,12 +19,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use amplify::confinement::U64 as U64MAX;
 use amplify::Bytes32;
 use sha2::Sha256;
-use strict_encoding::{StrictEncode, StrictType};
+use strict_encoding::{StreamWriter, StrictEncode, StrictType};
 use strict_types::typesys::TypeFqn;
 
 use crate::{DigestExt, LIB_NAME_COMMIT_VERIFY};
+
+const COMMIT_MAX_LEN: usize = U64MAX;
 
 pub struct CommitEngine {
     finished: bool,
@@ -43,7 +46,8 @@ impl CommitEngine {
 
     pub fn commit_to<T: StrictEncode>(&mut self, value: &T) {
         debug_assert!(!self.finished);
-        let ok = value.strict_write(usize::MAX, &mut self.hasher).is_ok();
+        let writer = StreamWriter::new::<COMMIT_MAX_LEN>(&mut self.hasher);
+        let ok = value.strict_write(writer).is_ok();
         let fqn = TypeFqn::with(
             libname!(T::STRICT_LIB_NAME),
             T::strict_name().expect("commit encoder can commit only to named types"),

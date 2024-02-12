@@ -58,5 +58,5 @@ serde = ["serde_crate", "commit_verify/serde"]
 features = [ "all" ]
 
 [patch.crates-io]
-strict_encoding = { git = "https://github.com/strict-types/strict-encoding" }
-strict_types = { git = "https://github.com/strict-types/strict-types" }
+strict_encoding = { git = "https://github.com/strict-types/strict-encoding", branch = "refactor/io" }
+strict_types = { git = "https://github.com/strict-types/strict-types", branch = "refactor/io" }
