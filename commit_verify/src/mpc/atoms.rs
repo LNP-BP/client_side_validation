@@ -133,7 +133,7 @@ pub struct Commitment(
 );
 
 impl CommitmentId for Commitment {
-    const TAG: &'static str = "urn:lnpbp:mpc:commitment#2024-01-31";
+    const TAG: &'static str = "urn:ubideco:mpc:commitment#2024-01-31";
 }
 
 impl Commitment {

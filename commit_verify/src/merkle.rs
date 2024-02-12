@@ -119,7 +119,7 @@ pub struct MerkleHash(
 );
 
 impl CommitmentId for MerkleHash {
-    const TAG: &'static str = "urn:lnpbp:merkle:node#2024-01-31";
+    const TAG: &'static str = "urn:ubideco:merkle:node#2024-01-31";
 }
 
 impl From<Sha256> for MerkleHash {
