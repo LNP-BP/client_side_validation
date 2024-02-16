@@ -29,6 +29,7 @@ use crate::{DigestExt, LIB_NAME_COMMIT_VERIFY};
 
 const COMMIT_MAX_LEN: usize = U64MAX;
 
+#[derive(Debug)]
 pub struct CommitEngine {
     finished: bool,
     hasher: Sha256,
