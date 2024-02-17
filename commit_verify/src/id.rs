@@ -19,21 +19,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify::confinement::U64 as U64MAX;
+use std::hash::Hash;
+
+use amplify::confinement::{Collection, Confined, U64 as U64MAX};
 use amplify::Bytes32;
 use sha2::Sha256;
-use strict_encoding::{StreamWriter, StrictEncode, StrictType};
+use strict_encoding::{StreamWriter, StrictDumb, StrictEncode, StrictType};
 use strict_types::typesys::TypeFqn;
 
-use crate::{DigestExt, LIB_NAME_COMMIT_VERIFY};
+use crate::{Conceal, DigestExt, MerkleHash, MerkleLeaves, LIB_NAME_COMMIT_VERIFY};
 
 const COMMIT_MAX_LEN: usize = U64MAX;
 
-#[derive(Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+pub enum CommitStep {
+    Serialized(TypeFqn),
+    Collection,
+    Hashed(TypeFqn),
+    Merklized(TypeFqn),
+    Concealed(TypeFqn),
+}
+
+#[derive(Clone, Debug)]
 pub struct CommitEngine {
     finished: bool,
     hasher: Sha256,
-    layout: Vec<TypeFqn>,
+    layout: Vec<CommitStep>,
+}
+
+fn commitment_fqn<T: StrictType>() -> TypeFqn {
+    TypeFqn::with(
+        libname!(T::STRICT_LIB_NAME),
+        T::strict_name().expect("commit encoder can commit only to named types"),
+    )
 }
 
 impl CommitEngine {
@@ -45,30 +63,85 @@ impl CommitEngine {
         }
     }
 
-    pub fn commit_to<T: StrictEncode>(&mut self, value: &T) {
+    fn inner_commit_to<T: StrictEncode, const MAX_LEN: usize>(&mut self, value: &T) {
         debug_assert!(!self.finished);
-        let writer = StreamWriter::new::<COMMIT_MAX_LEN>(&mut self.hasher);
+        let writer = StreamWriter::new::<MAX_LEN>(&mut self.hasher);
         let ok = value.strict_write(writer).is_ok();
-        let fqn = TypeFqn::with(
-            libname!(T::STRICT_LIB_NAME),
-            T::strict_name().expect("commit encoder can commit only to named types"),
-        );
-        self.layout.push(fqn);
         debug_assert!(ok);
     }
 
-    pub fn as_layout(&mut self) -> &[TypeFqn] {
+    pub fn commit_to_serialized<T: StrictEncode>(&mut self, value: &T) {
+        let fqn = commitment_fqn::<T>();
+        debug_assert!(
+            Some(&fqn.name) != MerkleHash::strict_name().as_ref() ||
+                fqn.lib.as_str() != MerkleHash::STRICT_LIB_NAME,
+            "do not use commit_to_serialized for merklized collections, use commit_to_merkle \
+             instead"
+        );
+        debug_assert!(
+            Some(&fqn.name) != StrictHash::strict_name().as_ref() ||
+                fqn.lib.as_str() != StrictHash::STRICT_LIB_NAME,
+            "do not use commit_to_serialized for StrictHash types, use commit_to_hash instead"
+        );
+        self.layout.push(CommitStep::Serialized(fqn));
+
+        self.inner_commit_to::<_, COMMIT_MAX_LEN>(&value);
+    }
+
+    pub fn commit_to_hash<T: CommitEncode<CommitmentId = StrictHash> + StrictType>(
+        &mut self,
+        value: T,
+    ) {
+        let fqn = commitment_fqn::<T>();
+        self.layout.push(CommitStep::Hashed(fqn));
+
+        self.inner_commit_to::<_, 32>(&value.commit_id());
+    }
+
+    pub fn commit_to_merkle<T: MerkleLeaves>(&mut self, value: &T)
+    where T::Leaf: StrictType {
+        let fqn = commitment_fqn::<T::Leaf>();
+        self.layout.push(CommitStep::Merklized(fqn));
+
+        let root = MerkleHash::merklize(value);
+        self.inner_commit_to::<_, 32>(&root);
+    }
+
+    pub fn commit_to_concealed<T: Conceal>(&mut self, value: &T)
+    where
+        T: StrictType,
+        T::Concealed: StrictEncode,
+    {
+        let fqn = commitment_fqn::<T>();
+        self.layout.push(CommitStep::Concealed(fqn));
+
+        let concealed = value.conceal();
+        self.inner_commit_to::<_, COMMIT_MAX_LEN>(&concealed);
+    }
+
+    pub fn commit_to_collection<C, const MIN: usize, const MAX: usize>(
+        &mut self,
+        collection: &Confined<C, MIN, MAX>,
+    ) where
+        C: Collection,
+        Confined<C, MIN, MAX>: StrictEncode,
+    {
+        self.layout.push(CommitStep::Collection);
+        self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
+    }
+
+    pub fn as_layout(&mut self) -> &[CommitStep] {
         self.finished = true;
         self.layout.as_ref()
     }
 
-    pub fn into_layout(self) -> Vec<TypeFqn> { self.layout }
+    pub fn into_layout(self) -> Vec<CommitStep> { self.layout }
 
     pub fn set_finished(&mut self) { self.finished = true; }
 
     pub fn finish(self) -> Sha256 { self.hasher }
 
-    pub fn finish_layout(self) -> (Sha256, Vec<TypeFqn>) { (self.hasher, self.layout) }
+    pub fn finish_layout(self) -> (Sha256, Vec<CommitStep>) { (self.hasher, self.layout) }
 }
 
 /// Prepares the data to the *consensus commit* procedure by first running
@@ -87,7 +160,7 @@ pub trait CommitEncode {
 pub struct CommitmentLayout {
     ty: TypeFqn,
     tag: &'static str,
-    fields: Vec<TypeFqn>,
+    fields: Vec<CommitStep>,
 }
 
 pub trait CommitmentId: Copy + Ord + From<Sha256> + StrictType {
