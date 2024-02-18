@@ -232,6 +232,7 @@ dependencies = [
  "sha2",
  "strict_encoding",
  "strict_types",
+ "vesper-lang",
 ]
 
 [[package]]

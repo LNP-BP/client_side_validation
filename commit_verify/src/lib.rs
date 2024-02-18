@@ -56,6 +56,7 @@ pub mod stl;
 pub mod merkle;
 pub mod mpc;
 mod digest;
+pub mod vesper;
 
 pub use commit::{CommitVerify, TryCommitVerify, VerifyError};
 pub use conceal::Conceal;
@@ -63,7 +64,8 @@ pub use convolve::{ConvolveCommit, ConvolveCommitProof, ConvolveVerifyError};
 pub use digest::{Digest, DigestExt, Ripemd160, Sha256};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, EmbedVerifyError, VerifyEq};
 pub use id::{
-    CommitEncode, CommitEngine, CommitId, CommitStep, CommitmentId, CommitmentLayout, StrictHash,
+    CommitColType, CommitEncode, CommitEngine, CommitId, CommitStep, CommitmentId,
+    CommitmentLayout, StrictHash,
 };
 pub use merkle::{MerkleBuoy, MerkleHash, MerkleLeaves, MerkleNode, NodeBranching};
 

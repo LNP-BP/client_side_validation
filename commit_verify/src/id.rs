@@ -19,12 +19,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::hash::Hash;
 
-use amplify::confinement::{Collection, Confined, U64 as U64MAX};
+use amplify::confinement::{Confined, TinyVec, U64 as U64MAX};
 use amplify::Bytes32;
 use sha2::Sha256;
-use strict_encoding::{StreamWriter, StrictDumb, StrictEncode, StrictType};
+use strict_encoding::{Sizing, StreamWriter, StrictDumb, StrictEncode, StrictType};
 use strict_types::typesys::TypeFqn;
 
 use crate::{Conceal, DigestExt, MerkleHash, MerkleLeaves, LIB_NAME_COMMIT_VERIFY};
@@ -32,9 +33,16 @@ use crate::{Conceal, DigestExt, MerkleHash, MerkleLeaves, LIB_NAME_COMMIT_VERIFY
 const COMMIT_MAX_LEN: usize = U64MAX;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
+pub enum CommitColType {
+    List,
+    Set,
+    Map { key: TypeFqn },
+}
+
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum CommitStep {
     Serialized(TypeFqn),
-    Collection,
+    Collection(CommitColType, Sizing, TypeFqn),
     Hashed(TypeFqn),
     Merklized(TypeFqn),
     Concealed(TypeFqn),
@@ -44,7 +52,7 @@ pub enum CommitStep {
 pub struct CommitEngine {
     finished: bool,
     hasher: Sha256,
-    layout: Vec<CommitStep>,
+    layout: TinyVec<CommitStep>,
 }
 
 fn commitment_fqn<T: StrictType>() -> TypeFqn {
@@ -59,7 +67,7 @@ impl CommitEngine {
         Self {
             finished: false,
             hasher: Sha256::from_tag(tag),
-            layout: vec![],
+            layout: empty!(),
         }
     }
 
@@ -83,7 +91,9 @@ impl CommitEngine {
                 fqn.lib.as_str() != StrictHash::STRICT_LIB_NAME,
             "do not use commit_to_serialized for StrictHash types, use commit_to_hash instead"
         );
-        self.layout.push(CommitStep::Serialized(fqn));
+        self.layout
+            .push(CommitStep::Serialized(fqn))
+            .expect("too many fields for commitment");
 
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&value);
     }
@@ -93,7 +103,9 @@ impl CommitEngine {
         value: T,
     ) {
         let fqn = commitment_fqn::<T>();
-        self.layout.push(CommitStep::Hashed(fqn));
+        self.layout
+            .push(CommitStep::Hashed(fqn))
+            .expect("too many fields for commitment");
 
         self.inner_commit_to::<_, 32>(&value.commit_id());
     }
@@ -101,7 +113,9 @@ impl CommitEngine {
     pub fn commit_to_merkle<T: MerkleLeaves>(&mut self, value: &T)
     where T::Leaf: StrictType {
         let fqn = commitment_fqn::<T::Leaf>();
-        self.layout.push(CommitStep::Merklized(fqn));
+        self.layout
+            .push(CommitStep::Merklized(fqn))
+            .expect("too many fields for commitment");
 
         let root = MerkleHash::merklize(value);
         self.inner_commit_to::<_, 32>(&root);
@@ -113,20 +127,61 @@ impl CommitEngine {
         T::Concealed: StrictEncode,
     {
         let fqn = commitment_fqn::<T>();
-        self.layout.push(CommitStep::Concealed(fqn));
+        self.layout
+            .push(CommitStep::Concealed(fqn))
+            .expect("too many fields for commitment");
 
         let concealed = value.conceal();
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&concealed);
     }
 
-    pub fn commit_to_collection<C, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_list<T, const MIN: usize, const MAX: usize>(
         &mut self,
-        collection: &Confined<C, MIN, MAX>,
+        collection: &Confined<Vec<T>, MIN, MAX>,
     ) where
-        C: Collection,
-        Confined<C, MIN, MAX>: StrictEncode,
+        T: StrictEncode + StrictDumb,
     {
-        self.layout.push(CommitStep::Collection);
+        let fqn = commitment_fqn::<T>();
+        let step =
+            CommitStep::Collection(CommitColType::List, Sizing::new(MIN as u64, MAX as u64), fqn);
+        self.layout
+            .push(step)
+            .expect("too many fields for commitment");
+        self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
+    }
+
+    pub fn commit_to_set<T, const MIN: usize, const MAX: usize>(
+        &mut self,
+        collection: &Confined<BTreeSet<T>, MIN, MAX>,
+    ) where
+        T: Ord + StrictEncode + StrictDumb,
+    {
+        let fqn = commitment_fqn::<T>();
+        let step =
+            CommitStep::Collection(CommitColType::Set, Sizing::new(MIN as u64, MAX as u64), fqn);
+        self.layout
+            .push(step)
+            .expect("too many fields for commitment");
+        self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
+    }
+
+    pub fn commit_to_map<K, V, const MIN: usize, const MAX: usize>(
+        &mut self,
+        collection: &Confined<BTreeMap<K, V>, MIN, MAX>,
+    ) where
+        K: Ord + Hash + StrictEncode + StrictDumb,
+        V: StrictEncode + StrictDumb,
+    {
+        let key_fqn = commitment_fqn::<K>();
+        let val_fqn = commitment_fqn::<V>();
+        let step = CommitStep::Collection(
+            CommitColType::Map { key: key_fqn },
+            Sizing::new(MIN as u64, MAX as u64),
+            val_fqn,
+        );
+        self.layout
+            .push(step)
+            .expect("too many fields for commitment");
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
@@ -135,13 +190,13 @@ impl CommitEngine {
         self.layout.as_ref()
     }
 
-    pub fn into_layout(self) -> Vec<CommitStep> { self.layout }
+    pub fn into_layout(self) -> TinyVec<CommitStep> { self.layout }
 
     pub fn set_finished(&mut self) { self.finished = true; }
 
     pub fn finish(self) -> Sha256 { self.hasher }
 
-    pub fn finish_layout(self) -> (Sha256, Vec<CommitStep>) { (self.hasher, self.layout) }
+    pub fn finish_layout(self) -> (Sha256, TinyVec<CommitStep>) { (self.hasher, self.layout) }
 }
 
 /// Prepares the data to the *consensus commit* procedure by first running
@@ -152,15 +207,16 @@ pub trait CommitEncode {
     type CommitmentId: CommitmentId;
 
     /// Encodes the data for the commitment by writing them directly into a
-    /// [`io::Write`] writer instance
+    /// [`std::io::Write`] writer instance
     fn commit_encode(&self, e: &mut CommitEngine);
 }
 
 #[derive(Getters, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct CommitmentLayout {
-    ty: TypeFqn,
+    idty: TypeFqn,
+    #[getter(as_copy)]
     tag: &'static str,
-    fields: Vec<CommitStep>,
+    fields: TinyVec<CommitStep>,
 }
 
 pub trait CommitmentId: Copy + Ord + From<Sha256> + StrictType {
@@ -197,7 +253,7 @@ impl<T: CommitEncode> CommitId for T {
     fn commitment_layout(&self) -> CommitmentLayout {
         let fields = self.commit().into_layout();
         CommitmentLayout {
-            ty: TypeFqn::with(
+            idty: TypeFqn::with(
                 libname!(Self::CommitmentId::STRICT_LIB_NAME),
                 Self::CommitmentId::strict_name()
                     .expect("commitment types must have explicit type name"),
