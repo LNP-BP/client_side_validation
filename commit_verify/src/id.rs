@@ -20,6 +20,7 @@
 // limitations under the License.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
 
 use amplify::confinement::{Confined, TinyVec, U64 as U64MAX};
@@ -212,15 +213,43 @@ pub trait CommitEncode {
 }
 
 #[derive(Getters, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct CommitmentLayout {
+pub struct CommitLayout {
     idty: TypeFqn,
     #[getter(as_copy)]
     tag: &'static str,
     fields: TinyVec<CommitStep>,
 }
 
+impl Display for CommitLayout {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.to_vesper().display(), f)
+    }
+}
+
 pub trait CommitmentId: Copy + Ord + From<Sha256> + StrictType {
     const TAG: &'static str;
+}
+
+pub trait CommitmentLayout: CommitEncode {
+    fn commitment_layout() -> CommitLayout;
+}
+
+impl<T> CommitmentLayout for T
+where T: CommitEncode + StrictDumb
+{
+    fn commitment_layout() -> CommitLayout {
+        let dumb = Self::strict_dumb();
+        let fields = dumb.commit().into_layout();
+        CommitLayout {
+            idty: TypeFqn::with(
+                libname!(Self::CommitmentId::STRICT_LIB_NAME),
+                Self::CommitmentId::strict_name()
+                    .expect("commitment types must have explicit type name"),
+            ),
+            tag: T::CommitmentId::TAG,
+            fields,
+        }
+    }
 }
 
 /// High-level API used in client-side validation for producing a single
@@ -236,8 +265,6 @@ pub trait CommitId: CommitEncode {
     #[doc = hidden]
     fn commit(&self) -> CommitEngine;
 
-    fn commitment_layout(&self) -> CommitmentLayout;
-
     /// Performs commitment to client-side-validated data
     fn commit_id(&self) -> Self::CommitmentId;
 }
@@ -248,19 +275,6 @@ impl<T: CommitEncode> CommitId for T {
         self.commit_encode(&mut engine);
         engine.set_finished();
         engine
-    }
-
-    fn commitment_layout(&self) -> CommitmentLayout {
-        let fields = self.commit().into_layout();
-        CommitmentLayout {
-            idty: TypeFqn::with(
-                libname!(Self::CommitmentId::STRICT_LIB_NAME),
-                Self::CommitmentId::strict_name()
-                    .expect("commitment types must have explicit type name"),
-            ),
-            tag: T::CommitmentId::TAG,
-            fields,
-        }
     }
 
     fn commit_id(&self) -> Self::CommitmentId { self.commit().finish().into() }

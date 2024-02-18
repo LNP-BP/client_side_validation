@@ -25,7 +25,7 @@ use strict_types::layout::vesper::LenRange;
 use strict_types::typesys::TypeFqn;
 use vesper::{AttrVal, Attribute, Expression, Predicate, TExpr};
 
-use crate::{CommitColType, CommitStep, CommitmentLayout};
+use crate::{CommitColType, CommitLayout, CommitStep};
 
 pub type VesperCommit = TExpr<Pred>;
 
@@ -157,7 +157,7 @@ impl CommitStep {
     }
 }
 
-impl CommitmentLayout {
+impl CommitLayout {
     pub fn to_vesper(&self) -> VesperCommit {
         let subject = self.idty().name.to_ident();
 
