@@ -99,6 +99,15 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&value);
     }
 
+    pub fn commit_to_option<T: StrictEncode + StrictDumb>(&mut self, value: &Option<T>) {
+        let fqn = commitment_fqn::<T>();
+        self.layout
+            .push(CommitStep::Serialized(fqn))
+            .expect("too many fields for commitment");
+
+        self.inner_commit_to::<_, COMMIT_MAX_LEN>(&value);
+    }
+
     pub fn commit_to_hash<T: CommitEncode<CommitmentId = StrictHash> + StrictType>(
         &mut self,
         value: T,
