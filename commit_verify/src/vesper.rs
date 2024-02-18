@@ -33,10 +33,10 @@ pub type VesperCommit = TExpr<Pred>;
 #[display(lowercase)]
 pub enum Pred {
     Commitment,
-    Serialize,
-    Hash,
-    Merklize,
-    Conceal,
+    Serialized,
+    Hashed,
+    Merklized,
+    Concealed,
     List,
     Set,
     Element,
@@ -56,6 +56,7 @@ pub enum Attr {
     Tagged(&'static str),
     Concealed(TypeFqn),
     LenRange(LenRange),
+    Hasher,
 }
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 #[display(inner)]
@@ -74,6 +75,7 @@ impl Attribute for Attr {
             Attr::Tagged(_) => Some(tn!("tagged")),
             Attr::Concealed(_) => Some(tn!("concealed")),
             Attr::LenRange(_) => Some(tn!("len")),
+            Attr::Hasher => Some(tn!("hasher")),
         }
     }
 
@@ -82,6 +84,7 @@ impl Attribute for Attr {
             Attr::Tagged(tag) => AttrVal::Expr(AttrExpr::Tag(tag)),
             Attr::Concealed(fqn) => AttrVal::Ident(fqn.name.to_ident()),
             Attr::LenRange(range) => AttrVal::Expr(AttrExpr::LenRange(range.clone())),
+            Attr::Hasher => AttrVal::Ident(tn!("SHA256")),
         }
     }
 }
@@ -101,13 +104,13 @@ impl CommitStep {
 
     fn predicate(&self) -> Pred {
         match self {
-            CommitStep::Serialized(_) => Pred::Serialize,
+            CommitStep::Serialized(_) => Pred::Serialized,
             CommitStep::Collection(CommitColType::List, _, _) => Pred::List,
             CommitStep::Collection(CommitColType::Set, _, _) => Pred::Set,
             CommitStep::Collection(CommitColType::Map { .. }, _, _) => Pred::Map,
-            CommitStep::Hashed(_) => Pred::Hash,
-            CommitStep::Merklized(_) => Pred::Merklize,
-            CommitStep::Concealed(_) => Pred::Conceal,
+            CommitStep::Hashed(_) => Pred::Hashed,
+            CommitStep::Merklized(_) => Pred::Merklized,
+            CommitStep::Concealed(_) => Pred::Concealed,
         }
     }
 
@@ -177,7 +180,7 @@ impl CommitLayout {
         VesperCommit {
             subject,
             predicate: Pred::Commitment,
-            attributes: confined_vec![Attr::Tagged(self.tag())],
+            attributes: confined_vec![Attr::Hasher, Attr::Tagged(self.tag())],
             content: Confined::from_iter_unsafe(content),
             comment: None,
         }
