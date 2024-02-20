@@ -244,6 +244,24 @@ where T: CommitId<CommitmentId = MerkleHash> + Copy
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
 
+impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u32::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u32::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
 /// Helper struct to track depth when working with Merkle blocks.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default> {

@@ -19,7 +19,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify::confinement::{MediumOrdMap, SmallVec};
+use amplify::confinement::{LargeVec, MediumOrdMap};
 use amplify::num::{u256, u5};
 use amplify::Wrapper;
 
@@ -68,7 +68,7 @@ impl MerkleTree {
                 .map(|(protocol, msg)| Leaf::inhabited(*protocol, *msg))
                 .unwrap_or_else(|| Leaf::entropy(self.entropy, pos))
         });
-        let leaves = SmallVec::try_from_iter(iter).expect("u16-bound size");
+        let leaves = LargeVec::try_from_iter(iter).expect("tree width has u32-bound size");
         MerkleHash::merklize(&leaves)
     }
 }
