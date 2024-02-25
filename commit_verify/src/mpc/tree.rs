@@ -281,18 +281,35 @@ mod test {
 
     #[test]
     fn tree_huge() {
+        // Tree with 8192 protocol-messages: depth 23, cofactor 103. Serialized length
+        // 1081361 bytes. Takes 71589 msecs to generate
+        // Root is 58755c63bbcb1a648982956c90a471a3fc79b12ae97867828e2f0ce8c9f7e7db.
+        // Takes 560735 msecs to compute
+
+        use std::time::Instant;
+
         let count = 1_048_576 / 128;
         let msgs = make_random_messages(count);
+
+        let start = Instant::now();
         let tree = make_random_tree(&msgs);
+        let elapsed_gen = start.elapsed();
+
         let mut counter = StreamWriter::counter::<{ usize::MAX }>();
         tree.strict_write(&mut counter).unwrap();
         eprintln!(
-            "Tree with {} protocol-messages: depth {}, cofactor {}. Serialized length {} bytes",
-            count,
+            "Tree with {count} protocol-messages: depth {}, cofactor {}. Serialized length {} \
+             bytes. Takes {} msecs to generate",
             tree.depth,
             tree.cofactor,
-            counter.unconfine().count
+            counter.unconfine().count,
+            elapsed_gen.as_millis(),
         );
+
+        let start = Instant::now();
+        let root = tree.root();
+        let elapsed_root = start.elapsed();
+        eprintln!("Root is {root}. Takes {} msecs to compute", elapsed_root.as_millis(),);
     }
 
     #[test]
