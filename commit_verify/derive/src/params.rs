@@ -19,37 +19,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify_syn::{
-    ArgValueReq, AttrReq, DataType, FieldKind, ListReq, ParametrizedAttr, TypeClass, ValueClass,
-};
-use proc_macro2::{Ident, Span};
+use amplify_syn::{ArgValueReq, AttrReq, DataType, ParametrizedAttr, TypeClass};
+use proc_macro2::Span;
 use quote::ToTokens;
-use syn::{DeriveInput, Error, Expr, Path, Result};
+use syn::{DeriveInput, Error, Path, Result};
 
 const ATTR: &str = "commit_encode";
 const ATTR_CRATE: &str = "crate";
-const ATTR_CONCEAL: &str = "conceal";
+const ATTR_ID: &str = "id";
 const ATTR_STRATEGY: &str = "strategy";
-const ATTR_STRATEGY_COMMIT: &str = "propagate";
 const ATTR_STRATEGY_STRICT: &str = "strict";
+const ATTR_STRATEGY_CONCEAL: &str = "conceal";
 const ATTR_STRATEGY_TRANSPARENT: &str = "transparent";
-const ATTR_STRATEGY_INTO_U8: &str = "into_u8";
-const ATTR_MERKLIZE: &str = "merklize";
-const ATTR_SKIP: &str = "skip";
+const ATTR_STRATEGY_MERKLIZE: &str = "merklize";
 
 pub struct ContainerAttr {
     pub commit_crate: Path,
     pub strategy: StrategyAttr,
-    pub conceal: bool,
+    pub id: Path,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum StrategyAttr {
-    CommitEncoding,
-    StrictEncoding,
-    ConcealStrictEncoding,
+    Strict,
+    ConcealStrict,
     Transparent,
-    IntoU8,
+    Merklize,
 }
 
 impl TryFrom<&Path> for StrategyAttr {
@@ -57,82 +52,43 @@ impl TryFrom<&Path> for StrategyAttr {
 
     fn try_from(path: &Path) -> Result<Self> {
         match path.to_token_stream().to_string().as_str() {
-            ATTR_STRATEGY_COMMIT => Ok(StrategyAttr::CommitEncoding),
-            ATTR_STRATEGY_STRICT => Ok(StrategyAttr::StrictEncoding),
+            ATTR_STRATEGY_STRICT => Ok(StrategyAttr::Strict),
+            ATTR_STRATEGY_CONCEAL => Ok(StrategyAttr::ConcealStrict),
             ATTR_STRATEGY_TRANSPARENT => Ok(StrategyAttr::Transparent),
-            ATTR_STRATEGY_INTO_U8 => Ok(StrategyAttr::IntoU8),
+            ATTR_STRATEGY_MERKLIZE => Ok(StrategyAttr::Merklize),
             unknown => Err(Error::new(
                 Span::call_site(),
                 format!(
                     "invalid commitment encoding value for `strategy` attribute `{unknown}`; only \
-                     `{ATTR_STRATEGY_TRANSPARENT}`, `{ATTR_STRATEGY_INTO_U8}`, \
-                     `{ATTR_STRATEGY_COMMIT}`, or `{ATTR_STRATEGY_STRICT}`  are allowed"
+                     `{ATTR_STRATEGY_TRANSPARENT}`, `{ATTR_STRATEGY_STRICT}`, \
+                     `{ATTR_STRATEGY_CONCEAL}`, or `{ATTR_STRATEGY_MERKLIZE}`  are allowed"
                 ),
             )),
         }
     }
 }
 
-impl StrategyAttr {
-    pub fn to_ident(self) -> Ident {
-        match self {
-            StrategyAttr::CommitEncoding => {
-                panic!("StrategyAttr::CommitEncoding must be derived manually")
-            }
-            StrategyAttr::StrictEncoding => ident!(Strict),
-            StrategyAttr::ConcealStrictEncoding => ident!(ConcealStrict),
-            StrategyAttr::Transparent => ident!(IntoInner),
-            StrategyAttr::IntoU8 => ident!(IntoU8),
-        }
-    }
-}
-
-pub struct FieldAttr {
-    pub merklize: Option<Expr>,
-    pub skip: bool,
-}
-
 impl TryFrom<ParametrizedAttr> for ContainerAttr {
     type Error = Error;
 
     fn try_from(mut params: ParametrizedAttr) -> Result<Self> {
-        let mut req = AttrReq::with(map![
+        let req = AttrReq::with(map![
             ATTR_CRATE => ArgValueReq::optional(TypeClass::Path),
-            ATTR_STRATEGY => ArgValueReq::optional(TypeClass::Path),
+            ATTR_ID => ArgValueReq::required(TypeClass::Path),
+            ATTR_STRATEGY => ArgValueReq::required(TypeClass::Path),
         ]);
-        req.path_req = ListReq::maybe_one(path!(conceal));
         params.check(req)?;
 
-        let path = params
-            .arg_value(ATTR_STRATEGY)
-            .unwrap_or_else(|_| path!(propagate));
+        let path = params.arg_value(ATTR_STRATEGY).expect("must be present");
+        let strategy = StrategyAttr::try_from(&path)?;
+        let id = params.arg_value(ATTR_ID).expect("must be present");
 
-        let mut strategy = StrategyAttr::try_from(&path)?;
-        let conceal = params.has_verbatim(ATTR_CONCEAL);
-        if conceal && strategy == StrategyAttr::StrictEncoding {
-            strategy = StrategyAttr::ConcealStrictEncoding
-        }
         Ok(ContainerAttr {
             commit_crate: params
                 .arg_value(ATTR_CRATE)
                 .unwrap_or_else(|_| path!(commit_verify)),
             strategy,
-            conceal,
-        })
-    }
-}
-
-impl FieldAttr {
-    pub fn with(mut params: ParametrizedAttr, _kind: FieldKind) -> Result<Self> {
-        let mut req = AttrReq::with(map![
-            ATTR_MERKLIZE => ArgValueReq::optional(ValueClass::Expr),
-        ]);
-        req.path_req = ListReq::maybe_one(path!(skip));
-        params.check(req)?;
-
-        Ok(FieldAttr {
-            skip: params.has_verbatim(ATTR_SKIP),
-            merklize: params.arg_value(ATTR_MERKLIZE).ok(),
+            id,
         })
     }
 }

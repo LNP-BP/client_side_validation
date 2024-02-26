@@ -1,6 +1,6 @@
 [package]
 name = "commit_encoding_derive"
-version = "0.10.0"
+version = { workspace = true }
 description = "Commitment encoding derivation macros"
 keywords = ["commitments", "proc-macro"]
 categories = ["development-tools", "encoding"]
@@ -16,7 +16,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-amplify = "4.0.0"
+amplify = { workspace = true }
 quote = "1"
 syn = { version = "1", features = ["full"] }
 proc-macro2 = "1"
@@ -25,4 +25,4 @@ amplify_syn = "2.0.0"
 [dev-dependencies]
 commit_verify = { path = ".." }
 compiletest_rs = "0.9.0"
-strict_encoding = "2.1.1"
+strict_encoding = { workspace = true }

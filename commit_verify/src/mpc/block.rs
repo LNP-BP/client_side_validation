@@ -28,13 +28,11 @@ use amplify::confinement::{Confined, LargeVec};
 use amplify::num::u5;
 use strict_encoding::{StrictDeserialize, StrictEncode, StrictSerialize};
 
-use crate::id::CommitmentId;
-use crate::merkle::{MerkleBuoy, MerkleNode};
+use crate::id::CommitId;
+use crate::merkle::{MerkleBuoy, MerkleHash};
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
-use crate::mpc::{
-    Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId, MERKLE_LNPBP4_TAG,
-};
+use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId};
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {0} is absent from the known part of a given
@@ -90,7 +88,7 @@ enum TreeNode {
         /// Depth of the node.
         depth: u5,
         /// Node hash.
-        hash: MerkleNode,
+        hash: MerkleHash,
     },
     /// A tree leaf storing specific commitment under given protocol.
     CommitmentLeaf {
@@ -102,10 +100,10 @@ enum TreeNode {
 }
 
 impl TreeNode {
-    fn with(hash1: MerkleNode, hash2: MerkleNode, depth: u5, width: u32) -> TreeNode {
+    fn with(hash1: MerkleHash, hash2: MerkleHash, depth: u5, width: u32) -> TreeNode {
         TreeNode::ConcealedNode {
             depth,
-            hash: MerkleNode::branches(MERKLE_LNPBP4_TAG.to_be_bytes(), depth, width, hash1, hash2),
+            hash: MerkleHash::branches(depth, width, hash1, hash2),
         }
     }
 
@@ -120,13 +118,13 @@ impl TreeNode {
 
     pub fn is_leaf(&self) -> bool { matches!(self, TreeNode::CommitmentLeaf { .. }) }
 
-    pub fn to_merkle_node(self) -> MerkleNode {
+    pub fn to_merkle_node(self) -> MerkleHash {
         match self {
             TreeNode::ConcealedNode { hash, .. } => hash,
             TreeNode::CommitmentLeaf {
                 protocol_id,
                 message,
-            } => Leaf::inhabited(protocol_id, message).commitment_id(),
+            } => Leaf::inhabited(protocol_id, message).commit_id(),
         }
     }
 }
@@ -136,7 +134,7 @@ impl TreeNode {
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
-#[commit_encode(crate = crate, conceal, strategy = strict)]
+#[commit_encode(crate = crate, strategy = conceal, id = Commitment)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleBlock {
     /// Tree depth (up to 16).
@@ -175,7 +173,7 @@ impl From<&MerkleTree> for MerkleBlock {
                 })
                 .unwrap_or_else(|| TreeNode::ConcealedNode {
                     depth: tree.depth,
-                    hash: Leaf::entropy(tree.entropy, pos).commitment_id(),
+                    hash: Leaf::entropy(tree.entropy, pos).commit_id(),
                 })
         });
         let cross_section =
@@ -390,8 +388,8 @@ impl MerkleBlock {
     /// each one of them.
     pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, MergeError> {
         let orig = self.clone();
-        let base_root = self.commitment_id();
-        let merged_root = other.commitment_id();
+        let base_root = self.commit_id();
+        let merged_root = other.commit_id();
         if base_root != merged_root {
             return Err(MergeError::UnrelatedBlocks {
                 base_root,
@@ -490,12 +488,12 @@ Failed merge: {self:#?}"
         );
         assert_eq!(
             base_root,
-            self.commitment_id(),
+            self.commit_id(),
             "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
              Standards Association
 Original commitment id: {base_root}
 Changed commitment id: {}",
-            self.commitment_id()
+            self.commit_id()
         );
 
         Ok(self.cross_section.len() as u16)
@@ -508,7 +506,7 @@ Changed commitment id: {}",
         protocol_id: ProtocolId,
     ) -> Result<MerkleProof, LeafNotKnown> {
         self.conceal_except([protocol_id])?;
-        let mut map = BTreeMap::<u5, MerkleNode>::new();
+        let mut map = BTreeMap::<u5, MerkleHash>::new();
         for node in &self.cross_section {
             match node {
                 TreeNode::ConcealedNode { depth, hash } => {
@@ -564,7 +562,7 @@ Changed commitment id: {}",
 }
 
 impl Conceal for MerkleBlock {
-    type Concealed = MerkleNode;
+    type Concealed = Self;
 
     /// Reduces merkle tree into merkle tree root.
     fn conceal(&self) -> Self::Concealed {
@@ -573,21 +571,14 @@ impl Conceal for MerkleBlock {
             .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
-        concealed.cross_section[0].to_merkle_node()
+        concealed
     }
-}
-
-impl CommitmentId for MerkleBlock {
-    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0004:tree:v01#23A";
-    type Id = Commitment;
 }
 
 /// A proof of the merkle commitment.
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
-#[derive(CommitEncode)]
-#[commit_encode(crate = crate, strategy = strict)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
 pub struct MerkleProof {
     /// Position of the leaf in the tree.
@@ -603,7 +594,7 @@ pub struct MerkleProof {
 
     /// Merkle proof path consisting of node hashing partners.
     #[getter(skip)]
-    path: Confined<Vec<MerkleNode>, 0, 32>,
+    path: Confined<Vec<MerkleHash>, 0, 32>,
 }
 
 impl Proof for MerkleProof {}
@@ -616,13 +607,13 @@ impl MerkleProof {
     pub fn width(&self) -> u32 { 2u32.pow(self.depth() as u32) }
 
     /// Converts the proof into inner merkle path representation
-    pub fn into_path(self) -> Confined<Vec<MerkleNode>, 0, 32> { self.path }
+    pub fn into_path(self) -> Confined<Vec<MerkleHash>, 0, 32> { self.path }
 
     /// Constructs the proof into inner merkle path representation
-    pub fn to_path(&self) -> Confined<Vec<MerkleNode>, 0, 32> { self.path.clone() }
+    pub fn to_path(&self) -> Confined<Vec<MerkleHash>, 0, 32> { self.path.clone() }
 
     /// Returns inner merkle path representation
-    pub fn as_path(&self) -> &[MerkleNode] { &self.path }
+    pub fn as_path(&self) -> &[MerkleHash] { &self.path }
 
     /// Convolves the proof with the `message` under the given `protocol_id`,
     /// producing [`Commitment`].
@@ -632,7 +623,7 @@ impl MerkleProof {
         message: Message,
     ) -> Result<Commitment, InvalidProof> {
         let block = MerkleBlock::with(self, protocol_id, message)?;
-        Ok(block.commitment_id())
+        Ok(block.commit_id())
     }
 }
 
@@ -652,9 +643,9 @@ mod test {
         // Check we preserve entropy value
         assert_eq!(Some(tree.entropy), block.entropy);
         // Check if we remove entropy the commitment doesn't change
-        let cid1 = block.commitment_id();
+        let cid1 = block.commit_id();
         block.entropy = None;
-        let cid2 = block.commitment_id();
+        let cid2 = block.commit_id();
         assert_eq!(cid1, cid2);
     }
 
@@ -667,13 +658,12 @@ mod test {
         let (pid, msg) = msgs.first_key_value().unwrap();
         let leaf = Leaf::inhabited(*pid, *msg);
         let cid1 = block.cross_section.first().unwrap().to_merkle_node();
-        let cid2 = leaf.commitment_id();
+        let cid2 = leaf.commit_id();
         assert_eq!(cid1, cid2);
 
         assert_eq!(tree.conceal(), block.conceal());
-        assert_eq!(tree.root(), block.conceal());
         assert_eq!(tree.root(), cid1);
-        assert_eq!(tree.commitment_id(), block.commitment_id())
+        assert_eq!(tree.commit_id(), block.commit_id())
     }
 
     #[test]
@@ -684,8 +674,7 @@ mod test {
             let block = MerkleBlock::from(&tree);
 
             assert_eq!(tree.conceal(), block.conceal());
-            assert_eq!(tree.root(), block.conceal());
-            assert_eq!(tree.commitment_id(), block.commitment_id())
+            assert_eq!(tree.commit_id(), block.commit_id())
         }
     }
 
@@ -697,8 +686,7 @@ mod test {
             let block = MerkleBlock::from(&tree);
 
             assert_eq!(tree.conceal(), block.conceal());
-            assert_eq!(tree.root(), block.conceal());
-            assert_eq!(tree.commitment_id(), block.commitment_id())
+            assert_eq!(tree.commit_id(), block.commit_id())
         }
     }
 
@@ -730,7 +718,7 @@ mod test {
                 }
             }
 
-            assert_eq!(merged_block.commitment_id(), mpc_tree.commitment_id());
+            assert_eq!(merged_block.commit_id(), mpc_tree.commit_id());
         }
     }
 }

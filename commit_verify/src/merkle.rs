@@ -21,24 +21,27 @@
 
 use core::{iter, slice};
 use std::collections::{btree_set, BTreeSet};
-use std::io::Write;
 use std::ops::SubAssign;
 
 use amplify::confinement::Confined;
 use amplify::num::{u256, u5};
 use amplify::{Bytes32, Wrapper};
 use sha2::Sha256;
+use strict_encoding::StrictEncode;
 
 use crate::digest::DigestExt;
-use crate::encode::{strategies, CommitStrategy};
-use crate::{CommitEncode, CommitmentId, LIB_NAME_COMMIT_VERIFY};
+use crate::{CommitId, CommitmentId, LIB_NAME_COMMIT_VERIFY};
 
-/// Type of a merkle node branching.
+/// Type of merkle node branching.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY, tags = repr, into_u8, try_from_u8)]
+#[repr(u8)]
 pub enum NodeBranching {
     /// Void node: virtual node with no leafs.
     ///
     /// Used when the total width of the three is not a power two.
+    #[strict_type(dumb)]
     Void = 0x00,
 
     /// Node having just a single leaf, with the second branch being void.
@@ -48,12 +51,52 @@ pub enum NodeBranching {
     Branch = 0x02,
 }
 
-impl From<NodeBranching> for u8 {
-    fn from(value: NodeBranching) -> Self { value as u8 }
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict, id = MerkleHash)]
+pub struct MerkleNode {
+    pub branching: NodeBranching,
+    pub depth: u8,
+    pub width: u256,
+    pub node1: MerkleHash,
+    pub node2: MerkleHash,
 }
 
-impl CommitStrategy for NodeBranching {
-    type Strategy = strategies::IntoU8;
+impl MerkleNode {
+    pub fn void(depth: impl Into<u8>, width: impl Into<u256>) -> Self {
+        Self::with(NodeBranching::Void, depth, width, VIRTUAL_LEAF, VIRTUAL_LEAF)
+    }
+
+    pub fn single(depth: impl Into<u8>, width: impl Into<u256>, node: MerkleHash) -> Self {
+        Self::with(NodeBranching::Single, depth, width, node, VIRTUAL_LEAF)
+    }
+
+    pub fn branches(
+        depth: impl Into<u8>,
+        width: impl Into<u256>,
+        node1: MerkleHash,
+        node2: MerkleHash,
+    ) -> Self {
+        Self::with(NodeBranching::Branch, depth, width, node1, node2)
+    }
+
+    fn with(
+        branching: NodeBranching,
+        depth: impl Into<u8>,
+        width: impl Into<u256>,
+        node1: MerkleHash,
+        node2: MerkleHash,
+    ) -> Self {
+        Self {
+            branching,
+            depth: depth.into(),
+            width: width.into(),
+            node1,
+            node2,
+        }
+    }
 }
 
 /// Source data for creation of multi-message commitments according to [LNPBP-4]
@@ -63,109 +106,83 @@ impl CommitStrategy for NodeBranching {
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
-#[strict_type(lib = LIB_NAME_COMMIT_VERIFY, dumb = MerkleNode(default!()))]
-#[derive(CommitEncode)]
-#[commit_encode(crate = crate, strategy = strict)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
 )]
-pub struct MerkleNode(
+pub struct MerkleHash(
     #[from]
     #[from([u8; 32])]
     Bytes32,
 );
 
-impl CommitmentId for MerkleNode {
-    const TAG: [u8; 32] = *b"urn:lnpbp:lnpbp0081:node:v01#23A";
-    type Id = Self;
+impl CommitmentId for MerkleHash {
+    const TAG: &'static str = "urn:ubideco:merkle:node#2024-01-31";
 }
 
-const VIRTUAL_LEAF: MerkleNode = MerkleNode(Bytes32::from_array([0xFF; 32]));
+impl From<Sha256> for MerkleHash {
+    fn from(hash: Sha256) -> Self { hash.finish().into() }
+}
 
-impl MerkleNode {
-    pub fn void(tag: [u8; 16], depth: impl Into<u8>, width: impl Into<u256>) -> Self {
-        let virt = VIRTUAL_LEAF;
-        Self::with(NodeBranching::Void, tag, depth, width, virt, virt)
+const VIRTUAL_LEAF: MerkleHash = MerkleHash(Bytes32::from_array([0xFF; 32]));
+
+impl MerkleHash {
+    pub fn void(depth: impl Into<u8>, width: impl Into<u256>) -> Self {
+        MerkleNode::void(depth, width).commit_id()
     }
 
-    pub fn single(
-        tag: [u8; 16],
-        depth: impl Into<u8>,
-        width: impl Into<u256>,
-        node: MerkleNode,
-    ) -> Self {
-        let single = NodeBranching::Single;
-        Self::with(single, tag, depth, width, node, VIRTUAL_LEAF)
+    pub fn single(depth: impl Into<u8>, width: impl Into<u256>, node: MerkleHash) -> Self {
+        MerkleNode::single(depth, width, node).commit_id()
     }
 
     pub fn branches(
-        tag: [u8; 16],
         depth: impl Into<u8>,
         width: impl Into<u256>,
-        node1: MerkleNode,
-        node2: MerkleNode,
+        node1: MerkleHash,
+        node2: MerkleHash,
     ) -> Self {
-        Self::with(NodeBranching::Branch, tag, depth, width, node1, node2)
-    }
-
-    fn with(
-        branching: NodeBranching,
-        tag: [u8; 16],
-        depth: impl Into<u8>,
-        width: impl Into<u256>,
-        node1: MerkleNode,
-        node2: MerkleNode,
-    ) -> Self {
-        let mut engine = Sha256::default();
-        engine.write_all(&tag).ok();
-        depth.into().commit_encode(&mut engine);
-        width.into().commit_encode(&mut engine);
-        branching.commit_encode(&mut engine);
-        node1.commit_encode(&mut engine);
-        node2.commit_encode(&mut engine);
-        engine.finish().into()
+        MerkleNode::branches(depth, width, node1, node2).commit_id()
     }
 }
 
-impl MerkleNode {
+impl MerkleHash {
     /// Merklization procedure that uses tagged hashes with depth commitments
     /// according to [LNPBP-81] standard of client-side-validation merklization.
     ///
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
-    pub fn merklize(tag: [u8; 16], leaves: &impl MerkleLeaves) -> Self {
-        let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commitment_id());
-        let len = nodes.len() as u32;
-        if len == 1 {
+    pub fn merklize(leaves: &impl MerkleLeaves) -> Self {
+        let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commit_id());
+        let base_width =
+            u32::try_from(nodes.len()).expect("too many merkle leaves (more than 2^32)");
+        if base_width == 1 {
             // If we have just one leaf, it's MerkleNode value is the root
             nodes.next().expect("length is 1")
         } else {
-            Self::_merklize(tag, nodes, u5::ZERO, len)
+            Self::_merklize(nodes, u5::ZERO, base_width, base_width)
         }
     }
 
-    pub fn _merklize(
-        tag: [u8; 16],
-        mut iter: impl ExactSizeIterator<Item = MerkleNode>,
+    fn _merklize(
+        mut iter: impl ExactSizeIterator<Item = MerkleHash>,
         depth: u5,
-        width: u32,
+        branch_width: u32,
+        base_width: u32,
     ) -> Self {
-        let len = iter.len() as u16;
-
-        if len <= 2 {
+        if branch_width <= 2 {
             match (iter.next(), iter.next()) {
-                (None, None) => MerkleNode::void(tag, depth, width),
-                // Here, a single node means Merkle tree width nonequal to the power of 2, thus we
+                (None, None) => MerkleHash::void(depth, base_width),
+                // Here, a single node means Merkle tree width non-equal to the power of 2, thus we
                 // need to process it with a special encoding.
-                (Some(branch), None) => MerkleNode::single(tag, depth, width, branch),
+                (Some(branch), None) => MerkleHash::single(depth, base_width, branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleNode::branches(tag, depth, width, branch1, branch2)
+                    MerkleHash::branches(depth, base_width, branch1, branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
         } else {
-            let div = len / 2 + len % 2;
+            let div = branch_width / 2 + branch_width % 2;
 
             let slice = iter
                 .by_ref()
@@ -175,24 +192,42 @@ impl MerkleNode {
                 // TODO: Do this without allocation
                 .collect::<Vec<_>>()
                 .into_iter();
-            let branch1 = Self::_merklize(tag, slice, depth + 1, width);
-            let branch2 = Self::_merklize(tag, iter, depth + 1, width);
+            let branch1 = Self::_merklize(slice, depth + 1, base_width, div);
+            let branch2 = Self::_merklize(iter, depth + 1, base_width, branch_width - div);
 
-            MerkleNode::branches(tag, depth, width, branch1, branch2)
+            MerkleHash::branches(depth, base_width, branch1, branch2)
         }
     }
 }
 
 pub trait MerkleLeaves {
-    type Leaf: CommitmentId<Id = MerkleNode>;
+    type Leaf: CommitId<CommitmentId = MerkleHash>;
     type LeafIter<'tmp>: ExactSizeIterator<Item = Self::Leaf>
     where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_>;
 }
 
+impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u8::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u8::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
 impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u16::MAX as usize }>
-where T: CommitmentId<Id = MerkleNode> + Copy
+where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
     type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
@@ -201,7 +236,25 @@ where T: CommitmentId<Id = MerkleNode> + Copy
 }
 
 impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
-where T: CommitmentId<Id = MerkleNode> + Copy
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u32::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u32::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
     type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;

@@ -21,7 +21,7 @@
 
 //! Convolved commitments (convolve-commit-verify scheme).
 
-use crate::{CommitEncode, CommitmentProtocol, VerifyEq};
+use crate::{CommitmentProtocol, VerifyEq};
 
 /// Error during commitment verification
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -47,7 +47,6 @@ pub trait ConvolveCommitProof<Msg, Source, Protocol>
 where
     Self: Sized + VerifyEq,
     Source: ConvolveCommit<Msg, Self, Protocol>,
-    Msg: CommitEncode,
     Protocol: CommitmentProtocol,
 {
     /// Supplement is a part of the proof data provided during commitment
@@ -169,7 +168,6 @@ where
 pub trait ConvolveCommit<Msg, Proof, Protocol>
 where
     Self: Sized,
-    Msg: CommitEncode,
     Proof: ConvolveCommitProof<Msg, Self, Protocol>,
     Protocol: CommitmentProtocol,
 {
