@@ -25,6 +25,7 @@ required-features = ["stl"]
 amplify = { workspace = true, features = ["hex", "apfloat"] }
 strict_encoding = { workspace = true }
 strict_types = { workspace = true }
+vesper-lang = "0.1.0"
 commit_encoding_derive = { version = "0.11.0-beta.3", path = "derive" }
 sha2 = "0.10.8"
 ripemd = "0.1.3"

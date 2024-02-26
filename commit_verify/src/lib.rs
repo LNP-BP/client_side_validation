@@ -56,13 +56,17 @@ pub mod stl;
 pub mod merkle;
 pub mod mpc;
 mod digest;
+pub mod vesper;
 
 pub use commit::{CommitVerify, TryCommitVerify, VerifyError};
 pub use conceal::Conceal;
 pub use convolve::{ConvolveCommit, ConvolveCommitProof, ConvolveVerifyError};
 pub use digest::{Digest, DigestExt, Ripemd160, Sha256};
 pub use embed::{EmbedCommitProof, EmbedCommitVerify, EmbedVerifyError, VerifyEq};
-pub use id::{CommitEncode, CommitEngine, CommitId, CommitmentId, CommitmentLayout, StrictHash};
+pub use id::{
+    CommitColType, CommitEncode, CommitEngine, CommitId, CommitLayout, CommitStep, CommitmentId,
+    CommitmentLayout, StrictHash,
+};
 pub use merkle::{MerkleBuoy, MerkleHash, MerkleLeaves, MerkleNode, NodeBranching};
 
 pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";

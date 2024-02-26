@@ -33,19 +33,19 @@ impl CommitDerive {
 
         let inner = match self.conf.strategy {
             StrategyAttr::Strict => quote! {
-                engine.commit_to(self);
+                engine.commit_to_serialized(self);
             },
             StrategyAttr::ConcealStrict => quote! {
                 use #trait_crate::Conceal;
-                engine.commit_to(&self.conceal());
+                engine.commit_to_concealed(&self.conceal());
             },
             StrategyAttr::Transparent => quote! {
                 use amplify::Wrapper;
-                engine.commit_to(self.as_inner());
+                engine.commit_to_serialized(self.as_inner());
             },
             StrategyAttr::Merklize => quote! {
                 use amplify::Wrapper;
-                engine.commit_to(self.as_inner().merklize());
+                engine.commit_to_merkle(self.as_inner().merklize());
             },
         };
 
