@@ -154,35 +154,35 @@ impl MerkleHash {
     /// [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md
     pub fn merklize(leaves: &impl MerkleLeaves) -> Self {
         let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commit_id());
-        let len = nodes.len() as u32;
-        if len == 1 {
+        let base_width =
+            u32::try_from(nodes.len()).expect("too many merkle leaves (more than 2^32)");
+        if base_width == 1 {
             // If we have just one leaf, it's MerkleNode value is the root
             nodes.next().expect("length is 1")
         } else {
-            Self::_merklize(nodes, u5::ZERO, len)
+            Self::_merklize(nodes, u5::ZERO, base_width, base_width)
         }
     }
 
-    pub fn _merklize(
+    fn _merklize(
         mut iter: impl ExactSizeIterator<Item = MerkleHash>,
         depth: u5,
-        width: u32,
+        branch_width: u32,
+        base_width: u32,
     ) -> Self {
-        let len = iter.len() as u16;
-
-        if len <= 2 {
+        if branch_width <= 2 {
             match (iter.next(), iter.next()) {
-                (None, None) => MerkleHash::void(depth, width),
-                // Here, a single node means Merkle tree width nonequal to the power of 2, thus we
+                (None, None) => MerkleHash::void(depth, base_width),
+                // Here, a single node means Merkle tree width non-equal to the power of 2, thus we
                 // need to process it with a special encoding.
-                (Some(branch), None) => MerkleHash::single(depth, width, branch),
+                (Some(branch), None) => MerkleHash::single(depth, base_width, branch),
                 (Some(branch1), Some(branch2)) => {
-                    MerkleHash::branches(depth, width, branch1, branch2)
+                    MerkleHash::branches(depth, base_width, branch1, branch2)
                 }
                 (None, Some(_)) => unreachable!(),
             }
         } else {
-            let div = len / 2 + len % 2;
+            let div = branch_width / 2 + branch_width % 2;
 
             let slice = iter
                 .by_ref()
@@ -192,10 +192,10 @@ impl MerkleHash {
                 // TODO: Do this without allocation
                 .collect::<Vec<_>>()
                 .into_iter();
-            let branch1 = Self::_merklize(slice, depth + 1, width);
-            let branch2 = Self::_merklize(iter, depth + 1, width);
+            let branch1 = Self::_merklize(slice, depth + 1, base_width, div);
+            let branch2 = Self::_merklize(iter, depth + 1, base_width, branch_width - div);
 
-            MerkleHash::branches(depth, width, branch1, branch2)
+            MerkleHash::branches(depth, base_width, branch1, branch2)
         }
     }
 }
@@ -236,6 +236,24 @@ where T: CommitId<CommitmentId = MerkleHash> + Copy
 }
 
 impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u32::MAX as usize }>
+where T: CommitId<CommitmentId = MerkleHash> + Copy
+{
+    type Leaf = T;
+    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+
+    fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
+}
+
+impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u32::MAX as usize }>
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
