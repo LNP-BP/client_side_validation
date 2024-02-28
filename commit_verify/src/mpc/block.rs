@@ -26,7 +26,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use amplify::confinement::{Confined, LargeVec};
 use amplify::num::u5;
-use strict_encoding::{StrictDeserialize, StrictEncode, StrictSerialize};
+use strict_encoding::{StrictDeserialize, StrictDumb, StrictEncode, StrictSerialize};
 
 use crate::id::CommitId;
 use crate::merkle::{MerkleBuoy, MerkleHash};
@@ -130,7 +130,7 @@ impl TreeNode {
 }
 
 /// Partially-concealed merkle tree data.
-#[derive(Getters, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Getters, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
@@ -151,9 +151,20 @@ pub struct MerkleBlock {
     cross_section: LargeVec<TreeNode>,
 
     /// Entropy used for placeholders. May be unknown if the message is provided
-    /// by a third-party, wishing to conceal that information.
+    /// by a third party, wishing to conceal that information.
     #[getter(as_copy)]
     entropy: Option<u64>,
+}
+
+impl StrictDumb for MerkleBlock {
+    fn strict_dumb() -> Self {
+        MerkleBlock {
+            depth: u5::ONE,
+            cofactor: 0,
+            cross_section: confined_vec![TreeNode::strict_dumb()],
+            entropy: Some(8845),
+        }
+    }
 }
 
 impl StrictSerialize for MerkleBlock {}
