@@ -1,5 +1,5 @@
 {-
-  Id: urn:ubideco:stl:57sPvZcwQaziec3ux249XoCMhziQpKB8Yw99U5oRwfqW#deluxe-safari-random
+  Id: urn:ubideco:stl:7qvjR4HCwJKF3mxE5GqsAaADces5JDRwb8ajAse9mkz3#exhibit-karate-ritual
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -18,10 +18,14 @@ import Std#DzTvt9gGhPUKD8Dkkjk9PDBhkJ4gtWxXWQjxnmUYLNrs#voyage-kimono-disco
 @mnemonic(ventura-equal-think)
 data Commitment        : [Byte ^ 32]
 
-@mnemonic(iris-explore-script)
+@mnemonic(pony-audio-mozart)
+data Leaf              : inhabited#16 (protocol ProtocolId, message Message)
+                       | entropy (entropy U64, pos U32)
+
+@mnemonic(owner-albert-lexicon)
 data MerkleBlock       : depth Std.U5#nitro-george-nebula
                        , cofactor U16
-                       , crossSection [TreeNode ^ ..0xffffffff]
+                       , crossSection [TreeNode ^ 1..0xffffffff]
                        , entropy U64?
 
 @mnemonic(culture-metro-modular)

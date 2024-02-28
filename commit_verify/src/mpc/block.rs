@@ -24,7 +24,7 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
-use amplify::confinement::{Confined, LargeVec};
+use amplify::confinement::{Confined, NonEmptyVec, U32 as U32MAX};
 use amplify::num::u5;
 use strict_encoding::{StrictDeserialize, StrictDumb, StrictEncode, StrictSerialize};
 
@@ -148,7 +148,7 @@ pub struct MerkleBlock {
 
     /// Tree cross-section.
     #[getter(skip)]
-    cross_section: LargeVec<TreeNode>,
+    cross_section: NonEmptyVec<TreeNode, U32MAX>,
 
     /// Entropy used for placeholders. May be unknown if the message is provided
     /// by a third party, wishing to conceal that information.
@@ -161,7 +161,7 @@ impl StrictDumb for MerkleBlock {
         MerkleBlock {
             depth: u5::ONE,
             cofactor: 0,
-            cross_section: confined_vec![TreeNode::strict_dumb()],
+            cross_section: NonEmptyVec::with(TreeNode::strict_dumb()),
             entropy: Some(8845),
         }
     }
@@ -188,7 +188,7 @@ impl From<&MerkleTree> for MerkleBlock {
                 })
         });
         let cross_section =
-            LargeVec::try_from_iter(iter).expect("tree width guarantees are broken");
+            NonEmptyVec::try_from_iter(iter).expect("tree width guarantees are broken");
 
         MerkleBlock {
             depth: tree.depth,
@@ -248,7 +248,7 @@ impl MerkleBlock {
         });
         cross_section.extend(rev.into_iter().rev());
         let cross_section =
-            LargeVec::try_from(cross_section).expect("tree width guarantees are broken");
+            NonEmptyVec::try_from(cross_section).expect("tree width guarantees are broken");
 
         Ok(MerkleBlock {
             depth: u5::with(path.len() as u8),
@@ -482,7 +482,7 @@ impl MerkleBlock {
         cross_section.extend(b);
 
         self.cross_section =
-            LargeVec::try_from(cross_section).expect("tree width guarantees are broken");
+            NonEmptyVec::try_from(cross_section).expect("tree width guarantees are broken");
 
         assert_eq!(
             self.cross_section
