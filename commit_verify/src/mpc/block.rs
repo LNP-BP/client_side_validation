@@ -24,9 +24,9 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
-use amplify::confinement::{Confined, LargeVec};
+use amplify::confinement::{Confined, NonEmptyVec, U32 as U32MAX};
 use amplify::num::u5;
-use strict_encoding::{StrictDeserialize, StrictEncode, StrictSerialize};
+use strict_encoding::{StrictDeserialize, StrictDumb, StrictEncode, StrictSerialize};
 
 use crate::id::CommitId;
 use crate::merkle::{MerkleBuoy, MerkleHash};
@@ -130,7 +130,7 @@ impl TreeNode {
 }
 
 /// Partially-concealed merkle tree data.
-#[derive(Getters, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Getters, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
@@ -148,12 +148,23 @@ pub struct MerkleBlock {
 
     /// Tree cross-section.
     #[getter(skip)]
-    cross_section: LargeVec<TreeNode>,
+    cross_section: NonEmptyVec<TreeNode, U32MAX>,
 
     /// Entropy used for placeholders. May be unknown if the message is provided
-    /// by a third-party, wishing to conceal that information.
+    /// by a third party, wishing to conceal that information.
     #[getter(as_copy)]
     entropy: Option<u64>,
+}
+
+impl StrictDumb for MerkleBlock {
+    fn strict_dumb() -> Self {
+        MerkleBlock {
+            depth: u5::ONE,
+            cofactor: 0,
+            cross_section: NonEmptyVec::with(TreeNode::strict_dumb()),
+            entropy: Some(8845),
+        }
+    }
 }
 
 impl StrictSerialize for MerkleBlock {}
@@ -177,7 +188,7 @@ impl From<&MerkleTree> for MerkleBlock {
                 })
         });
         let cross_section =
-            LargeVec::try_from_iter(iter).expect("tree width guarantees are broken");
+            NonEmptyVec::try_from_iter(iter).expect("tree width guarantees are broken");
 
         MerkleBlock {
             depth: tree.depth,
@@ -237,7 +248,7 @@ impl MerkleBlock {
         });
         cross_section.extend(rev.into_iter().rev());
         let cross_section =
-            LargeVec::try_from(cross_section).expect("tree width guarantees are broken");
+            NonEmptyVec::try_from(cross_section).expect("tree width guarantees are broken");
 
         Ok(MerkleBlock {
             depth: u5::with(path.len() as u8),
@@ -471,7 +482,7 @@ impl MerkleBlock {
         cross_section.extend(b);
 
         self.cross_section =
-            LargeVec::try_from(cross_section).expect("tree width guarantees are broken");
+            NonEmptyVec::try_from(cross_section).expect("tree width guarantees are broken");
 
         assert_eq!(
             self.cross_section

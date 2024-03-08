@@ -1,0 +1,83 @@
+{-
+  Description: Merklization and MPC workflows
+  Author: Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+  Copyright (C) 2024 LNP/BP Standards Association. All rights reserved.
+  License: Apache-2.0
+-}
+
+Merklization vesper lexicon=types+commitments
+
+
+-- General merklization workflows
+
+MerkleHash commitment hasher=SHA256 tagged=urn:ubideco:merkle:node#2024-01-31
+  MerkleNode serialized
+
+MerkleNode rec
+  branching enum void=0 single=1 branch=2 -- NodeBranching
+  depth is U8
+  width is U256
+  node1 bytes len=32 aka=MerkleHash
+  node2 bytes len=32 aka=MerkleHash
+
+
+-- Multi-protocol commitment workflows
+
+MerkleHash commitment hasher=SHA256 tagged=urn:ubideco:merkle:node#2024-01-31
+  Leaf serialized
+
+Leaf union
+  inhabited rec tag=0
+    protocol bytes len=32 aka=ProtocolId
+    message bytes len=32 aka=Message
+  entropy rec tag=1
+    entropy is U64
+    pos is U32
+
+Commitment commitment hasher=SHA256 tagged=urn:ubideco:mpc:commitment#2024-01-31
+  MerkleBlock concealed concealed=MerkleBlock
+
+MerkleBlock rec
+  depth enum {
+    _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7 _8=8
+    _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15 _16=16
+    _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23 _24=24
+    _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+  } -- U5
+  cofactor is U16
+  crossSection list len=1..MAX32
+    TreeNode union
+      concealedNode rec tag=0
+        depth enum {
+          _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7 _8=8
+          _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15 _16=16
+          _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23 _24=24
+          _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+        } -- U5
+        hash bytes len=32 aka=MerkleHash
+      commitmentLeaf rec tag=1
+        protocolId bytes len=32 aka=ProtocolId
+        message bytes len=32 aka=Message
+    some is U64 option wrapped tag=1
+
+Commitment commitment hasher=SHA256 tagged=urn:ubideco:mpc:commitment#2024-01-31
+  MerkleBlock concealed concealed=MerkleBlock
+
+MerkleTree rec
+  depth enum {
+    _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7 _8=8
+    _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15 _16=16
+    _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23 _24=24
+    _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+  } -- U5
+  entropy is U64
+  cofactor is U16
+  messages map len=0..MAX24
+    key bytes len=32 aka=ProtocolId
+    value bytes len=32 aka=Message
+  map map len=0..MAX24
+    key is U32
+    value tuple
+      _ bytes len=32 aka=ProtocolId
+      _ bytes len=32 aka=Message
+
