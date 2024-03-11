@@ -39,8 +39,8 @@ rand = "0.8.5"
 default = ["derive"]
 all = ["rand", "serde", "stl", "derive"]
 serde = ["serde_crate", "amplify/serde"]
-stl = ["strict_types/base85"]
+stl = ["strict_types/armor"]
 derive = []
 
 [package.metadata.docs.rs]
-features = [ "all" ]
+features = ["all"]

@@ -24,7 +24,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "4.6.0"
 strict_encoding = "2.7.0-beta.1"
-strict_types = "2.7.0-beta.1"
+strict_types = "2.7.0-beta.2"
 
 [package]
 name = "client_side_validation"
@@ -60,4 +60,4 @@ derive = ["commit_verify/derive"]
 serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
-features = [ "all" ]
+features = ["all"]
