@@ -271,7 +271,7 @@ where T: CommitEncode + StrictDumb
 /// implementation of its methods, since `CommitId` can't be manually
 /// implemented for any type since it has a generic blanket implementation.
 pub trait CommitId: CommitEncode {
-    #[doc = hidden]
+    #[doc(hidden)]
     fn commit(&self) -> CommitEngine;
 
     /// Performs commitment to client-side-validated data
