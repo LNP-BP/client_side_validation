@@ -1,8 +1,8 @@
 -----BEGIN STRICT TYPE LIB-----
-Id: 7qvjR4HCwJKF3mxE5GqsAaADces5JDRwb8ajAse9mkz3#exhibit-karate-ritual
+Id: urn:ubideco:stl:7qvjR4HCwJKF3mxE5GqsAaADces5JDRwb8ajAse9mkz3#exhibit-karate-ritual
 Name: CommitVerify
-Dependencies: 
-  DzTvt9gGhPUKD8Dkkjk9PDBhkJ4gtWxXWQjxnmUYLNrs#voyage-kimono-disco
+Dependency: DzTvt9gGhPUKD8Dkkjk9PDBhkJ4gtWxXWQjxnmUYLNrs#voyage-kimono-disco
+Checksum-SHA256: ab9c647839dade059c136e1259383094050afe96493376d9debca2dc05173a4a
 
 3`1{iZE18?WpZg|c>%!$%tl@;WNu_lcw-g2$nLVb<*lb*ENIx0;35YAw}=B%bYuY
 oQ*>kj0A^Tl*p6J$36SYb7g#;qpQBTpwL(~+!(f@;t~vt?k^)sV3;+s4Z*6U9bZu
