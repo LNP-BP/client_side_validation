@@ -402,6 +402,8 @@ mod test {
 
     #[test]
     fn test() {
+        #![allow(dead_code)]
+
         #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
         #[derive(Serialize, Deserialize)]
         #[serde(crate = "serde_crate")]
