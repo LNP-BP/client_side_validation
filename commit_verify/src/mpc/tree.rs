@@ -299,9 +299,8 @@ mod test {
         let mut counter = StreamWriter::counter::<{ usize::MAX }>();
         tree.strict_write(&mut counter).unwrap();
         eprintln!(
-            "Tree with {count} protocol-messages: depth {}, cofactor {}, width {}.\n\
-             Serialized length {} bytes.\n\
-             Takes {} msecs to generate",
+            "Tree with {count} protocol-messages: depth {}, cofactor {}, width {}.\nSerialized \
+             length {} bytes.\nTakes {} msecs to generate",
             tree.depth,
             tree.cofactor,
             tree.width(),
