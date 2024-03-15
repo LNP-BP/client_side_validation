@@ -155,7 +155,7 @@ impl MerkleHash {
     pub fn merklize(leaves: &impl MerkleLeaves) -> Self {
         let mut nodes = leaves.merkle_leaves().map(|leaf| leaf.commit_id());
         let base_width =
-            u32::try_from(nodes.len()).expect("too many merkle leaves (more than 2^32)");
+            u32::try_from(nodes.len()).expect("too many merkle leaves (more than 2^31)");
         if base_width == 1 {
             // If we have just one leaf, it's MerkleNode value is the root
             nodes.next().expect("length is 1")
@@ -192,8 +192,8 @@ impl MerkleHash {
                 // TODO: Do this without allocation
                 .collect::<Vec<_>>()
                 .into_iter();
-            let branch1 = Self::_merklize(slice, depth + 1, base_width, div);
-            let branch2 = Self::_merklize(iter, depth + 1, base_width, branch_width - div);
+            let branch1 = Self::_merklize(slice, depth + 1, div, base_width);
+            let branch2 = Self::_merklize(iter, depth + 1, branch_width - div, base_width);
 
             MerkleHash::branches(depth, base_width, branch1, branch2)
         }

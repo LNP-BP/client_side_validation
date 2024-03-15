@@ -69,6 +69,7 @@ impl MerkleTree {
                 .unwrap_or_else(|| Leaf::entropy(self.entropy, pos))
         });
         let leaves = LargeVec::try_from_iter(iter).expect("tree width has u32-bound size");
+        debug_assert_eq!(leaves.len_u32(), self.width());
         MerkleHash::merklize(&leaves)
     }
 }
@@ -298,10 +299,12 @@ mod test {
         let mut counter = StreamWriter::counter::<{ usize::MAX }>();
         tree.strict_write(&mut counter).unwrap();
         eprintln!(
-            "Tree with {count} protocol-messages: depth {}, cofactor {}. Serialized length {} \
-             bytes. Takes {} msecs to generate",
+            "Tree with {count} protocol-messages: depth {}, cofactor {}, width {}.\n\
+             Serialized length {} bytes.\n\
+             Takes {} msecs to generate",
             tree.depth,
             tree.cofactor,
+            tree.width(),
             counter.unconfine().count,
             elapsed_gen.as_millis(),
         );
