@@ -21,15 +21,18 @@
 
 use strict_types::{CompileError, LibBuilder, TypeLib};
 
-use crate::{mpc, MerkleHash, MerkleNode, StrictHash, LIB_NAME_COMMIT_VERIFY};
+use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "urn:ubideco:stl:7qvjR4HCwJKF3mxE5GqsAaADces5JDRwb8ajAse9mkz3#exhibit-karate-ritual";
+    "urn:ubideco:stl:7EpM1uymEteG4g4xmF5ntKYX1wXXpbQj5iLiDreH4jWa#protein-donald-cool";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
         strict_types::stl::std_stl().to_dependency()
     })
+    .transpile::<ReservedBytes<1>>()
+    .transpile::<ReservedBytes<2>>()
+    .transpile::<ReservedBytes<4>>()
     .transpile::<mpc::MerkleTree>()
     .transpile::<mpc::MerkleBlock>()
     .transpile::<mpc::MerkleProof>()
