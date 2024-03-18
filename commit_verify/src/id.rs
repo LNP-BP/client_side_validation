@@ -131,9 +131,9 @@ impl CommitEngine {
         self.inner_commit_to::<_, 32>(&root);
     }
 
-    pub fn commit_to_concealed<T: Conceal>(&mut self, value: &T)
+    pub fn commit_to_concealed<T>(&mut self, value: &T)
     where
-        T: StrictType,
+        T: Conceal + StrictType,
         T::Concealed: StrictEncode,
     {
         let fqn = commitment_fqn::<T>();

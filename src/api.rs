@@ -392,18 +392,17 @@ pub trait SealResolver<Seal> {
 
 #[cfg(test)]
 mod test {
-    //! Tests use emulation of a simple client-side-validated state, consisting
-    //! of an array of data items, each of which has a name bound to a certain
-    //! bitcoin single-use-seal.
+    // Tests use emulation of a simple client-side-validated state, consisting
+    // of an array of data items, each of which has a name bound to a certain
+    // bitcoin single-use-seal.
 
     use single_use_seals::{SealProtocol, SealStatus, SealWitness};
 
     use super::*;
 
     #[test]
+    #[allow(dead_code)]
     fn test() {
-        #![allow(dead_code)]
-
         #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
         #[derive(Serialize, Deserialize)]
         #[serde(crate = "serde_crate")]
