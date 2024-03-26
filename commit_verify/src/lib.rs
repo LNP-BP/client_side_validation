@@ -57,6 +57,7 @@ pub mod merkle;
 pub mod mpc;
 mod digest;
 pub mod vesper;
+mod validate;
 
 pub use commit::{CommitVerify, TryCommitVerify, VerifyError};
 pub use conceal::Conceal;
@@ -68,6 +69,7 @@ pub use id::{
     CommitmentLayout, StrictHash,
 };
 pub use merkle::{MerkleBuoy, MerkleHash, MerkleLeaves, MerkleNode, NodeBranching};
+pub use validate::{Invalid, Valid, Validate, ValidationReport, Verifiable};
 
 pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 
