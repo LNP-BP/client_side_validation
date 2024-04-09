@@ -24,7 +24,7 @@ use strict_types::{CompileError, LibBuilder, TypeLib};
 use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "urn:ubideco:stl:7EpM1uymEteG4g4xmF5ntKYX1wXXpbQj5iLiDreH4jWa#protein-donald-cool";
+    "urn:ubideco:stl:GCWLX5TjFmMDCJr5cxWtwoSajBWDWbkQVSuTNbrtD1tg#egypt-wedding-cupid";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
