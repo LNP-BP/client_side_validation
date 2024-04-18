@@ -170,7 +170,9 @@ impl StrictDumb for MerkleBlock {
 impl StrictSerialize for MerkleBlock {}
 impl StrictDeserialize for MerkleBlock {}
 
-impl Proof for MerkleBlock {}
+impl Proof for MerkleBlock {
+    fn matches(&self, other: &Self) -> bool { self.commit_id() == other.commit_id() }
+}
 
 impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
@@ -621,7 +623,11 @@ pub struct MerkleProof {
     path: Confined<Vec<MerkleHash>, 0, 32>,
 }
 
-impl Proof for MerkleProof {}
+impl Proof for MerkleProof {
+    fn matches(&self, other: &Self) -> bool {
+        self.cofactor == other.cofactor && self.merkle_root() == other.merkle_root()
+    }
+}
 
 impl MerkleProof {
     /// Computes the depth of the merkle tree.
@@ -638,6 +644,11 @@ impl MerkleProof {
 
     /// Returns inner merkle path representation
     pub fn as_path(&self) -> &[MerkleHash] { &self.path }
+
+    /// Returns the root of the merkle path.
+    ///
+    /// If the MPC proof contains only a single message returns None
+    pub fn merkle_root(&self) -> Option<MerkleHash> { self.path.get(0).copied() }
 
     /// Convolves the proof with the `message` under the given `protocol_id`,
     /// producing [`Commitment`].
