@@ -259,6 +259,19 @@ impl MerkleBlock {
     }
 
     /// Conceals all commitments in the block except for the commitment under
+    /// given `protocol_id`. Also removes information about the entropy value
+    /// used.
+    ///
+    /// # Error
+    ///
+    /// If leaf with the given `protocol_id` is not found (absent or already
+    /// concealed), errors with [`LeafNotKnown`] error.
+    pub fn conceal_other(&mut self, protocol: ProtocolId) -> Result<(), LeafNotKnown> {
+        self.conceal_except([protocol])?;
+        Ok(())
+    }
+
+    /// Conceals all commitments in the block except for the commitment under
     /// given `protocol_id`s. Also removes information about the entropy value
     /// used.
     ///
@@ -516,7 +529,7 @@ Changed commitment id: {}",
         mut self,
         protocol_id: ProtocolId,
     ) -> Result<MerkleProof, LeafNotKnown> {
-        self.conceal_except([protocol_id])?;
+        self.conceal_other(protocol_id)?;
         let mut map = BTreeMap::<u5, MerkleHash>::new();
         for node in &self.cross_section {
             match node {
