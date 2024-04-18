@@ -72,10 +72,10 @@ impl Attribute for Attr {
 
     fn name(&self) -> Option<Ident> {
         match self {
-            Attr::Tagged(_) => Some(tn!("tagged")),
-            Attr::Concealed(_) => Some(tn!("concealed")),
-            Attr::LenRange(_) => Some(tn!("len")),
-            Attr::Hasher => Some(tn!("hasher")),
+            Attr::Tagged(_) => Some(ident!("tagged")),
+            Attr::Concealed(_) => Some(ident!("concealed")),
+            Attr::LenRange(_) => Some(ident!("len")),
+            Attr::Hasher => Some(ident!("hasher")),
         }
     }
 
@@ -84,7 +84,7 @@ impl Attribute for Attr {
             Attr::Tagged(tag) => AttrVal::Expr(AttrExpr::Tag(tag)),
             Attr::Concealed(fqn) => AttrVal::Ident(fqn.name.to_ident()),
             Attr::LenRange(range) => AttrVal::Expr(AttrExpr::LenRange(range.clone())),
-            Attr::Hasher => AttrVal::Ident(tn!("SHA256")),
+            Attr::Hasher => AttrVal::Ident(ident!("SHA256")),
         }
     }
 }
