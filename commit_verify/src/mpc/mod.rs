@@ -38,4 +38,10 @@ pub use tree::{Error, MerkleTree};
 pub trait Proof:
     strict_encoding::StrictEncode + strict_encoding::StrictDecode + Eq + std::fmt::Debug
 {
+    /// Verifies whether one MPC proof matches another MPC proof.
+    ///
+    /// This is not the same as `Eq`, since two proofs may reveal different
+    /// messages, and be non-equivalent, at the same time matching each other,
+    /// i.e. having the same merkle root and producing the same commitments.
+    fn matches(&self, other: &Self) -> bool;
 }

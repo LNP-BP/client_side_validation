@@ -27,7 +27,7 @@ pub use self::commit::Error;
 use crate::merkle::MerkleHash;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::{Commitment, MerkleBlock, Message, MessageMap, Proof, ProtocolId};
-use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
+use crate::{CommitId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// Number of cofactor variants tried before moving to the next tree depth.
 #[allow(dead_code)]
@@ -58,7 +58,9 @@ pub struct MerkleTree {
     pub(super) map: OrderedMap,
 }
 
-impl Proof for MerkleTree {}
+impl Proof for MerkleTree {
+    fn matches(&self, other: &Self) -> bool { self.commit_id() == other.commit_id() }
+}
 
 impl MerkleTree {
     pub fn root(&self) -> MerkleHash {
