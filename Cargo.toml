@@ -17,7 +17,7 @@ version = "0.11.0-beta.5"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
-rust-version = "1.69" # Due to TOML in amplify dependency
+rust-version = "1.69.0" # Due to TOML in amplify dependency
 edition = "2021"
 license = "Apache-2.0"
 
