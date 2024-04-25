@@ -1,5 +1,5 @@
 {-
-  Id: urn:ubideco:stl:GCWLX5TjFmMDCJr5cxWtwoSajBWDWbkQVSuTNbrtD1tg#egypt-wedding-cupid
+  Id: stl:4dHdHDpB-17hoScv-Z8f00we-UaQ4D@G-tTV1vSN-JseSamU#tennis-peace-olympic
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -11,69 +11,69 @@
 @context
 typelib CommitVerify
 
-import Std#EcCNgrgLaygt3tCZNu2ZVEzMzSAZYEUeTNAVi5E81YWi#aspirin-mango-average
-  use U5#nitro-george-nebula
+import Std#ralph-blue-lucky
+  use U5#orbit-graph-sonic
 
 
-@mnemonic(ventura-equal-think)
+@mnemonic(miami-legacy-empire)
 data Commitment        : [Byte ^ 32]
 
-@mnemonic(pony-audio-mozart)
+@mnemonic(model-tourist-formal)
 data Leaf              : inhabited#16 (protocol ProtocolId, message Message)
                        | entropy (entropy U64, pos U32)
 
-@mnemonic(owner-albert-lexicon)
-data MerkleBlock       : depth Std.U5#nitro-george-nebula
+@mnemonic(snake-kitchen-june)
+data MerkleBlock       : depth Std.U5
                        , cofactor U16
                        , crossSection [TreeNode ^ 1..0xffffffff]
                        , entropy U64?
 
-@mnemonic(culture-metro-modular)
+@mnemonic(horse-popcorn-bundle)
 data MerkleHash        : [Byte ^ 32]
 
-@mnemonic(input-mouse-amber)
+@mnemonic(cadet-guitar-trilogy)
 data MerkleNode        : branching NodeBranching
                        , depth U8
                        , width U256
                        , node1 MerkleHash
                        , node2 MerkleHash
 
-@mnemonic(father-adios-common)
+@mnemonic(potato-rubber-hobby)
 data MerkleProof       : pos U32
                        , cofactor U16
                        , path [MerkleHash ^ ..0x20]
 
-@mnemonic(civil-left-nova)
-data MerkleTree        : depth Std.U5#nitro-george-nebula
+@mnemonic(horizon-pigment-dialog)
+data MerkleTree        : depth Std.U5
                        , entropy U64
                        , cofactor U16
                        , messages {ProtocolId -> ^ ..0xffffff Message}
                        , map {U32 -> ^ ..0xffffff ProtocolId, Message}
 
-@mnemonic(shampoo-bishop-morgan)
+@mnemonic(druid-blitz-rover)
 data Message           : [Byte ^ 32]
 
-@mnemonic(food-amanda-burger)
+@mnemonic(member-dexter-price)
 data NodeBranching     : void | single | branch
 
 
-@mnemonic(gamma-banjo-corona)
+@mnemonic(shadow-eclipse-program)
 data ProtocolId        : [Byte ^ 32]
 
-@mnemonic(joker-lemon-mental)
+@mnemonic(origin-roger-relax)
 data ReservedBytes1    : [Byte ^ 1]
 
-@mnemonic(pocket-habitat-soviet)
+@mnemonic(florida-libra-circus)
 data ReservedBytes2    : [Byte ^ 2]
 
-@mnemonic(claudia-drink-digital)
+@mnemonic(young-goblin-academy)
 data ReservedBytes4    : [Byte ^ 4]
 
-@mnemonic(cheese-final-locate)
+@mnemonic(pizza-sherman-sound)
 data StrictHash        : [Byte ^ 32]
 
-@mnemonic(empty-active-truck)
-data TreeNode          : concealedNode (depth Std.U5#nitro-george-nebula, hash MerkleHash)
+@mnemonic(bahama-toyota-disco)
+data TreeNode          : concealedNode (depth Std.U5, hash MerkleHash)
                        | commitmentLeaf (protocolId ProtocolId, message Message)
 
 

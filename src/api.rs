@@ -421,6 +421,7 @@ mod test {
             }
         }
 
+        #[allow(non_local_definitions)]
         impl SealWitness<Seal> for () {
             type Message = Vec<u8>;
             type Error = Issue;
