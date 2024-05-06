@@ -13,7 +13,7 @@ jobs:
   default:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       # NOTE: Dont use nix here, everything should be based on the ubuntu-latest
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
@@ -38,7 +38,7 @@ jobs:
           - derive
           - all
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v26
       - name: Check feature ${{ matrix.feature }} only
@@ -52,7 +52,7 @@ jobs:
       matrix:
         os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022 ]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       # NOTE: Dont use nix in platform checks everything should based on the host system
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
@@ -71,7 +71,7 @@ jobs:
       matrix:
         toolchain: [ nightly, beta, stable, msrv ]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v26
       - name: All features
