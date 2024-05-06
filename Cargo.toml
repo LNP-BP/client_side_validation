@@ -61,3 +61,8 @@ serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]
+
+[patch.crates-io]
+ascii-armor = { git = "https://github.com/UBIDECO/ascii-armor" }
+strict_encoding = { git = "https://github.com/strict-types/strict-encoding", branch = "develop" }
+strict_types = { git = "https://github.com/strict-types/strict-types", branch = "develop" }
