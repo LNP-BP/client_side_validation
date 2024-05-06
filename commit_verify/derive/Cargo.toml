@@ -18,7 +18,7 @@ proc-macro = true
 [dependencies]
 amplify = { workspace = true }
 quote = "1"
-syn = { version = "1", features = ["full"] }
+syn = { version = "2", features = ["full"] }
 proc-macro2 = "1"
 amplify_syn = "2.0.0"
 

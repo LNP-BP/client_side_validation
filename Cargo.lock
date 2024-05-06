@@ -230,7 +230,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strict_encoding",
- "syn 1.0.109",
+ "syn 2.0.48",
 ]
 
 [[package]]
