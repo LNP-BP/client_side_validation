@@ -648,7 +648,7 @@ impl MerkleProof {
     /// Returns the root of the merkle path.
     ///
     /// If the MPC proof contains only a single message returns None
-    pub fn merkle_root(&self) -> Option<MerkleHash> { self.path.get(0).copied() }
+    pub fn merkle_root(&self) -> Option<MerkleHash> { self.path.first().copied() }
 
     /// Convolves the proof with the `message` under the given `protocol_id`,
     /// producing [`Commitment`].
