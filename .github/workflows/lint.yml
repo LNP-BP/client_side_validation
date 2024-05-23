@@ -25,7 +25,7 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v26
       - name: Clippy
-        run: nix develop .#stable -c cargo clippy --workspace --all-features --all-targets -- -D warnings
+        run: nix develop .#nightly -c cargo clippy --workspace --all-features --all-targets -- -D warnings
   doc:
     runs-on: ubuntu-latest
     steps:
