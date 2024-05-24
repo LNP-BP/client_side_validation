@@ -18,7 +18,7 @@ path = "src/lib.rs"
 
 [dependencies]
 amplify_derive = "4.0.0"
-async-trait = { version = "0.1.73", optional = true }
+async-trait = { version = "0.1.80", optional = true }
 
 [features]
 default = []
@@ -26,4 +26,4 @@ all = ["async"]
 async = ["async-trait"]
 
 [package.metadata.docs.rs]
-features = [ "all" ]
+features = ["all"]

@@ -13,7 +13,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.11.0-beta.5"
+version = "0.11.0-beta.6"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
@@ -23,8 +23,8 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "4.6.0"
-strict_encoding = "2.7.0-beta.3"
-strict_types = "2.7.0-beta.3"
+strict_encoding = "2.7.0-beta.4"
+strict_types = "2.7.0-beta.4"
 
 [package]
 name = "client_side_validation"
@@ -46,8 +46,8 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-commit_verify = { version = "0.11.0-beta.5", path = "./commit_verify", default-features = false }
-single_use_seals = { version = "0.11.0-beta.5", path = "./single_use_seals" }
+commit_verify = { version = "0.11.0-beta.6", path = "./commit_verify", default-features = false }
+single_use_seals = { version = "0.11.0-beta.6", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
 [features]
@@ -61,8 +61,3 @@ serde = ["serde_crate", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]
-
-[patch.crates-io]
-ascii-armor = { git = "https://github.com/UBIDECO/ascii-armor" }
-strict_encoding = { git = "https://github.com/strict-types/strict-encoding", branch = "develop" }
-strict_types = { git = "https://github.com/strict-types/strict-types", branch = "develop" }

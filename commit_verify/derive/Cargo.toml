@@ -20,9 +20,9 @@ amplify = { workspace = true }
 quote = "1"
 syn = { version = "1", features = ["full"] }
 proc-macro2 = "1"
-amplify_syn = "2.0.0"
+amplify_syn = "2.0.1"
 
 [dev-dependencies]
 commit_verify = { path = ".." }
-compiletest_rs = "0.9.0"
+compiletest_rs = "0.10.2"
 strict_encoding = { workspace = true }
