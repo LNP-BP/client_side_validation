@@ -129,6 +129,30 @@ impl TreeNode {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(StrictType, StrictDumb, StrictEncode, StrictDecode)]
+#[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
+#[derive(CommitEncode)]
+#[commit_encode(crate = crate, strategy = strict, id = Commitment)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+pub struct MerkleConcealed {
+    /// Tree depth (up to 16).
+    depth: u5,
+
+    /// Cofactor is used as an additive to the modulo divisor to improve packing
+    /// of protocols inside a tree of a given depth.
+    cofactor: u16,
+
+    /// The root of the Merkle Tree
+    merkle_root: MerkleHash,
+}
+
+impl Conceal for MerkleConcealed {
+    type Concealed = Self;
+
+    fn conceal(&self) -> Self::Concealed { *self }
+}
+
 /// Partially-concealed merkle tree data.
 #[derive(Getters, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
@@ -588,7 +612,7 @@ Changed commitment id: {}",
 }
 
 impl Conceal for MerkleBlock {
-    type Concealed = Self;
+    type Concealed = MerkleConcealed;
 
     /// Reduces merkle tree into merkle tree root.
     fn conceal(&self) -> Self::Concealed {
@@ -597,7 +621,18 @@ impl Conceal for MerkleBlock {
             .conceal_except([])
             .expect("broken internal MerkleBlock structure");
         debug_assert_eq!(concealed.cross_section.len(), 1);
-        concealed
+        let Some(TreeNode::ConcealedNode {
+            depth: u5::ZERO,
+            hash,
+        }) = concealed.cross_section.first()
+        else {
+            panic!("broken MerkleBlock conceal procedure")
+        };
+        MerkleConcealed {
+            depth: self.depth,
+            cofactor: self.cofactor,
+            merkle_root: *hash,
+        }
     }
 }
 

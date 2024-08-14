@@ -79,6 +79,11 @@ Merklization vesper lexicon=types+commitments
     let tt = sys.type_tree("CommitVerify.Leaf").unwrap();
     writeln!(file, "{tt}").unwrap();
 
+    let layout = mpc::MerkleConcealed::commitment_layout();
+    writeln!(file, "{layout}").unwrap();
+    let tt = sys.type_tree("CommitVerify.MerkleConcealed").unwrap();
+    writeln!(file, "{tt}").unwrap();
+
     let layout = mpc::MerkleBlock::commitment_layout();
     writeln!(file, "{layout}").unwrap();
     let tt = sys.type_tree("CommitVerify.MerkleBlock").unwrap();

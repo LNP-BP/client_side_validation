@@ -1,5 +1,5 @@
 {-
-  Id: stl:4dHdHDpB-17hoScv-Z8f00we-UaQ4D!G-tTV1vSN-JseSamU#tennis-peace-olympic
+  Id: stl:egMd32l9-y$Kod0o-$FRcNAV-Q4U$O5h-pskW9YM-$irF0yY#miller-pancake-elastic
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -27,6 +27,11 @@ data MerkleBlock       : depth Std.U5
                        , cofactor U16
                        , crossSection [TreeNode ^ 1..0xffffffff]
                        , entropy U64?
+
+@mnemonic(aztec-miracle-igloo)
+data MerkleConcealed   : depth Std.U5
+                       , cofactor U16
+                       , merkleRoot MerkleHash
 
 @mnemonic(horse-popcorn-bundle)
 data MerkleHash        : [Byte ^ 32]

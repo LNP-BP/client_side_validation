@@ -30,7 +30,9 @@ mod block;
 pub use atoms::{
     Commitment, Leaf, Message, MessageMap, MultiSource, ProtocolId, MPC_MINIMAL_DEPTH,
 };
-pub use block::{InvalidProof, LeafNotKnown, MergeError, MerkleBlock, MerkleProof};
+pub use block::{
+    InvalidProof, LeafNotKnown, MergeError, MerkleBlock, MerkleConcealed, MerkleProof,
+};
 pub use tree::{Error, MerkleTree};
 
 /// Marker trait for variates of LNPBP-4 commitment proofs, which differ by the
