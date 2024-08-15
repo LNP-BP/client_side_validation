@@ -47,7 +47,7 @@
 //! A single-use-seal implementation supports two fundamental operations:
 //! * `Close(l,m) → w` — Close seal l over message m, producing a witness `w`.
 //! * `Verify(l,w,m) → bool` — Verify that the seal l was closed over message
-//! `m`.
+//!   `m`.
 //!
 //! A single-use-seal implementation is secure if it is impossible for an
 //! attacker to cause the Verify function to return true for two distinct

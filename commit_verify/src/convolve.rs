@@ -106,9 +106,10 @@ where
 /// commitment to a *message* and a *proof*:
 /// - `self + supplement -> internal_repr`;
 /// - `internal_repr + msg -> (commitment, proof)`.
+///
 /// Later on, a verifier presented with a message and the proof may do the
-/// commitment verification in the following way:
-/// `msg, proof, commitment -> bool`.
+/// commitment verification in the following way: `msg, proof, commitment ->
+/// bool`.
 ///
 /// To use *convolve-commit-verify scheme* one needs to implement this trait for
 /// a data structure acting as a container for a specific commitment under

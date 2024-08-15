@@ -293,8 +293,8 @@ where Self::ValidationItem: 'client_data
     /// - validates internal data consistency with
     ///   [`ClientData::validate_internal_consistency`] method,
     /// - validates single-use-seal for the item using the provided `resolver`
-    ///   object,
-    /// adding reported issues to the [`Status`] log returned by the function.
+    ///   object, adding reported issues to the [`Status`] log returned by the
+    ///   function.
     ///
     /// The function should not fail on any validation failures and run the
     /// whole validation process up to the end, accumulating all failures and

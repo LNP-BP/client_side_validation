@@ -17,14 +17,14 @@ version = "0.11.0-beta.6"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
-rust-version = "1.70.0" # Due to mnemonic <- baid64 <- strict_types
+rust-version = "1.75.0" # Due to amplify
 edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "4.6.0"
-strict_encoding = "2.7.0-beta.4"
-strict_types = "2.7.0-beta.4"
+amplify = "4.7.0"
+strict_encoding = "2.7.0-rc.1"
+strict_types = "2.7.0-rc.1"
 
 [package]
 name = "client_side_validation"

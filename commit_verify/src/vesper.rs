@@ -180,8 +180,8 @@ impl CommitLayout {
         VesperCommit {
             subject,
             predicate: Pred::Commitment,
-            attributes: confined_vec![Attr::Hasher, Attr::Tagged(self.tag())],
-            content: Confined::from_iter_unsafe(content),
+            attributes: small_vec![Attr::Hasher, Attr::Tagged(self.tag())],
+            content: Confined::from_iter_checked(content),
             comment: None,
         }
     }
