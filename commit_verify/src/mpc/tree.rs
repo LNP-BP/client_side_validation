@@ -26,7 +26,9 @@ use amplify::Wrapper;
 pub use self::commit::Error;
 use crate::merkle::MerkleHash;
 use crate::mpc::atoms::Leaf;
-use crate::mpc::{Commitment, MerkleBlock, Message, MessageMap, Proof, ProtocolId};
+use crate::mpc::{
+    Commitment, MerkleBlock, MerkleConcealed, Message, MessageMap, Proof, ProtocolId,
+};
 use crate::{CommitId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// Number of cofactor variants tried before moving to the next tree depth.
@@ -77,7 +79,7 @@ impl MerkleTree {
 }
 
 impl Conceal for MerkleTree {
-    type Concealed = MerkleBlock;
+    type Concealed = MerkleConcealed;
 
     fn conceal(&self) -> Self::Concealed { MerkleBlock::from(self.clone()).conceal() }
 }
