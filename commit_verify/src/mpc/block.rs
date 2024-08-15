@@ -134,7 +134,11 @@ impl TreeNode {
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = strict, id = Commitment)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 pub struct MerkleConcealed {
     /// Tree depth (up to 16).
     depth: u5,
