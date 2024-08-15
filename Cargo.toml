@@ -50,6 +50,14 @@ commit_verify = { version = "0.11.0-beta.6", path = "./commit_verify", default-f
 single_use_seals = { version = "0.11.0-beta.6", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+rand = "0.8.4"
+getrandom = { version = "0.2", features = ["js"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [features]
 default = ["derive"]
 all = ["serde", "rand", "async", "stl"]

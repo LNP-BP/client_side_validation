@@ -184,8 +184,12 @@ name = "client_side_validation"
 version = "0.11.0-beta.6"
 dependencies = [
  "commit_verify",
+ "getrandom",
+ "rand",
  "serde",
  "single_use_seals",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -208,7 +212,6 @@ version = "0.11.0-beta.6"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
- "getrandom",
  "rand",
  "ripemd",
  "serde",
@@ -216,8 +219,6 @@ dependencies = [
  "strict_encoding",
  "strict_types",
  "vesper-lang",
- "wasm-bindgen",
- "wasm-bindgen-test",
 ]
 
 [[package]]

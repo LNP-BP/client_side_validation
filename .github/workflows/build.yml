@@ -57,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ nightly, beta, stable ]
+        toolchain: [ nightly, beta, stable, 1.75.0 ]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -65,17 +65,3 @@ jobs:
           toolchain: ${{matrix.toolchain}}
       - name: Toolchain ${{matrix.toolchain}}
         run: cargo +${{matrix.toolchain}} check --workspace --all-targets --all-features
-  msrv:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: SebRollen/toml-action@v1.2.0
-        id: msrv
-        with:
-          file: 'Cargo.toml'
-          field: 'workspace.rust-version'
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{steps.msrv.outputs.value}}
-      - name: Toolchain ${{steps.msrv.outputs.value}}
-        run: cargo +${{steps.msrv.outputs.value}} check --workspace --all-targets --all-features
