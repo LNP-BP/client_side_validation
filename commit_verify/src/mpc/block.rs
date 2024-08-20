@@ -206,7 +206,7 @@ impl From<&MerkleTree> for MerkleBlock {
     fn from(tree: &MerkleTree) -> Self {
         let map = &tree.map;
 
-        let iter = (0..tree.width()).map(|pos| {
+        let iter = (0..tree.width_limit()).map(|pos| {
             map.get(&pos)
                 .map(|(protocol_id, message)| TreeNode::CommitmentLeaf {
                     protocol_id: *protocol_id,
@@ -242,23 +242,23 @@ impl MerkleBlock {
     ) -> Result<Self, InvalidProof> {
         let path = proof.as_path();
         let mut pos = proof.pos;
-        let mut width = proof.width();
+        let mut width_limit = proof.width_limit();
 
-        let expected = protocol_id_pos(protocol_id, proof.cofactor, width);
+        let expected = protocol_id_pos(protocol_id, proof.cofactor, proof.depth());
         if expected != pos {
             return Err(InvalidProof {
                 protocol_id,
                 expected,
                 actual: pos,
-                width,
+                width: width_limit,
             });
         }
 
         let mut dir = Vec::with_capacity(path.len());
         let mut rev = Vec::with_capacity(path.len());
         for (depth, hash) in path.iter().enumerate() {
-            let list = if pos >= width / 2 {
-                pos -= width / 2;
+            let list = if pos >= width_limit / 2 {
+                pos -= width_limit / 2;
                 &mut dir
             } else {
                 &mut rev
@@ -267,7 +267,7 @@ impl MerkleBlock {
                 depth: u5::with(depth as u8) + 1,
                 hash: *hash,
             });
-            width /= 2;
+            width_limit /= 2;
         }
 
         let mut cross_section = Vec::with_capacity(path.len() + 1);
@@ -375,7 +375,7 @@ impl MerkleBlock {
                             offset += 2u32.pow(self.depth.to_u8() as u32 - depth1.to_u8() as u32);
                         } else {
                             self.cross_section[pos] =
-                                TreeNode::with(hash1, hash2, depth, self.width());
+                                TreeNode::with(hash1, hash2, depth, self.width_limit());
                             self.cross_section
                                 .remove(pos + 1)
                                 .expect("we allow 0 elements");
@@ -419,7 +419,7 @@ impl MerkleBlock {
             if count == prev_count {
                 break;
             }
-            debug_assert_eq!(offset, self.width());
+            debug_assert_eq!(offset, self.width_limit());
         }
 
         Ok(count)
@@ -533,7 +533,7 @@ impl MerkleBlock {
                 .map(|n| self.depth.to_u8() - n.depth_or(self.depth).to_u8())
                 .map(|height| 2u32.pow(height as u32))
                 .sum::<u32>(),
-            self.width(),
+            self.width_limit(),
             "LNPBP-4 merge-reveal procedure is broken; please report the below data to the LNP/BP \
              Standards Association
 Original block: {orig:#?}
@@ -591,11 +591,15 @@ Changed commitment id: {}",
 
     /// Computes position for a given `protocol_id` within the tree leaves.
     pub fn protocol_id_pos(&self, protocol_id: ProtocolId) -> u32 {
-        protocol_id_pos(protocol_id, self.cofactor, self.width())
+        protocol_id_pos(protocol_id, self.cofactor, self.depth)
     }
 
-    /// Computes the width of the merkle tree.
-    pub fn width(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
+    /// Computes the maximum possible width of the merkle tree.
+    pub fn width_limit(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
+
+    /// Computes the factored width of the merkle tree according to the formula
+    /// `2 ^ depth - cofactor`.
+    pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
     /// Constructs [`MessageMap`] for revealed protocols and messages.
     pub fn to_known_message_map(&self) -> MessageMap {
@@ -670,10 +674,14 @@ impl Proof for MerkleProof {
 
 impl MerkleProof {
     /// Computes the depth of the merkle tree.
-    pub fn depth(&self) -> u8 { self.path.len() as u8 }
+    pub fn depth(&self) -> u5 { u5::with(self.path.len() as u8) }
 
-    /// Computes the width of the merkle tree.
-    pub fn width(&self) -> u32 { 2u32.pow(self.depth() as u32) }
+    /// Computes the maximum width of the merkle tree.
+    pub fn width_limit(&self) -> u32 { 2u32.pow(self.depth().to_u8() as u32) }
+
+    /// Computes the factored width of the merkle tree according to the formula
+    /// `2 ^ depth - cofactor`.
+    pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
     /// Converts the proof into inner merkle path representation
     pub fn into_path(self) -> Confined<Vec<MerkleHash>, 0, 32> { self.path }
