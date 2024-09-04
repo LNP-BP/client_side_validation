@@ -66,14 +66,14 @@ impl Proof for MerkleTree {
 
 impl MerkleTree {
     pub fn root(&self) -> MerkleHash {
-        let iter = (0..self.width()).map(|pos| {
+        let iter = (0..self.width_limit()).map(|pos| {
             self.map
                 .get(&pos)
                 .map(|(protocol, msg)| Leaf::inhabited(*protocol, *msg))
                 .unwrap_or_else(|| Leaf::entropy(self.entropy, pos))
         });
         let leaves = LargeVec::try_from_iter(iter).expect("tree width has u32-bound size");
-        debug_assert_eq!(leaves.len_u32(), self.width());
+        debug_assert_eq!(leaves.len_u32(), self.width_limit());
         MerkleHash::merklize(&leaves)
     }
 }
@@ -146,12 +146,12 @@ mod commit {
             let mut depth = source.min_depth;
             let mut prev_width = 1u32;
             loop {
-                let width = 2u32.pow(depth.to_u8() as u32);
-                if width as usize >= msg_count {
+                let width_limit = 2u32.pow(depth.to_u8() as u32);
+                if width_limit as usize >= msg_count {
                     for cofactor in 0..=(prev_width.min(COFACTOR_ATTEMPTS as u32) as u16) {
                         map.clear();
                         if source.messages.iter().all(|(protocol, message)| {
-                            let pos = protocol_id_pos(*protocol, cofactor, width);
+                            let pos = protocol_id_pos(*protocol, cofactor, depth);
                             map.insert(pos, (*protocol, *message)).is_none()
                         }) {
                             return Ok(MerkleTree {
@@ -165,7 +165,7 @@ mod commit {
                     }
                 }
 
-                prev_width = width;
+                prev_width = width_limit;
                 depth = depth
                     .checked_add(1)
                     .ok_or(Error::CantFitInMaxSlots(msg_count))?;
@@ -174,7 +174,8 @@ mod commit {
     }
 }
 
-pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u16, width: u32) -> u32 {
+pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u16, depth: u5) -> u32 {
+    let width = 2u32.pow(depth.to_u8() as u32);
     debug_assert_ne!(width, 0);
     let rem = u256::from_le_bytes((*protocol_id).into_inner()) %
         u256::from(width.saturating_sub(cofactor as u32).max(1) as u64);
@@ -184,13 +185,20 @@ pub(super) fn protocol_id_pos(protocol_id: ProtocolId, cofactor: u16, width: u32
 impl MerkleTree {
     /// Computes position for a given `protocol_id` within the tree leaves.
     pub fn protocol_id_pos(&self, protocol_id: ProtocolId) -> u32 {
-        protocol_id_pos(protocol_id, self.cofactor, self.width())
+        protocol_id_pos(protocol_id, self.cofactor, self.depth)
     }
 
-    /// Computes the width of the merkle tree.
-    pub fn width(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
+    /// Computes the maximum possible width of the merkle tree, equal to `2 ^
+    /// depth`.
+    pub fn width_limit(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
+
+    /// Computes the factored width of the merkle tree, equal to `2 ^ depth -
+    /// cofactor`.
+    pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
     pub fn depth(&self) -> u5 { self.depth }
+
+    pub fn cofactor(&self) -> u16 { self.cofactor }
 
     pub fn entropy(&self) -> u64 { self.entropy }
 }
@@ -307,7 +315,7 @@ mod test {
              length {} bytes.\nTakes {} msecs to generate",
             tree.depth,
             tree.cofactor,
-            tree.width(),
+            tree.factored_width(),
             counter.unconfine().count,
             elapsed_gen.as_millis(),
         );
@@ -323,7 +331,7 @@ mod test {
         let msgs = make_random_messages(9);
         let tree = make_random_tree(&msgs);
         assert!(tree.depth() > u5::with(3));
-        assert!(tree.width() > 9);
+        assert!(tree.factored_width() > 9);
         let mut set = BTreeSet::<u32>::new();
         for (pid, msg) in msgs {
             let pos = tree.protocol_id_pos(pid);
