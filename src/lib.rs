@@ -56,8 +56,9 @@ pub extern crate single_use_seals as seals;
 extern crate serde_crate as serde;
 
 mod api;
-
+mod validate;
 pub use api::{
     ClientData, ClientSideValidate, SealIssue, SealResolver, Status, ValidationFailure,
-    ValidationLog, ValidationReport, Validity,
+    ValidationLog, Validity,
 };
+pub use validate::{Invalid, Valid, Validate, ValidationReport, Verifiable};
