@@ -30,6 +30,21 @@ use crate::{CommitmentId, DigestExt};
 
 pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
 
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Default)]
+#[display(lowercase)]
+#[derive(StrictType, StrictEncode, StrictDecode)]
+#[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY, tags = repr, try_from_u8, into_u8)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
+#[repr(u8)]
+pub enum Method {
+    #[default]
+    Sha256t = 0,
+}
+
 /// Map from protocol ids to commitment messages.
 pub type MessageMap = MediumOrdMap<ProtocolId, Message>;
 
@@ -149,6 +164,7 @@ impl From<Sha256> for Commitment {
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct MultiSource {
+    pub method: Method,
     /// Minimal depth of the created LNPBP-4 commitment tree
     pub min_depth: u5,
     /// Map of the messages by their respective protocol ids
@@ -160,6 +176,7 @@ impl Default for MultiSource {
     #[inline]
     fn default() -> Self {
         MultiSource {
+            method: Default::default(),
             min_depth: MPC_MINIMAL_DEPTH,
             messages: Default::default(),
             static_entropy: None,
