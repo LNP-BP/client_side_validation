@@ -1,5 +1,5 @@
 {-
-  Id: stl:egMd32l9-y$Kod0o-$FRcNAV-Q4U$O5h-pskW9YM-$irF0yY#miller-pancake-elastic
+  Id: stl:t1xwwwIz-fgj0c!P-$Kh8oaL-qrthWrM-dxqldh6-qLoQ4Pk#escort-between-doctor
   Name: CommitVerify
   Version: 0.1.0
   Description: Client-side-validation deterministic commitments
@@ -22,8 +22,9 @@ data Commitment        : [Byte ^ 32]
 data Leaf              : inhabited#16 (protocol ProtocolId, message Message)
                        | entropy (entropy U64, pos U32)
 
-@mnemonic(snake-kitchen-june)
-data MerkleBlock       : depth Std.U5
+@mnemonic(gong-elite-seminar)
+data MerkleBlock       : method Method
+                       , depth Std.U5
                        , cofactor U16
                        , crossSection [TreeNode ^ 1..0xffffffff]
                        , entropy U64?
@@ -43,13 +44,15 @@ data MerkleNode        : branching NodeBranching
                        , node1 MerkleHash
                        , node2 MerkleHash
 
-@mnemonic(potato-rubber-hobby)
-data MerkleProof       : pos U32
+@mnemonic(edison-pablo-orinoco)
+data MerkleProof       : method Method
+                       , pos U32
                        , cofactor U16
                        , path [MerkleHash ^ ..0x20]
 
-@mnemonic(horizon-pigment-dialog)
-data MerkleTree        : depth Std.U5
+@mnemonic(jump-respond-panda)
+data MerkleTree        : method Method
+                       , depth Std.U5
                        , entropy U64
                        , cofactor U16
                        , messages {ProtocolId -> ^ ..0xffffff Message}
@@ -57,6 +60,10 @@ data MerkleTree        : depth Std.U5
 
 @mnemonic(druid-blitz-rover)
 data Message           : [Byte ^ 32]
+
+@mnemonic(subject-justin-cowboy)
+data Method            : sha256t
+
 
 @mnemonic(member-dexter-price)
 data NodeBranching     : void | single | branch
