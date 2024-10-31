@@ -212,7 +212,9 @@ impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u8::MAX as us
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
-    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+    type LeafIter<'tmp>
+        = iter::Copied<slice::Iter<'tmp, T>>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
@@ -221,7 +223,9 @@ impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u8:
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
-    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+    type LeafIter<'tmp>
+        = iter::Copied<btree_set::Iter<'tmp, T>>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
@@ -230,7 +234,9 @@ impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u16::MAX as u
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
-    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+    type LeafIter<'tmp>
+        = iter::Copied<slice::Iter<'tmp, T>>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
@@ -239,7 +245,9 @@ impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u16
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
-    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+    type LeafIter<'tmp>
+        = iter::Copied<btree_set::Iter<'tmp, T>>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
@@ -248,7 +256,9 @@ impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u32::MAX as u
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
-    type LeafIter<'tmp> = iter::Copied<slice::Iter<'tmp, T>> where Self: 'tmp;
+    type LeafIter<'tmp>
+        = iter::Copied<slice::Iter<'tmp, T>>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }
@@ -257,7 +267,9 @@ impl<T: Ord, const MIN: usize> MerkleLeaves for Confined<BTreeSet<T>, MIN, { u32
 where T: CommitId<CommitmentId = MerkleHash> + Copy
 {
     type Leaf = T;
-    type LeafIter<'tmp> = iter::Copied<btree_set::Iter<'tmp, T>> where Self: 'tmp;
+    type LeafIter<'tmp>
+        = iter::Copied<btree_set::Iter<'tmp, T>>
+    where Self: 'tmp;
 
     fn merkle_leaves(&self) -> Self::LeafIter<'_> { self.iter().copied() }
 }

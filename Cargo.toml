@@ -13,11 +13,11 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.11.0-beta.8"
+version = "0.11.0-beta.9"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
-rust-version = "1.76.0" # Due to ascii-armor
+rust-version = "1.77.0" # Due to `rustfix`
 edition = "2021"
 license = "Apache-2.0"
 
@@ -46,8 +46,8 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-commit_verify = { version = "0.11.0-beta.8", path = "./commit_verify", default-features = false }
-single_use_seals = { version = "0.11.0-beta.8", path = "./single_use_seals" }
+commit_verify = { version = "0.11.0-beta.9", path = "./commit_verify", default-features = false }
+single_use_seals = { version = "0.11.0-beta.9", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
 [features]
