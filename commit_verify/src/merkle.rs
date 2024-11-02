@@ -202,6 +202,7 @@ impl MerkleHash {
 
 pub trait MerkleLeaves {
     type Leaf: CommitId<CommitmentId = MerkleHash>;
+    // TODO: Remove associated type
     type LeafIter<'tmp>: ExactSizeIterator<Item = Self::Leaf>
     where Self: 'tmp;
 
