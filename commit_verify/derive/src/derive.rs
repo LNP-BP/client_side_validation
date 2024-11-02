@@ -44,8 +44,7 @@ impl CommitDerive {
                 engine.commit_to_serialized(self.as_inner());
             },
             StrategyAttr::Merklize => quote! {
-                use amplify::Wrapper;
-                engine.commit_to_merkle(self.as_inner().merklize());
+                engine.commit_to_merkle(self);
             },
         };
 
