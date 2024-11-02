@@ -145,7 +145,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&concealed);
     }
 
-    pub fn commit_to_list<T, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_linear_list<T, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<Vec<T>, MIN, MAX>,
     ) where
@@ -160,7 +160,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
-    pub fn commit_to_set<T, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_linear_set<T, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<BTreeSet<T>, MIN, MAX>,
     ) where
@@ -175,7 +175,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
-    pub fn commit_to_map<K, V, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_linear_map<K, V, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<BTreeMap<K, V>, MIN, MAX>,
     ) where
