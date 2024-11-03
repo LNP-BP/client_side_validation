@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "amplify"
-version = "4.7.0"
+version = "4.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7147b742325842988dd6c793d55f58df3ae36bccf7d9b6e07db10ab035be343d"
+checksum = "448cf0c3afc71439b5f837aac5399a1ef2b223f5f38324dbfb4343deec3b80cc"
 dependencies = [
  "amplify_apfloat",
  "amplify_derive",
@@ -166,7 +166,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.12.0-nightly"
+version = "0.12.0-alpha.1"
 dependencies = [
  "commit_verify",
  "serde",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "commit_encoding_derive"
-version = "0.12.0-nightly"
+version = "0.12.0-alpha.1"
 dependencies = [
  "amplify",
  "amplify_syn",
@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.12.0-nightly"
+version = "0.12.0-alpha.1"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -573,9 +573,9 @@ dependencies = [
 
 [[package]]
 name = "rustfix"
-version = "0.8.6"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fb2b066405a6d48a1b39c0022270503e352ae84da0c24e1d5f8ffc38e97a325"
+checksum = "4cef0c817217c330b3ef879e06455d726c1cffc800eaf7734d3b4ac63213636b"
 dependencies = [
  "serde",
  "serde_json",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "single_use_seals"
-version = "0.12.0-nightly"
+version = "0.12.0-alpha.1"
 dependencies = [
  "amplify_derive",
  "async-trait",
@@ -658,9 +658,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d69b4893cf054e129d5288a565102124520d7b94eb9589d1e78202abc7e2092d"
+checksum = "4f84deeb6b9e839d4e4f67040aca49c13d0191e57f5383dc73c2626bca248d96"
 dependencies = [
  "amplify",
  "half",
@@ -781,7 +781,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3523ab5a71916ccf420eebdf5521fcef02141234bbc0b8a49f2fdc4544364ef"
 dependencies = [
  "pin-project-lite",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.86",
 ]
 
 [[package]]
