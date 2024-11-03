@@ -22,7 +22,7 @@ name = "commit-stl"
 required-features = ["stl"]
 
 [dependencies]
-amplify = { workspace = true, features = ["hex", "apfloat"] }
+amplify = { workspace = true }
 strict_encoding = { workspace = true }
 strict_types = { workspace = true }
 vesper-lang = "0.1.0"
