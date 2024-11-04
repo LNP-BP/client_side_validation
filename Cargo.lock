@@ -139,7 +139,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.12.0-alpha.1"
+version = "0.12.0-alpha.2"
 dependencies = [
  "commit_verify",
  "serde",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "commit_encoding_derive"
-version = "0.12.0-alpha.1"
+version = "0.12.0-alpha.2"
 dependencies = [
  "amplify",
  "amplify_syn",
@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.12.0-alpha.1"
+version = "0.12.0-alpha.2"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -171,7 +171,7 @@ dependencies = [
  "sha2",
  "strict_encoding",
  "strict_types",
- "vesper-lang 0.1.0",
+ "vesper-lang",
 ]
 
 [[package]]
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "single_use_seals"
-version = "0.12.0-alpha.1"
+version = "0.12.0-alpha.2"
 dependencies = [
  "amplify_derive",
  "async-trait",
@@ -433,7 +433,7 @@ dependencies = [
  "indexmap",
  "sha2",
  "strict_encoding",
- "vesper-lang 0.2.0",
+ "vesper-lang",
  "wasm-bindgen",
 ]
 
@@ -509,19 +509,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vesper-lang"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f72ebd3b32f16ee8ace2bd3058c2bfa0f4820992bd4ea86e73ba228bb13dd2b0"
-dependencies = [
- "amplify",
- "strict_encoding",
-]
-
-[[package]]
-name = "vesper-lang"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1eec86ab1a9a40e567953dd3009aad4e7fe052400191d4d475aaeb94a5fcfdb"
+checksum = "cd2b7e3e27aeb0524204e58042f6e4531a720745d1b1a3978d3a084f1885f63d"
 dependencies = [
  "amplify",
  "strict_encoding",
