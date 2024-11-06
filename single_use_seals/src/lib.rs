@@ -79,7 +79,7 @@
 //!   if the seal is open; i.e. seal status may be either "closed over message"
 //!   or "unknown". Some specific implementations of single-use-seals may define
 //!   procedure to deterministically prove that a given seal is not closed (i.e.
-//!   opened), however this is not a part of the specification and we should
+//!   opened), however this is not a part of the specification, and we should
 //!   not rely on the existence of such possibility in all cases.
 //!
 //! ## Trait structure
@@ -112,11 +112,7 @@
 //!   and Proof-of-Publication. 1. Single-Use-Seal Definition.
 //!   <https://petertodd.org/2017/scalable-single-use-seal-asset-transfer>
 
-#[macro_use]
-extern crate amplify_derive;
-#[cfg(feature = "async")]
-#[macro_use]
-extern crate async_trait;
+use core::borrow::Borrow;
 
 /// Trait for proof-of-publication medium on which the seals are defined,
 /// closed, verified and which can be used for convenience operations related to
@@ -136,126 +132,29 @@ extern crate async_trait;
 ///
 /// To read more on proof-of-publication please check
 /// <https://petertodd.org/2014/setting-the-record-proof-of-publication>
-pub trait SealProtocol<Seal> {
+pub trait Seal: Sized {
+    /// Single-use seal parameters, which allow to differentiate alternative
+    /// forms of single-use seals from each other.
+    type Params;
+
+    /// Seal parameters which the type commits to.
+    const PARAMS: Self::Params;
+
     /// Associated type for the witness produced by the single-use-seal close
     /// procedure
-    type Witness;
+    type Witness: SealWitness<Self>;
 
     /// Message type that is supported by the current single-use-seal
     type Message;
 
     /// Publication id that may be used for referencing publication of
-    /// witness data in the medium. By default set `()`, so [`SealProtocol`]
-    /// may not implement  publication id and related functions
+    /// witness data in the medium. By default, set `()`, so [`SealProtocol`]
+    /// may not implement publication id and related functions
     type PublicationId;
-
-    /// Error type that contains reasons of medium access failure
-    type Error: std::error::Error;
-
-    /// Checks the status for a given seal in proof-of-publication medium
-    fn get_seal_status(&self, seal: &Seal) -> Result<SealStatus, Self::Error>;
-
-    /// Publishes witness data to the medium. Function has default
-    /// implementation doing nothing and returning
-    /// [`SealMediumError::PublicationNotSupported`] error.
-    fn publish_witness(
-        &mut self,
-        _witness: &Self::Witness,
-    ) -> Result<Self::PublicationId, SealMediumError<Self::Error>> {
-        Err(SealMediumError::PublicationNotSupported)
-    }
-
-    /// Returns [`Self::PublicationId`] for a given witness, if any; the id is
-    /// returned as an option. Function has default implementation doing
-    /// nothing and just returning
-    /// [`SealMediumError::PublicationNotSupported`] error.
-    fn get_witness_publication_id(
-        &self,
-        _witness: &Self::Witness,
-    ) -> Result<Option<Self::PublicationId>, SealMediumError<Self::Error>> {
-        Err(SealMediumError::PublicationNotSupported)
-    }
-
-    /// Validates whether a given publication id is present in the medium.
-    /// Function has default implementation doing nothing and returning
-    /// [`SealMediumError::PublicationNotSupported`] error.
-    fn validate_publication_id(
-        &self,
-        _publication_id: &Self::PublicationId,
-    ) -> Result<bool, SealMediumError<Self::Error>> {
-        Err(SealMediumError::PublicationNotSupported)
-    }
-}
-
-/// Adds support for the seal close operation to [`SealProtocol`].
-pub trait CloseSeal<Seal>: SealProtocol<Seal> {
-    /// Closes seal over a message, producing *witness*.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    fn close_seal(
-        &mut self,
-        seal: &Seal,
-        over: &Self::Message,
-    ) -> Result<Self::Witness, Self::Error>;
-
-    /// Closes number of related seals over the same message, producing a single
-    /// *witness*.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    fn close_all_seals<'seal>(
-        &mut self,
-        seals: impl IntoIterator<Item = &'seal Seal>,
-        over: &Self::Message,
-    ) -> Result<Self::Witness, Self::Error>
-    where
-        Seal: 'seal;
-}
-
-/// Adds support to [`SealProtocol`] for merging seal close operation into an
-/// existing witness data (closing some other seals).
-pub trait MergeCloseSeal<Seal>: SealProtocol<Seal> {
-    /// Closes seal over a message, adding witness to some existing *witness*
-    /// container.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    fn merge_close_seal(
-        &mut self,
-        seal: &Seal,
-        over: &Self::Message,
-        witness_proto: Self::Witness,
-    ) -> Result<Self::Witness, Self::Error>;
-
-    /// Closes number of related seals over the same message, adding witness to
-    /// some existing *witness* container.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    fn merge_close_all_seals<'seal>(
-        &mut self,
-        seals: impl IntoIterator<Item = &'seal Seal>,
-        over: &Self::Message,
-    ) -> Result<Self::Witness, Self::Error>
-    where
-        Seal: 'seal;
 }
 
 /// Seal witness which can verify seal or multiple seals.
-pub trait SealWitness<Seal> {
+pub trait SealWitness<S: Seal<Witness = Self>> {
     /// Message type that is supported by the current single-use-seal
     type Message;
 
@@ -264,238 +163,21 @@ pub trait SealWitness<Seal> {
 
     /// Verifies that the seal was indeed closed over the message with the
     /// provided seal closure witness.
-    fn verify_seal(&self, seal: &Seal, msg: &Self::Message) -> Result<(), Self::Error>;
+    fn verify_seal(&self, seal: impl Borrow<S>, msg: &Self::Message) -> Result<(), Self::Error>;
 
     /// Performs batch verification of the seals.
     ///
     /// Default implementation iterates through the seals and calls
     /// [`Self::verify_seal`] for each of them, returning `false` on first
     /// failure (not verifying the rest of seals).
-    fn verify_many_seals<'seal>(
+    fn verify_many_seals(
         &self,
-        seals: impl IntoIterator<Item = &'seal Seal>,
+        seals: impl IntoIterator<Item = impl Borrow<S>>,
         msg: &Self::Message,
-    ) -> Result<(), Self::Error>
-    where
-        Seal: 'seal,
-    {
+    ) -> Result<(), Self::Error> {
         for seal in seals {
             self.verify_seal(seal, msg)?;
         }
         Ok(())
     }
-}
-
-/// Asynchronous version of the [`SealProtocol`] trait.
-#[cfg(feature = "async")]
-#[async_trait]
-pub trait SealProtocolAsync<Seal>
-where
-    Seal: Sync + Send,
-    Self: Send + Sync,
-{
-    /// Associated type for the witness produced by the single-use-seal close
-    /// procedure
-    type Witness: Sync + Send;
-
-    /// Message type that is supported by the current single-use-seal
-    type Message;
-
-    /// Publication id that may be used for referencing publication of
-    /// witness data in the medium. By default set `()`, so
-    /// [`SealProtocolAsync`] may not implement  publication id and related
-    /// functions
-    type PublicationId: Sync;
-
-    /// Error type that contains reasons of medium access failure
-    type Error: std::error::Error;
-
-    /// Checks the status for a given seal in proof-of-publication medium
-    async fn get_seal_status_async(&self, seal: &Seal) -> Result<SealStatus, Self::Error>;
-
-    /// Publishes witness data to the medium. Function has default
-    /// implementation doing nothing and returning
-    /// [`SealMediumError::PublicationNotSupported`] error.
-    async fn publish_witness_async(
-        &mut self,
-        _witness: &Self::Witness,
-    ) -> Result<Self::PublicationId, SealMediumError<Self::Error>> {
-        Err(SealMediumError::PublicationNotSupported)
-    }
-
-    /// Returns [`Self::PublicationId`] for a given witness, if any; the id is
-    /// returned as an option. Function has default implementation doing
-    /// nothing and just returning
-    /// [`SealMediumError::PublicationNotSupported`] error.
-    async fn get_witness_publication_id_async(
-        &self,
-        _witness: &Self::Witness,
-    ) -> Result<Option<Self::PublicationId>, SealMediumError<Self::Error>> {
-        Err(SealMediumError::PublicationNotSupported)
-    }
-
-    /// Validates whether a given publication id is present in the medium.
-    /// Function has default implementation doing nothing and returning
-    /// [`SealMediumError::PublicationNotSupported`] error.
-    async fn validate_publication_id_async(
-        &self,
-        _publication_id: &Self::PublicationId,
-    ) -> Result<bool, SealMediumError<Self::Error>> {
-        Err(SealMediumError::PublicationNotSupported)
-    }
-}
-
-/// Adds support for the seal close operation to [`SealProtocolAsync`].
-#[cfg(feature = "async")]
-#[async_trait]
-pub trait CloseSealAsync<Seal>: SealProtocolAsync<Seal>
-where Seal: Sync + Send
-{
-    /// Closes seal over a message, producing *witness*.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    async fn close_seal_async(
-        &mut self,
-        seal: &Seal,
-        over: &Self::Message,
-    ) -> Result<Self::Witness, Self::Error>;
-
-    /// Closes number of related seals over the same message, producing a single
-    /// *witness*.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    async fn seal_close_all_async<'seal>(
-        &mut self,
-        seals: impl IntoIterator<Item = &'seal Seal>,
-        over: &Self::Message,
-    ) -> Result<Self::Witness, Self::Error>
-    where
-        Seal: 'seal;
-}
-
-/// Adds support to [`SealProtocolAsync`] for merging seal close operation into
-/// an existing witness data (closing some other seals).
-#[cfg(feature = "async")]
-#[async_trait]
-pub trait MergeCloseSealAsync<Seal>: SealProtocolAsync<Seal>
-where Seal: Sync + Send
-{
-    /// Closes seal over a message, adding witness to some existing *witness*
-    /// container.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    async fn merge_close_seal_async(
-        &mut self,
-        seal: &Seal,
-        over: &Self::Message,
-        witness_proto: Self::Witness,
-    ) -> Result<Self::Witness, Self::Error>;
-
-    /// Closes number of related seals over the same message, adding witness to
-    /// some existing *witness* container.
-    ///
-    /// NB: Closing of the seal MUST not change the internal state of the
-    /// seal itself; all the data produced by the process must be placed
-    /// into the returned Witness type.
-    ///
-    /// The witness _is not_ published by this method to the seal medium.
-    async fn merge_close_all_seals_async<'seal>(
-        &mut self,
-        seals: impl IntoIterator<Item = &'seal Seal>,
-        over: &Self::Message,
-    ) -> Result<Self::Witness, Self::Error>
-    where
-        Seal: 'seal;
-}
-
-/// Async version of [`SealWitness`] which can verify seal or multiple seals.
-#[cfg(feature = "async")]
-#[async_trait]
-pub trait SealWitnessAsync<Seal>
-where Seal: Sync + Send
-{
-    /// Message type that is supported by the current single-use-seal
-    type Message: Sync;
-
-    /// Error type that contains reasons of medium access failure
-    type Error: std::error::Error;
-
-    /// Verifies that the seal was indeed closed over the message with the
-    /// provided seal closure witness.
-    async fn verify_seal_async(&self, seal: &Seal, msg: &Self::Message) -> Result<(), Self::Error>;
-
-    /// Performs batch verification of the seals.
-    ///
-    /// Default implementation iterates through the seals and calls
-    /// [`Self::verify_seal_async`] for each of them, returning `false` on
-    /// first failure (not verifying the rest of seals).
-    async fn verify_all_seals_async<'seal, I>(
-        &self,
-        seals: I,
-        msg: &Self::Message,
-    ) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = &'seal Seal> + Send,
-        I::IntoIter: Send,
-        Seal: 'seal,
-    {
-        for seal in seals {
-            self.verify_seal_async(seal, msg).await?;
-        }
-        return Ok(());
-    }
-}
-
-/// Single-use-seal status returned by [`SealProtocol::get_seal_status`] and
-/// `SealProtocolAsync::get_seal_status` functions.
-///
-/// NB: It's important to note, that while its possible to deterministically
-///   define was a given seal closed it yet may be not possible to find out
-///   if the seal is open without provision of the message and witness; i.e.
-///   seal status may be either "closed over message"
-///   or "unknown". Some specific implementations of single-use-seals may define
-///   procedure to deterministically prove that a given seal is not closed (i.e.
-///   opened), however this is not a part of the specification and we should
-///   not rely on the existence of such possibility in all cases.
-#[derive(Clone, Copy, Debug, Display)]
-#[display(Debug)]
-#[repr(u8)]
-pub enum SealStatus {
-    /// It is unknown/undetermined whether the seal was closed
-    Undefined = 0,
-
-    /// The seal is closed
-    Closed = 1,
-}
-
-/// Error returned by [`SealProtocol`] and `SealProtocolAsync` functions related
-/// to work with publication id ([`SealProtocol::PublicationId`]). Required
-/// since not all implementation of [`SealProtocol`] may define publication
-/// identifier, and the traits provide default implementation for these
-/// functions always returning [`SealMediumError::PublicationNotSupported`]. If
-/// the implementation would like to provide custom implementation, it may embed
-/// standard error related to [`SealProtocol`] operations within
-/// [`SealMediumError::MediumAccessError`] case; the type of MediumAccessError
-/// is defined through generic argument to [`SealMediumError`].
-#[derive(Clone, Copy, Debug, Display, Error, From)]
-#[display(doc_comments)]
-pub enum SealMediumError<E: std::error::Error> {
-    /// Can't access the publication medium
-    #[from]
-    MediumAccessError(E),
-
-    /// Publication id is not supported
-    PublicationNotSupported,
 }
