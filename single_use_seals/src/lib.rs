@@ -19,16 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Coding conventions
-#![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-    unused_mut,
-    unused_imports,
-    dead_code,
-    missing_docs
-)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 //! # Single-use-seals
@@ -113,6 +103,10 @@
 //!   <https://petertodd.org/2017/scalable-single-use-seal-asset-transfer>
 
 use core::borrow::Borrow;
+use core::convert::Infallible;
+use core::error::Error;
+use core::fmt::{self, Debug, Display, Formatter};
+use core::marker::PhantomData;
 
 /// Trait for proof-of-publication medium on which the seals are defined,
 /// closed, verified and which can be used for convenience operations related to
@@ -132,7 +126,7 @@ use core::borrow::Borrow;
 ///
 /// To read more on proof-of-publication please check
 /// <https://petertodd.org/2014/setting-the-record-proof-of-publication>
-pub trait Seal: Sized {
+pub trait SingleUseSeal: Clone + Debug + Display {
     /// Single-use seal parameters, which allow to differentiate alternative
     /// forms of single-use seals from each other.
     type Params;
@@ -140,44 +134,145 @@ pub trait Seal: Sized {
     /// Seal parameters which the type commits to.
     const PARAMS: Self::Params;
 
-    /// Associated type for the witness produced by the single-use-seal close
-    /// procedure
-    type Witness: SealWitness<Self>;
+    /// Message type that is supported by the current single-use-seal.
+    type Message: Copy;
 
-    /// Message type that is supported by the current single-use-seal
-    type Message;
-
-    /// Publication id that may be used for referencing publication of
-    /// witness data in the medium. By default, set `()`, so [`SealProtocol`]
-    /// may not implement publication id and related functions
-    type PublicationId;
+    type PubWitness: PublishedWitness<Self>;
+    type CliWitness: ClientSideWitness<Seal = Self>;
 }
 
-/// Seal witness which can verify seal or multiple seals.
-pub trait SealWitness<S: Seal<Witness = Self>> {
-    /// Message type that is supported by the current single-use-seal
-    type Message;
+pub trait ClientSideWitness {
+    type Seal: SingleUseSeal;
+    type Error: Clone + Error;
 
-    /// Error type that contains reasons of medium access failure
-    type Error: std::error::Error;
-
-    /// Verifies that the seal was indeed closed over the message with the
-    /// provided seal closure witness.
-    fn verify_seal(&self, seal: impl Borrow<S>, msg: &Self::Message) -> Result<(), Self::Error>;
-
-    /// Performs batch verification of the seals.
-    ///
-    /// Default implementation iterates through the seals and calls
-    /// [`Self::verify_seal`] for each of them, returning `false` on first
-    /// failure (not verifying the rest of seals).
-    fn verify_many_seals(
+    fn includes_seal(&self, seal: impl Borrow<Self::Seal>) -> bool;
+    fn convolve_commit(
         &self,
-        seals: impl IntoIterator<Item = impl Borrow<S>>,
-        msg: &Self::Message,
-    ) -> Result<(), Self::Error> {
+        msg: <Self::Seal as SingleUseSeal>::Message,
+    ) -> Result<<Self::Seal as SingleUseSeal>::Message, Self::Error>;
+}
+
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+pub struct NoWitness<Seal: SingleUseSeal>(PhantomData<Seal>);
+impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
+    type Seal = Seal;
+    type Error = Infallible;
+
+    fn includes_seal(&self, _: impl Borrow<Self::Seal>) -> bool { false }
+
+    fn convolve_commit(
+        &self,
+        msg: <Self::Seal as SingleUseSeal>::Message,
+    ) -> Result<<Self::Seal as SingleUseSeal>::Message, Self::Error> {
+        Ok(msg)
+    }
+}
+
+pub trait PublishedWitness<Seal: SingleUseSeal> {
+    /// Publication id that may be used for referencing publication of
+    /// witness data in the medium. By default, set `()`, so [`SealProtocol`]
+    /// may not implement publication id and related functions.
+    type PubId: Copy + Ord + Debug + Display;
+
+    type Error: Clone + Error;
+
+    fn pub_id(&self) -> Self::PubId;
+    fn includes_seal(&self, seal: impl Borrow<Seal>) -> bool;
+    fn verify_commitment(&self, msg: Seal::Message) -> Result<(), Self::Error>;
+}
+
+/// Seal closing witness.
+#[derive(Clone, Copy)]
+pub struct SealWitness<Seal>
+where Seal: SingleUseSeal
+{
+    pub published: Seal::PubWitness,
+    pub client: Seal::CliWitness,
+    _phantom: PhantomData<Seal>,
+}
+
+impl<Seal> SealWitness<Seal>
+where Seal: SingleUseSeal
+{
+    pub fn includes_seal(&self, seal: impl Borrow<Seal>) -> bool {
+        self.published.borrow().includes_seal(seal.borrow()) ||
+            self.client.borrow().includes_seal(seal)
+    }
+
+    pub fn verify_seal_closing(
+        &self,
+        seal: impl Borrow<Seal>,
+        message: Seal::Message,
+    ) -> Result<(), SealError<Seal>> {
+        self.verify_seals_closing([seal], message)
+    }
+
+    pub fn verify_seals_closing(
+        &self,
+        seals: impl IntoIterator<Item = impl Borrow<Seal>>,
+        message: Seal::Message,
+    ) -> Result<(), SealError<Seal>> {
+        // ensure that witness includes all seals
         for seal in seals {
-            self.verify_seal(seal, msg)?;
+            self.includes_seal(seal.borrow())
+                .then_some(())
+                .ok_or(SealError::NotIncluded(seal.borrow().clone(), self.published.pub_id()))?;
         }
-        Ok(())
+        // ensure that published witness contains the commitment to the
+        // f(message), where `f` is defined in the client-side witness
+        let f_msg = self
+            .client
+            .convolve_commit(message)
+            .map_err(SealError::Client)?;
+        self.published
+            .verify_commitment(f_msg)
+            .map_err(SealError::Published)
+    }
+}
+
+#[derive(Clone)]
+pub enum SealError<Seal: SingleUseSeal> {
+    NotIncluded(Seal, <Seal::PubWitness as PublishedWitness<Seal>>::PubId),
+    Published(<Seal::PubWitness as PublishedWitness<Seal>>::Error),
+    Client(<Seal::CliWitness as ClientSideWitness>::Error),
+}
+
+impl<Seal: SingleUseSeal> Debug for SealError<Seal> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            SealError::NotIncluded(seal, pub_id) => f
+                .debug_tuple("SealError::NotIncluded")
+                .field(seal)
+                .field(pub_id)
+                .finish(),
+            SealError::Published(err) => f.debug_tuple("SealError::Published").field(err).finish(),
+            SealError::Client(err) => f.debug_tuple("SealError::Client(err").field(err).finish(),
+        }
+    }
+}
+
+impl<Seal: SingleUseSeal> Display for SealError<Seal> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            SealError::NotIncluded(seal, pub_id) => {
+                write!(f, "seal {seal} is not included in the witness {pub_id}")
+            }
+            SealError::Published(err) => Display::fmt(err, f),
+            SealError::Client(err) => Display::fmt(err, f),
+        }
+    }
+}
+
+impl<Seal: SingleUseSeal> Error for SealError<Seal>
+where
+    <<Seal as SingleUseSeal>::PubWitness as PublishedWitness<Seal>>::Error: 'static,
+    <<Seal as SingleUseSeal>::CliWitness as ClientSideWitness>::Error: 'static,
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            SealError::NotIncluded(..) => None,
+            SealError::Published(e) => Some(e),
+            SealError::Client(e) => Some(e),
+        }
     }
 }
