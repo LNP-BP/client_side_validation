@@ -127,25 +127,19 @@ use core::marker::PhantomData;
 /// To read more on proof-of-publication please check
 /// <https://petertodd.org/2014/setting-the-record-proof-of-publication>
 pub trait SingleUseSeal: Clone + Debug + Display {
-    /// Single-use seal parameters, which allow to differentiate alternative
-    /// forms of single-use seals from each other.
-    type Params;
-
-    /// Seal parameters which the type commits to.
-    const PARAMS: Self::Params;
-
     /// Message type that is supported by the current single-use-seal.
     type Message: Copy;
 
     type PubWitness: PublishedWitness<Self>;
     type CliWitness: ClientSideWitness<Seal = Self>;
+
+    fn is_included(&self, witness: &SealWitness<Self>) -> bool;
 }
 
 pub trait ClientSideWitness {
     type Seal: SingleUseSeal;
     type Error: Clone + Error;
 
-    fn includes_seal(&self, seal: impl Borrow<Self::Seal>) -> bool;
     fn convolve_commit(
         &self,
         msg: <Self::Seal as SingleUseSeal>::Message,
@@ -157,8 +151,6 @@ pub struct NoWitness<Seal: SingleUseSeal>(PhantomData<Seal>);
 impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
     type Seal = Seal;
     type Error = Infallible;
-
-    fn includes_seal(&self, _: impl Borrow<Self::Seal>) -> bool { false }
 
     fn convolve_commit(
         &self,
@@ -177,7 +169,6 @@ pub trait PublishedWitness<Seal: SingleUseSeal> {
     type Error: Clone + Error;
 
     fn pub_id(&self) -> Self::PubId;
-    fn includes_seal(&self, seal: impl Borrow<Seal>) -> bool;
     fn verify_commitment(&self, msg: Seal::Message) -> Result<(), Self::Error>;
 }
 
@@ -194,11 +185,6 @@ where Seal: SingleUseSeal
 impl<Seal> SealWitness<Seal>
 where Seal: SingleUseSeal
 {
-    pub fn includes_seal(&self, seal: impl Borrow<Seal>) -> bool {
-        self.published.borrow().includes_seal(seal.borrow()) ||
-            self.client.borrow().includes_seal(seal)
-    }
-
     pub fn verify_seal_closing(
         &self,
         seal: impl Borrow<Seal>,
@@ -214,7 +200,8 @@ where Seal: SingleUseSeal
     ) -> Result<(), SealError<Seal>> {
         // ensure that witness includes all seals
         for seal in seals {
-            self.includes_seal(seal.borrow())
+            seal.borrow()
+                .is_included(self)
                 .then_some(())
                 .ok_or(SealError::NotIncluded(seal.borrow().clone(), self.published.pub_id()))?;
         }
