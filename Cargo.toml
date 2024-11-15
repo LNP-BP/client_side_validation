@@ -13,7 +13,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.12.0-alpha.2"
+version = "0.12.0-alpha.3"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
