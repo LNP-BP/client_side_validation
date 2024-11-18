@@ -137,7 +137,11 @@ pub trait SingleUseSeal: Clone + Debug + Display {
 }
 
 pub trait ClientSideWitness {
+    /// Client-side witness is specific to just one type of single-use seals,
+    /// provided as an associated type.
     type Seal: SingleUseSeal;
+    /// Proof which is passed from the client-side witness to the public-side
+    /// witness during single-use seal validation.
     type Proof;
     type Error: Clone + Error;
 
@@ -157,6 +161,8 @@ impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
     fn convolve_commit(&self, msg: Seal::Message) -> Result<Self::Proof, Self::Error> { Ok(msg) }
 }
 
+/// Public witness can be used by multiple types of single-use seals, hence it
+/// has the seal type as a generic parameter.
 pub trait PublishedWitness<Seal: SingleUseSeal> {
     /// Publication id that may be used for referencing publication of
     /// witness data in the medium. By default, set `()`, so [`SingleUseSeal`]
