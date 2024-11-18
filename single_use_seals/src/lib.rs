@@ -128,50 +128,47 @@ use core::marker::PhantomData;
 /// <https://petertodd.org/2014/setting-the-record-proof-of-publication>
 pub trait SingleUseSeal: Clone + Debug + Display {
     /// Message type that is supported by the current single-use-seal.
-    type Message;
+    type Message: Copy + Eq;
 
     type PubWitness: PublishedWitness<Self>;
     type CliWitness: ClientSideWitness<Seal = Self>;
 
-    fn is_included(&self, witness: &SealWitness<Self>) -> bool;
+    fn is_included(&self, message: Self::Message, witness: &SealWitness<Self>) -> bool;
 }
 
 pub trait ClientSideWitness {
-    type Message;
     type Seal: SingleUseSeal;
+    type Proof;
     type Error: Clone + Error;
 
     fn convolve_commit(
         &self,
-        msg: Self::Message,
-    ) -> Result<<Self::Seal as SingleUseSeal>::Message, Self::Error>;
+        msg: <Self::Seal as SingleUseSeal>::Message,
+    ) -> Result<Self::Proof, Self::Error>;
 }
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
 pub struct NoWitness<Seal: SingleUseSeal>(PhantomData<Seal>);
 impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
-    type Message = Seal::Message;
     type Seal = Seal;
+    type Proof = Seal::Message;
     type Error = Infallible;
 
-    fn convolve_commit(
-        &self,
-        msg: Self::Message,
-    ) -> Result<<Self::Seal as SingleUseSeal>::Message, Self::Error> {
-        Ok(msg)
-    }
+    fn convolve_commit(&self, msg: Seal::Message) -> Result<Self::Proof, Self::Error> { Ok(msg) }
 }
 
 pub trait PublishedWitness<Seal: SingleUseSeal> {
     /// Publication id that may be used for referencing publication of
-    /// witness data in the medium. By default, set `()`, so [`SealProtocol`]
+    /// witness data in the medium. By default, set `()`, so [`SingleUseSeal`]
     /// may not implement publication id and related functions.
     type PubId: Copy + Ord + Debug + Display;
-
     type Error: Clone + Error;
 
     fn pub_id(&self) -> Self::PubId;
-    fn verify_commitment(&self, msg: Seal::Message) -> Result<(), Self::Error>;
+    fn verify_commitment(
+        &self,
+        proof: <Seal::CliWitness as ClientSideWitness>::Proof,
+    ) -> Result<(), Self::Error>;
 }
 
 /// Seal closing witness.
@@ -190,7 +187,7 @@ where Seal: SingleUseSeal
     pub fn verify_seal_closing(
         &self,
         seal: impl Borrow<Seal>,
-        message: <Seal::CliWitness as ClientSideWitness>::Message,
+        message: Seal::Message,
     ) -> Result<(), SealError<Seal>> {
         self.verify_seals_closing([seal], message)
     }
@@ -198,12 +195,12 @@ where Seal: SingleUseSeal
     pub fn verify_seals_closing(
         &self,
         seals: impl IntoIterator<Item = impl Borrow<Seal>>,
-        message: <Seal::CliWitness as ClientSideWitness>::Message,
+        message: Seal::Message,
     ) -> Result<(), SealError<Seal>> {
         // ensure that witness includes all seals
         for seal in seals {
             seal.borrow()
-                .is_included(self)
+                .is_included(message, self)
                 .then_some(())
                 .ok_or(SealError::NotIncluded(seal.borrow().clone(), self.published.pub_id()))?;
         }
