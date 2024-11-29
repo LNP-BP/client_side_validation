@@ -17,13 +17,10 @@ name = "single_use_seals"
 path = "src/lib.rs"
 
 [dependencies]
-amplify_derive = "4.0.1"
-async-trait = { version = "0.1.81", optional = true }
 
 [features]
 default = []
-all = ["async"]
-async = ["async-trait"]
+all = []
 
 [package.metadata.docs.rs]
 features = ["all"]
