@@ -13,7 +13,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.12.0-alpha.3"
+version = "0.12.0-beta.1"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
@@ -23,8 +23,8 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "~4.8.0"
-strict_encoding = "~2.8.0"
-strict_types = "~2.8.0"
+strict_encoding = "~2.8.1"
+strict_types = "~2.8.1"
 
 [package]
 name = "client_side_validation"
@@ -46,8 +46,8 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-commit_verify = { version = "0.12.0-alpha.2", path = "./commit_verify", default-features = false }
-single_use_seals = { version = "0.12.0-alpha.2", path = "./single_use_seals" }
+commit_verify = { version = "0.12.0-beta.1", path = "./commit_verify", default-features = false }
+single_use_seals = { version = "0.12.0-beta.1", path = "./single_use_seals" }
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
 
 [features]
