@@ -20,6 +20,7 @@
 // limitations under the License.
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(not(feature = "strict_encoding"), no_std)]
 
 //! # Single-use-seals
 //!
@@ -102,6 +103,10 @@
 //!   and Proof-of-Publication. 1. Single-Use-Seal Definition.
 //!   <https://petertodd.org/2017/scalable-single-use-seal-asset-transfer>
 
+#[cfg(feature = "strict_encoding")]
+#[macro_use]
+extern crate strict_encoding;
+
 use core::borrow::Borrow;
 use core::convert::Infallible;
 use core::error::Error;
@@ -130,8 +135,21 @@ pub trait SingleUseSeal: Clone + Debug + Display {
     /// Message type that is supported by the current single-use-seal.
     type Message: Copy + Eq;
 
+    #[cfg(not(feature = "strict_encoding"))]
     type PubWitness: PublishedWitness<Self>;
+    #[cfg(feature = "strict_encoding")]
+    type PubWitness: PublishedWitness<Self>
+        + strict_encoding::StrictDumb
+        + strict_encoding::StrictEncode
+        + strict_encoding::StrictDecode;
+
+    #[cfg(not(feature = "strict_encoding"))]
     type CliWitness: ClientSideWitness<Seal = Self>;
+    #[cfg(feature = "strict_encoding")]
+    type CliWitness: ClientSideWitness<Seal = Self>
+        + strict_encoding::StrictDumb
+        + strict_encoding::StrictEncode
+        + strict_encoding::StrictDecode;
 
     fn is_included(&self, message: Self::Message, witness: &SealWitness<Self>) -> bool;
 }
@@ -179,11 +197,17 @@ pub trait PublishedWitness<Seal: SingleUseSeal> {
 
 /// Seal closing witness.
 #[derive(Clone, Copy)]
+#[cfg_attr(
+    feature = "strict_encoding",
+    derive(StrictType, StrictDumb, StrictEncode, StrictDecode),
+    strict_type(lib = "SingleUseSeals")
+)]
 pub struct SealWitness<Seal>
 where Seal: SingleUseSeal
 {
     pub published: Seal::PubWitness,
     pub client: Seal::CliWitness,
+    #[cfg_attr(feature = "strict_encoding", strict_type(skip))]
     _phantom: PhantomData<Seal>,
 }
 

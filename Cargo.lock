@@ -381,6 +381,9 @@ dependencies = [
 [[package]]
 name = "single_use_seals"
 version = "0.12.0-beta.1"
+dependencies = [
+ "strict_encoding",
+]
 
 [[package]]
 name = "strict_encoding"

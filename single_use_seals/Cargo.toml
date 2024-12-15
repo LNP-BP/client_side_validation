@@ -17,10 +17,11 @@ name = "single_use_seals"
 path = "src/lib.rs"
 
 [dependencies]
+strict_encoding = { workspace = true, optional = true }
 
 [features]
 default = []
-all = []
+all = ["strict_encoding"]
 
 [package.metadata.docs.rs]
 features = ["all"]
