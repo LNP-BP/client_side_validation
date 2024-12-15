@@ -190,6 +190,14 @@ where Seal: SingleUseSeal
 impl<Seal> SealWitness<Seal>
 where Seal: SingleUseSeal
 {
+    pub fn new(published: Seal::PubWitness, client: Seal::CliWitness) -> Self {
+        Self {
+            published,
+            client,
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn verify_seal_closing(
         &self,
         seal: impl Borrow<Seal>,
