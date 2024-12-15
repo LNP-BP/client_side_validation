@@ -117,6 +117,24 @@ use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::marker::PhantomData;
 
+#[cfg(feature = "strict_encoding")]
+use strict_encoding::{StrictDecode, StrictDumb, StrictEncode};
+
+#[cfg(not(feature = "strict_encoding"))]
+trait StrictDumb {}
+#[cfg(not(feature = "strict_encoding"))]
+impl<T> StrictDumb for T {}
+
+#[cfg(not(feature = "strict_encoding"))]
+trait StrictEncode {}
+#[cfg(not(feature = "strict_encoding"))]
+impl<T> StrictEncode for T {}
+
+#[cfg(not(feature = "strict_encoding"))]
+trait StrictDecode {}
+#[cfg(not(feature = "strict_encoding"))]
+impl<T> StrictDecode for T {}
+
 /// Trait for proof-of-publication medium on which the seals are defined,
 /// closed, verified and which can be used for convenience operations related to
 /// seals:
@@ -135,25 +153,15 @@ use core::marker::PhantomData;
 ///
 /// To read more on proof-of-publication please check
 /// <https://petertodd.org/2014/setting-the-record-proof-of-publication>
-pub trait SingleUseSeal: Clone + Debug + Display {
+pub trait SingleUseSeal:
+    Clone + Debug + Display + StrictDumb + StrictEncode + StrictDecode
+{
     /// Message type that is supported by the current single-use-seal.
     type Message: Copy + Eq;
 
-    #[cfg(not(feature = "strict_encoding"))]
-    type PubWitness: PublishedWitness<Self>;
-    #[cfg(feature = "strict_encoding")]
-    type PubWitness: PublishedWitness<Self>
-        + strict_encoding::StrictDumb
-        + strict_encoding::StrictEncode
-        + strict_encoding::StrictDecode;
+    type PubWitness: PublishedWitness<Self> + StrictDumb + StrictEncode + StrictDecode;
 
-    #[cfg(not(feature = "strict_encoding"))]
-    type CliWitness: ClientSideWitness<Seal = Self>;
-    #[cfg(feature = "strict_encoding")]
-    type CliWitness: ClientSideWitness<Seal = Self>
-        + strict_encoding::StrictDumb
-        + strict_encoding::StrictEncode
-        + strict_encoding::StrictDecode;
+    type CliWitness: ClientSideWitness<Seal = Self> + StrictDumb + StrictEncode + StrictDecode;
 
     fn is_included(&self, message: Self::Message, witness: &SealWitness<Self>) -> bool;
 }
