@@ -133,7 +133,7 @@ pub trait ValidationReport {
 /// Client-side-validation status containing all reports from the validation
 /// process
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Status<R>
 where R: ValidationReport
 {

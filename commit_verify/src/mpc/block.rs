@@ -46,11 +46,7 @@ pub struct LeafNotKnown(ProtocolId);
 /// {width}.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub struct InvalidProof {
     protocol_id: ProtocolId,
     expected: u32,
@@ -81,7 +77,7 @@ pub enum MergeError {
     tags = order,
     dumb = { TreeNode::ConcealedNode { depth: u5::ZERO, hash: [0u8; 32].into() } }
 )]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 enum TreeNode {
     /// A node of the tree with concealed leaf or tree branch information.
     ConcealedNode {
@@ -134,11 +130,7 @@ impl TreeNode {
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = strict, id = Commitment)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub struct MerkleConcealed {
     /// Tree depth (up to 16).
     depth: u5,
@@ -163,7 +155,7 @@ impl Conceal for MerkleConcealed {
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = conceal, id = Commitment)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MerkleBlock {
     /// Method used to construct MPC proof (hash function, merklization).
     #[getter(as_copy)]
@@ -656,7 +648,7 @@ impl Conceal for MerkleBlock {
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MerkleProof {
     /// Method used to construct MPC proof (hash function, merklization).
     #[getter(as_copy)]

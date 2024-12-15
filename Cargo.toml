@@ -25,6 +25,7 @@ license = "Apache-2.0"
 amplify = "~4.8.0"
 strict_encoding = "~2.8.1"
 strict_types = "~2.8.1"
+serde = { version = "1", features = ["derive"] }
 
 [package]
 name = "client_side_validation"
@@ -48,7 +49,7 @@ path = "src/lib.rs"
 [dependencies]
 commit_verify = { version = "0.12.0-beta.1", path = "./commit_verify", default-features = false }
 single_use_seals = { version = "0.12.0-beta.1", path = "./single_use_seals", features = ["strict_encoding"] }
-serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
+serde = { workspace = true, optional = true }
 
 [features]
 default = ["derive"]
@@ -56,7 +57,7 @@ all = ["serde", "rand", "stl"]
 stl = ["commit_verify/stl"]
 rand = ["commit_verify/rand"]
 derive = ["commit_verify/derive"]
-serde = ["serde_crate", "commit_verify/serde"]
+serde = ["dep:serde", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]
