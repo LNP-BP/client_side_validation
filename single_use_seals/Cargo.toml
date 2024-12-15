@@ -18,10 +18,11 @@ path = "src/lib.rs"
 
 [dependencies]
 strict_encoding = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 
 [features]
 default = []
-all = ["strict_encoding"]
+all = ["strict_encoding", "serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]

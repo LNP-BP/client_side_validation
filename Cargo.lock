@@ -382,6 +382,7 @@ dependencies = [
 name = "single_use_seals"
 version = "0.12.0-beta.1"
 dependencies = [
+ "serde",
  "strict_encoding",
 ]
 

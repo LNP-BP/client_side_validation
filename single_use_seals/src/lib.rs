@@ -107,6 +107,10 @@
 #[macro_use]
 extern crate strict_encoding;
 
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
+
 use core::borrow::Borrow;
 use core::convert::Infallible;
 use core::error::Error;
@@ -202,11 +206,18 @@ pub trait PublishedWitness<Seal: SingleUseSeal> {
     derive(StrictType, StrictDumb, StrictEncode, StrictDecode),
     strict_type(lib = "SingleUseSeals")
 )]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(bound = "Seal::PubWitness: serde::Serialize + for<'d> serde::Deserialize<'d>, \
+                   Seal::CliWitness: serde::Serialize + for<'d> serde::Deserialize<'d>")
+)]
 pub struct SealWitness<Seal>
 where Seal: SingleUseSeal
 {
     pub published: Seal::PubWitness,
     pub client: Seal::CliWitness,
+    #[cfg_attr(feature = "serde", serde(skip))]
     #[cfg_attr(feature = "strict_encoding", strict_type(skip))]
     _phantom: PhantomData<Seal>,
 }
