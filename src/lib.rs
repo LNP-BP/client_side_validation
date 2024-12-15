@@ -53,7 +53,7 @@ pub extern crate single_use_seals as seals;
 
 #[cfg(feature = "serde")]
 #[macro_use]
-extern crate serde_crate as serde;
+extern crate serde;
 
 mod api;
 

@@ -45,6 +45,7 @@ pub enum StrategyAttr {
     ConcealStrict,
     Transparent,
     Merklize,
+    // TODO: Add Hash strategy
 }
 
 impl TryFrom<&Path> for StrategyAttr {

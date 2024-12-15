@@ -19,22 +19,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate compiletest_rs as compiletest;
-
 use std::fmt::{Debug, Display, Formatter};
-use std::path::PathBuf;
-
-#[allow(dead_code)]
-pub fn compile_test(mode: &'static str) {
-    let mut config = compiletest::Config {
-        mode: mode.parse().expect("Invalid mode"),
-        src_base: PathBuf::from(format!("tests/{}", mode)),
-        ..default!()
-    };
-    config.link_deps();
-    config.clean_rmeta();
-    compiletest::run_tests(&config);
-}
 
 #[derive(Display)]
 #[display(inner)]

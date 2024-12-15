@@ -26,11 +26,7 @@ use crate::{CommitmentProtocol, VerifyEq};
 /// Error during commitment verification
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
 #[display(doc_comments)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub enum ConvolveVerifyError {
     /// commitment doesn't match the message.
     CommitmentMismatch,

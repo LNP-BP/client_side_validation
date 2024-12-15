@@ -32,7 +32,7 @@ use crate::id::CommitId;
 use crate::merkle::{MerkleBuoy, MerkleHash};
 use crate::mpc::atoms::Leaf;
 use crate::mpc::tree::protocol_id_pos;
-use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Proof, ProtocolId};
+use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Method, Proof, ProtocolId};
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
 /// commitment under protocol id {0} is absent from the known part of a given
@@ -46,11 +46,7 @@ pub struct LeafNotKnown(ProtocolId);
 /// {width}.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
 #[display(doc_comments)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub struct InvalidProof {
     protocol_id: ProtocolId,
     expected: u32,
@@ -81,7 +77,7 @@ pub enum MergeError {
     tags = order,
     dumb = { TreeNode::ConcealedNode { depth: u5::ZERO, hash: [0u8; 32].into() } }
 )]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 enum TreeNode {
     /// A node of the tree with concealed leaf or tree branch information.
     ConcealedNode {
@@ -134,11 +130,7 @@ impl TreeNode {
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = strict, id = Commitment)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub struct MerkleConcealed {
     /// Tree depth (up to 16).
     depth: u5,
@@ -163,8 +155,12 @@ impl Conceal for MerkleConcealed {
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = conceal, id = Commitment)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MerkleBlock {
+    /// Method used to construct MPC proof (hash function, merklization).
+    #[getter(as_copy)]
+    method: Method,
+
     /// Tree depth (up to 16).
     #[getter(as_copy)]
     depth: u5,
@@ -187,6 +183,7 @@ pub struct MerkleBlock {
 impl StrictDumb for MerkleBlock {
     fn strict_dumb() -> Self {
         MerkleBlock {
+            method: Method::Sha256t,
             depth: u5::ONE,
             cofactor: 0,
             cross_section: NonEmptyVec::with(TreeNode::strict_dumb()),
@@ -221,6 +218,7 @@ impl From<&MerkleTree> for MerkleBlock {
             NonEmptyVec::try_from_iter(iter).expect("tree width guarantees are broken");
 
         MerkleBlock {
+            method: tree.method,
             depth: tree.depth,
             cofactor: tree.cofactor,
             cross_section,
@@ -281,6 +279,7 @@ impl MerkleBlock {
             NonEmptyVec::try_from(cross_section).expect("tree width guarantees are broken");
 
         Ok(MerkleBlock {
+            method: proof.method,
             depth: u5::with(path.len() as u8),
             cofactor: proof.cofactor,
             cross_section,
@@ -576,6 +575,7 @@ Changed commitment id: {}",
             "MerkleBlock conceal procedure is broken"
         );
         Ok(MerkleProof {
+            method: self.method,
             pos: self.protocol_id_pos(protocol_id),
             cofactor: self.cofactor,
             path: Confined::try_from_iter(map.into_values())
@@ -648,8 +648,12 @@ impl Conceal for MerkleBlock {
 #[derive(Getters, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(crate = "serde_crate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MerkleProof {
+    /// Method used to construct MPC proof (hash function, merklization).
+    #[getter(as_copy)]
+    method: Method,
+
     /// Position of the leaf in the tree.
     ///
     /// Used to determine chirality of the node hashing partners on each step

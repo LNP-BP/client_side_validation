@@ -39,8 +39,7 @@ extern crate strict_encoding;
 extern crate commit_encoding_derive;
 #[cfg(feature = "serde")]
 #[macro_use]
-extern crate serde_crate as serde;
-extern crate core;
+extern crate serde;
 
 #[cfg(feature = "derive")]
 pub use commit_encoding_derive::CommitEncode;
@@ -136,8 +135,8 @@ mod _reserved {
     mod _serde {
         use std::fmt;
 
-        use serde_crate::de::Visitor;
-        use serde_crate::{de, Deserialize, Deserializer, Serialize, Serializer};
+        use serde::de::Visitor;
+        use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
         use super::*;
 
