@@ -179,6 +179,9 @@ pub trait ClientSideWitness: Eq {
         &self,
         msg: <Self::Seal as SingleUseSeal>::Message,
     ) -> Result<Self::Proof, Self::Error>;
+
+    fn merge(&mut self, other: Self) -> Result<(), Self::Error>
+    where Self: Sized;
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -195,6 +198,11 @@ impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
     type Error = Infallible;
 
     fn convolve_commit(&self, msg: Seal::Message) -> Result<Self::Proof, Self::Error> { Ok(msg) }
+
+    fn merge(&mut self, _: Self) -> Result<(), Self::Error>
+    where Self: Sized {
+        Ok(())
+    }
 }
 
 /// Public witness can be used by multiple types of single-use seals, hence it
