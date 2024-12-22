@@ -601,6 +601,13 @@ Changed commitment id: {}",
     /// `2 ^ depth - cofactor`.
     pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
+    pub fn known_protocol_ids(&self) -> impl Iterator<Item = ProtocolId> + '_ {
+        self.cross_section.iter().filter_map(|item| match item {
+            TreeNode::ConcealedNode { .. } => None,
+            TreeNode::CommitmentLeaf { protocol_id, .. } => Some(*protocol_id),
+        })
+    }
+
     /// Constructs [`MessageMap`] for revealed protocols and messages.
     pub fn to_known_message_map(&self) -> MessageMap {
         Confined::try_from_iter(
@@ -616,6 +623,18 @@ Changed commitment id: {}",
                 }),
         )
         .expect("same collection size")
+    }
+
+    pub fn into_known_proofs(self) -> impl Iterator<Item = (ProtocolId, MerkleProof)> {
+        self.known_protocol_ids()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(move |id| {
+                let proof = self
+                    .to_merkle_proof(id)
+                    .expect("protocol ids must strictly match");
+                (id, proof)
+            })
     }
 }
 

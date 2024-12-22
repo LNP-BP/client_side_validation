@@ -27,7 +27,8 @@ pub use self::commit::Error;
 use crate::merkle::MerkleHash;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::{
-    Commitment, MerkleBlock, MerkleConcealed, Message, MessageMap, Method, Proof, ProtocolId,
+    Commitment, MerkleBlock, MerkleConcealed, MerkleProof, Message, MessageMap, Method, Proof,
+    ProtocolId,
 };
 use crate::{CommitId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
@@ -205,6 +206,11 @@ impl MerkleTree {
     pub fn cofactor(&self) -> u16 { self.cofactor }
 
     pub fn entropy(&self) -> u64 { self.entropy }
+
+    pub fn into_proofs(self) -> impl Iterator<Item = (ProtocolId, MerkleProof)> {
+        let block = MerkleBlock::from(self);
+        block.into_known_proofs()
+    }
 }
 
 #[cfg(test)]
