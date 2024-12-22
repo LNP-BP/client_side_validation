@@ -166,7 +166,7 @@ pub trait SingleUseSeal:
     fn is_included(&self, message: Self::Message, witness: &SealWitness<Self>) -> bool;
 }
 
-pub trait ClientSideWitness {
+pub trait ClientSideWitness: Eq {
     /// Client-side witness is specific to just one type of single-use seals,
     /// provided as an associated type.
     type Seal: SingleUseSeal;
@@ -181,8 +181,14 @@ pub trait ClientSideWitness {
     ) -> Result<Self::Proof, Self::Error>;
 }
 
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct NoWitness<Seal: SingleUseSeal>(PhantomData<Seal>);
+
+impl<Seal: SingleUseSeal> PartialEq for NoWitness<Seal> {
+    fn eq(&self, _: &Self) -> bool { true }
+}
+impl<Seal: SingleUseSeal> Eq for NoWitness<Seal> {}
+
 impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
     type Seal = Seal;
     type Proof = Seal::Message;
