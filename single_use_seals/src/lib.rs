@@ -180,7 +180,7 @@ pub trait ClientSideWitness: Eq {
         msg: <Self::Seal as SingleUseSeal>::Message,
     ) -> Result<Self::Proof, Self::Error>;
 
-    fn merge(&mut self, other: Self) -> Result<(), Self::Error>
+    fn merge(&mut self, other: Self) -> Result<(), impl Error>
     where Self: Sized;
 }
 
@@ -199,9 +199,9 @@ impl<Seal: SingleUseSeal> ClientSideWitness for NoWitness<Seal> {
 
     fn convolve_commit(&self, msg: Seal::Message) -> Result<Self::Proof, Self::Error> { Ok(msg) }
 
-    fn merge(&mut self, _: Self) -> Result<(), Self::Error>
+    fn merge(&mut self, _: Self) -> Result<(), impl Error>
     where Self: Sized {
-        Ok(())
+        Ok::<_, Infallible>(())
     }
 }
 
