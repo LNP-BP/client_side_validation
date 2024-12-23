@@ -128,7 +128,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "client_side_validation"
-version = "0.12.0-beta.1"
+version = "0.12.0-beta.4"
 dependencies = [
  "commit_verify",
  "serde",
@@ -137,7 +137,7 @@ dependencies = [
 
 [[package]]
 name = "commit_encoding_derive"
-version = "0.12.0-beta.1"
+version = "0.12.0-beta.4"
 dependencies = [
  "amplify",
  "amplify_syn",
@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.12.0-beta.1"
+version = "0.12.0-beta.4"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "single_use_seals"
-version = "0.12.0-beta.1"
+version = "0.12.0-beta.4"
 dependencies = [
  "serde",
  "strict_encoding",
