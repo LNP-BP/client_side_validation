@@ -154,7 +154,7 @@ mod _reserved {
                 #[derive(Default)]
                 pub struct UntaggedUnitVisitor;
 
-                impl<'de> Visitor<'de> for UntaggedUnitVisitor {
+                impl Visitor<'_> for UntaggedUnitVisitor {
                     type Value = ();
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
