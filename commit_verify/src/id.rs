@@ -110,7 +110,7 @@ impl CommitEngine {
 
     pub fn commit_to_hash<T: CommitEncode<CommitmentId = StrictHash> + StrictType>(
         &mut self,
-        value: T,
+        value: &T,
     ) {
         let fqn = commitment_fqn::<T>();
         self.layout
@@ -145,7 +145,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&concealed);
     }
 
-    pub fn commit_to_list<T, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_linear_list<T, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<Vec<T>, MIN, MAX>,
     ) where
@@ -160,7 +160,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
-    pub fn commit_to_set<T, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_linear_set<T, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<BTreeSet<T>, MIN, MAX>,
     ) where
@@ -175,7 +175,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
-    pub fn commit_to_map<K, V, const MIN: usize, const MAX: usize>(
+    pub fn commit_to_linear_map<K, V, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<BTreeMap<K, V>, MIN, MAX>,
     ) where
@@ -209,9 +209,6 @@ impl CommitEngine {
     pub fn finish_layout(self) -> (Sha256, TinyVec<CommitStep>) { (self.hasher, self.layout) }
 }
 
-/// Prepares the data to the *consensus commit* procedure by first running
-/// necessary conceal and merklization procedures, and them performing strict
-/// encoding for the resulted data.
 pub trait CommitEncode {
     /// Type of the resulting commitment.
     type CommitmentId: CommitmentId;
@@ -263,7 +260,7 @@ where T: CommitEncode + StrictDumb
 
 /// High-level API used in client-side validation for producing a single
 /// commitment to the data, which includes running all necessary procedures like
-/// concealment with [`crate::Conceal`], merklization, strict encoding,
+/// concealment with [`Conceal`], merklization, strict encoding,
 /// wrapped into [`CommitEncode`], followed by the actual commitment to its
 /// output.
 ///
@@ -291,13 +288,9 @@ impl<T: CommitEncode> CommitId for T {
 
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
-#[derive(StrictDumb, strict_encoding::StrictType, StrictEncode, StrictDecode)]
+#[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", transparent)
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(transparent))]
 pub struct StrictHash(
     #[from]
     #[from([u8; 32])]

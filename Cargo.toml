@@ -13,18 +13,19 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.11.0-beta.9"
+version = "0.12.0-beta.4"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://github.com/LNP-BP"
 repository = "https://github.com/LNP-BP/client_side_validation"
-rust-version = "1.77.0" # Due to `rustfix`
+rust-version = "1.81.0" # Due to Error in core
 edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "4.7.0"
-strict_encoding = "2.7.0"
-strict_types = "2.7.0"
+amplify = "~4.8.0"
+strict_encoding = "~2.8.1"
+strict_types = "~2.8.1"
+serde = { version = "1", features = ["derive"] }
 
 [package]
 name = "client_side_validation"
@@ -46,18 +47,17 @@ name = "client_side_validation"
 path = "src/lib.rs"
 
 [dependencies]
-commit_verify = { version = "0.11.0-beta.9", path = "./commit_verify", default-features = false }
-single_use_seals = { version = "0.11.0-beta.9", path = "./single_use_seals" }
-serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
+commit_verify = { version = "0.12.0-beta.4", path = "./commit_verify", default-features = false }
+single_use_seals = { version = "0.12.0-beta.4", path = "./single_use_seals", features = ["strict_encoding"] }
+serde = { workspace = true, optional = true }
 
 [features]
 default = ["derive"]
-all = ["serde", "rand", "async", "stl"]
+all = ["serde", "rand", "stl"]
 stl = ["commit_verify/stl"]
-async = ["single_use_seals/async"]
 rand = ["commit_verify/rand"]
 derive = ["commit_verify/derive"]
-serde = ["serde_crate", "commit_verify/serde"]
+serde = ["dep:serde", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]

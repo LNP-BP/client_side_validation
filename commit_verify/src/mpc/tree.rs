@@ -27,7 +27,8 @@ pub use self::commit::Error;
 use crate::merkle::MerkleHash;
 use crate::mpc::atoms::Leaf;
 use crate::mpc::{
-    Commitment, MerkleBlock, MerkleConcealed, Message, MessageMap, Proof, ProtocolId,
+    Commitment, MerkleBlock, MerkleConcealed, MerkleProof, Message, MessageMap, Method, Proof,
+    ProtocolId,
 };
 use crate::{CommitId, Conceal, LIB_NAME_COMMIT_VERIFY};
 
@@ -44,6 +45,9 @@ type OrderedMap = MediumOrdMap<u32, (ProtocolId, Message)>;
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = conceal, id = Commitment)]
 pub struct MerkleTree {
+    /// Method used to construct MPC proof (hash function, merklization).
+    pub(super) method: Method,
+
     /// Tree depth (up to 32).
     pub(super) depth: u5,
 
@@ -155,6 +159,7 @@ mod commit {
                             map.insert(pos, (*protocol, *message)).is_none()
                         }) {
                             return Ok(MerkleTree {
+                                method: source.method,
                                 depth,
                                 entropy,
                                 cofactor,
@@ -201,6 +206,11 @@ impl MerkleTree {
     pub fn cofactor(&self) -> u16 { self.cofactor }
 
     pub fn entropy(&self) -> u64 { self.entropy }
+
+    pub fn into_proofs(self) -> impl Iterator<Item = (ProtocolId, MerkleProof)> {
+        let block = MerkleBlock::from(self);
+        block.into_known_proofs()
+    }
 }
 
 #[cfg(test)]
@@ -244,6 +254,7 @@ pub(crate) mod test_helpers {
 
     pub fn make_random_tree(msgs: &BTreeMap<ProtocolId, Message>) -> MerkleTree {
         let src = MultiSource {
+            method: Method::Sha256t,
             min_depth: u5::ZERO,
             messages: Confined::try_from_iter(msgs.iter().map(|(a, b)| (*a, *b))).unwrap(),
             static_entropy: None,
