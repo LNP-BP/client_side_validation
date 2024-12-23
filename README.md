@@ -10,9 +10,9 @@
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Apache-2 licensed](https://img.shields.io/crates/l/client_side_validation)](./LICENSE)
 
-This is an implementation defining standard of client-side-validation 
+This is an implementation defining standard of client-side-validation
 representing a set of its Foundation libraries. The standards covered by the
-libraries include [LNPBP-4], [LNPBP-7], [LNPBP-8], [LNPBP-9], and [LNPBP-81] 
+libraries include [LNPBP-4], [LNPBP-7], [LNPBP-8], [LNPBP-9], and [LNPBP-81]
 (see [Components](#components) section below for more details).
 
 Client-side-validation is a paradigm for distributed computing, based on top of
@@ -22,39 +22,38 @@ or other type of distributed consensus system.
 The development of the library is supported by [LNP/BP Standards Association][lnpbp-web]
 and is performed on its [GitHub page][lnpbp-github].
 
-The original idea of client-side-validation was proposed by Peter Todd with its 
+The original idea of client-side-validation was proposed by Peter Todd with its
 possible applications designed by Giacomo Zucco. It was shaped into the protocol
 design by Dr Maxim Orlovsky with a big input from the community.
 
-Minimum supported rust version for the library (MSRV) is 1.66 and 2021 rust 
+Minimum supported rust version for the library (MSRV) is 1.66 and 2021 rust
 edition.
-
 
 ## Documentation
 
 Detailed developer & API documentation for all libraries can be accessed at:
+
 - <https://docs.rs/client_side_validation/>
 - <https://docs.rs/single_use_seals/>
 - <https://docs.rs/commit_verify/>
 
 To learn about the technologies enabled by the library please check
-[slides from our tech presentations][presentations] and 
+[slides from our tech presentations][presentations] and
 [LNP/BP tech talks videos][lnpbp-youtube].
-
 
 ## Components
 
 This library consists of the following main three components, which define
 independent parts constituting together client-side-validation API and its core
 functionality. These are:
-- [Commit-verify](commit_verify/README.md) client-side-validation-specific APIs:
-  * consensus commitments (part of [LNPBP-8] standard)
-  * multi-commitments ([LNPBP-4] standard)
-  * merklization for client-side-validation ([LNPBP-81] standard)
-- [Single-use-seals](single_use_seals/README.md) API ([LNPBP-8] standard)
-- Client-side-validation API from the library root, linking those components 
-  together according to [LNPBP-9] standard.
 
+- [Commit-verify](commit_verify/README.md) client-side-validation-specific APIs:
+    * consensus commitments (part of [LNPBP-8] standard)
+    * multi-commitments ([LNPBP-4] standard)
+    * merklization for client-side-validation ([LNPBP-81] standard)
+- [Single-use-seals](single_use_seals/README.md) API ([LNPBP-8] standard)
+- Client-side-validation API from the library root, linking those components
+  together according to [LNPBP-9] standard.
 
 ## Usage
 
@@ -62,8 +61,8 @@ The repository contains rust libraries for client-side validation.
 
 ### Use library in other projects
 
-To use libraries, you just need latest version of libraries, published to 
-[crates.io](https://crates.io) into `[dependencies]` section of your project 
+To use libraries, you just need latest version of libraries, published to
+[crates.io](https://crates.io) into `[dependencies]` section of your project
 `Cargo.toml`. Here is the full list of available libraries from this repository:
 
 ```toml
@@ -73,10 +72,11 @@ single_use_seals = "1" # Generic (non-bitcoin-specific) API
 ```
 
 "Umbrella" `client_side_validation` library is configured with default set of
-features enabling all of its functionality (and including all of other libraries 
+features enabling all of its functionality (and including all of other libraries
 from this repository, listed above). If you need to restrict this set, either
 use specific libraries - or configure main library with a set of features in
 the following way:
+
 ```toml
 [dependencies.client_side_validation]
 version = "1"
@@ -85,12 +85,12 @@ features = [] # Your set of features goes here
 ```
 
 The library has four feature flags, all of which are not used by default:
+
 - `rand`, providing support for generating random 32-byte sequences of `Slice32`
   type, used in many LNP/BP applications (for instance as hash-lock preimages or
   during LNPBP-4 multi-commitments);
 - `serde`, providing support for data structure serialization with serde across
-  all library;
-- `async`, providing async traits for projects using async rust.
+  all library.
 
 For specific features which may be enabled for the libraries, please check
 library-specific guidelines, located in `README.md` files in each of library
@@ -98,27 +98,26 @@ subdirectories.
 
 ### Libraries based on client-side-validation
 
-Most of the developers will be probably interested in a more high-level 
+Most of the developers will be probably interested in a more high-level
 libraries based on client-side-validation, applying it to a specific commitment
 mediums (bitcoin transaction graph from blockchain or state channels, or more
 exotic systems like confidential bitcoin transactions used by elements & liquid,
 or mimblewimble-based systems). Here is (potentially incomplete) list of such
 libraries:
-- Bitcoin: [BP Core Lib](https://github.com/LNP-BP/bp-core), which contains 
-  bitcoin UTXO single-use-seal implementations for pay-to-contract and 
-  sign-to-contract types of seals, as well as a library for deterministic 
-  bitcoin commitments. This library is maintained by LNP/BP Association.
-- [Pandora sealchain](https://github.com/pandora-network/sealchain-rs), an 
-  experimental blockchain of [Pandora Network](https://pandora.network), 
-  playing with client-side-validation using modified bitcoin consensus rules, 
-  extended with eltoo- and covenants-related functionality and with removed 
-  native blockchain-level coin.
 
+- Bitcoin: [BP Core Lib](https://github.com/LNP-BP/bp-core), which contains
+  bitcoin UTXO single-use-seal implementations for pay-to-contract and
+  sign-to-contract types of seals, as well as a library for deterministic
+  bitcoin commitments. This library is maintained by LNP/BP Association.
+- [Pandora sealchain](https://github.com/pandora-network/sealchain-rs), an
+  experimental blockchain of [Pandora Network](https://pandora.network),
+  playing with client-side-validation using modified bitcoin consensus rules,
+  extended with eltoo- and covenants-related functionality and with removed
+  native blockchain-level coin.
 
 ## Contributing
 
 Contribution guidelines can be found in [CONTRIBUTING](CONTRIBUTING.md)
-
 
 ## Licensing
 
@@ -127,13 +126,21 @@ See [LICENCE](LICENSE) file for the license details.
 
 
 [lnpbp-web]: https://lnp-bp.org
+
 [lnpbp-github]: https://github.com/LNP-BP
+
 [lnpbp-youtube]: https://www.youtube.com/@LNPBP
+
 [presentations]: https://github.com/LNP-BP/FAQ/blob/master/Presentation%20slides/
 
 [LNPBP-4]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0004.md
+
 [LNPBP-7]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0007.md
+
 [LNPBP-8]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0008.md
+
 [LNPBP-9]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0009.md
+
 [LNPBP-42]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0042.md
+
 [LNPBP-81]: https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0081.md

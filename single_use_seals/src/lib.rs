@@ -143,11 +143,6 @@ impl<T> StrictDecode for T {}
 /// * get some identifier on the exact place of the witness publication
 /// * check validity of the witness publication identifier
 ///
-/// Since the medium may require network communications or extensive computing
-/// involved (like in case with blockchain) there is a special asynchronous
-/// version of the seal medium [`SealProtocolAsync`], which requires use of
-/// `async` feature of this crate.
-///
 /// All these operations are medium-specific; for the same single-use-seal type
 /// they may differ when are applied to different proof of publication mediums.
 ///

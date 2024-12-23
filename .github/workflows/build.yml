@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [ derive, stl, serde, async, rand ]
+        feature: [ derive, rand, stl, serde ]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
