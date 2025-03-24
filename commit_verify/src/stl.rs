@@ -33,6 +33,7 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     .transpile::<ReservedBytes<1>>()
     .transpile::<ReservedBytes<2>>()
     .transpile::<ReservedBytes<4>>()
+    .transpile::<ReservedBytes<26>>()
     .transpile::<mpc::MerkleConcealed>()
     .transpile::<mpc::MerkleTree>()
     .transpile::<mpc::MerkleBlock>()
