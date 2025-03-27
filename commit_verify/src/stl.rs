@@ -24,7 +24,7 @@ use strict_types::{CompileError, LibBuilder, TypeLib};
 use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "stl:~lvTV1Mw-5xmhpcL-cppKeUz-ZLKBRTZ-cpYZPxp-Okxn5dk#uranium-alien-extend";
+    "stl:tKRd3Qd6-1ANy7t2-gqCSeX2-oF9xE1M-7I5qPKc-jMrYuNE#evident-junior-lobby";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
@@ -33,6 +33,13 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     .transpile::<ReservedBytes<1>>()
     .transpile::<ReservedBytes<2>>()
     .transpile::<ReservedBytes<4>>()
+    .transpile::<ReservedBytes<8>>()
+    .transpile::<ReservedBytes<16>>()
+    .transpile::<ReservedBytes<24>>()
+    .transpile::<ReservedBytes<28>>()
+    .transpile::<ReservedBytes<30>>()
+    .transpile::<ReservedBytes<31>>()
+    .transpile::<ReservedBytes<32>>()
     .transpile::<mpc::MerkleConcealed>()
     .transpile::<mpc::MerkleTree>()
     .transpile::<mpc::MerkleBlock>()
