@@ -24,7 +24,7 @@ use strict_types::{CompileError, LibBuilder, TypeLib};
 use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "stl:~lvTV1Mw-5xmhpcL-cppKeUz-ZLKBRTZ-cpYZPxp-Okxn5dk#uranium-alien-extend";
+    "stl:wH1wmGy2-0vBNWxL-MK~_eQb-Ayskv~e-oFmDrzI-O_IW_P0#biology-news-adam";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
@@ -32,7 +32,37 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     })
     .transpile::<ReservedBytes<1>>()
     .transpile::<ReservedBytes<2>>()
+    .transpile::<ReservedBytes<3>>()
     .transpile::<ReservedBytes<4>>()
+    .transpile::<ReservedBytes<5>>()
+    .transpile::<ReservedBytes<6>>()
+    .transpile::<ReservedBytes<7>>()
+    .transpile::<ReservedBytes<8>>()
+    .transpile::<ReservedBytes<9>>()
+    .transpile::<ReservedBytes<10>>()
+    .transpile::<ReservedBytes<11>>()
+    .transpile::<ReservedBytes<12>>()
+    .transpile::<ReservedBytes<13>>()
+    .transpile::<ReservedBytes<14>>()
+    .transpile::<ReservedBytes<15>>()
+    .transpile::<ReservedBytes<16>>()
+    .transpile::<ReservedBytes<17>>()
+    .transpile::<ReservedBytes<18>>()
+    .transpile::<ReservedBytes<19>>()
+    .transpile::<ReservedBytes<20>>()
+    .transpile::<ReservedBytes<21>>()
+    .transpile::<ReservedBytes<22>>()
+    .transpile::<ReservedBytes<23>>()
+    .transpile::<ReservedBytes<24>>()
+    .transpile::<ReservedBytes<25>>()
+    .transpile::<ReservedBytes<26>>()
+    .transpile::<ReservedBytes<27>>()
+    .transpile::<ReservedBytes<28>>()
+    .transpile::<ReservedBytes<28>>()
+    .transpile::<ReservedBytes<29>>()
+    .transpile::<ReservedBytes<30>>()
+    .transpile::<ReservedBytes<31>>()
+    .transpile::<ReservedBytes<32>>()
     .transpile::<mpc::MerkleConcealed>()
     .transpile::<mpc::MerkleTree>()
     .transpile::<mpc::MerkleBlock>()
