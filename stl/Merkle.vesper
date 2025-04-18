@@ -10,91 +10,91 @@ Merklization vesper lexicon=types+commitments
 
 -- General merklization workflows
 
-MerkleHash commitment hasher=SHA256 tagged=urn:ubideco:merkle:node#2024-01-31
-  MerkleNode serialized
+commitment MerkleHash, hasher SHA256, tagged urn:ubideco:merkle:node#2024-01-31
+  serialized MerkleNode
 
-MerkleNode rec
-  branching enum NodeBranching void=0 single=1 branch=2
-  depth is U8
-  width is U256
-  node1 bytes len=32 aka=MerkleHash
-  node2 bytes len=32 aka=MerkleHash
+rec MerkleNode
+  enum branching, NodeBranching, void 0, single 1, branch 2
+  is depth, U8
+  is width, U256
+  bytes node1, len 32, aka MerkleHash
+  bytes node2, len 32, aka MerkleHash
 
 
 -- Multi-protocol commitment workflows
 
-MerkleHash commitment hasher=SHA256 tagged=urn:ubideco:merkle:node#2024-01-31
-  Leaf serialized
+commitment MerkleHash, hasher SHA256, tagged urn:ubideco:merkle:node#2024-01-31
+  serialized Leaf
 
-Leaf union
-  inhabited rec tag=0
-    protocol bytes len=32 aka=ProtocolId
-    message bytes len=32 aka=Message
-  entropy rec tag=1
-    entropy is U64
-    pos is U32
+union Leaf
+  rec inhabited, tag 0
+    bytes protocol, len 32, aka ProtocolId
+    bytes message, len 32, aka Message
+  rec entropy, tag 1
+    is entropy, U64
+    is pos, U32
 
-Commitment commitment hasher=SHA256 tagged=urn:ubideco:mpc:commitment#2024-01-31
-  MerkleConcealed serialized
+commitment Commitment, hasher SHA256, tagged urn:ubideco:mpc:commitment#2024-01-31
+  serialized MerkleConcealed
 
-MerkleConcealed rec
-  depth enum {
-    U5 _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7
-    _8=8 _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15
-    _16=16 _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23
-    _24=24 _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+rec MerkleConcealed
+  enum depth {
+    U5, _0 0, _1 1, _2 2, _3 3, _4 4, _5 5, _6 6, _7 7
+    _8 8, _9 9, _10 10, _11 11, _12 12, _13 13, _14 14, _15 15
+    _16 16, _17 17, _18 18, _19 19, _20 20, _21 21, _22 22, _23 23
+    _24 24, _25 25, _26 26, _27 27, _28 28, _29 29, _30 30, _31 31
     
   }
-  cofactor is U16
-  merkleRoot bytes len=32 aka=MerkleHash
+  is cofactor, U16
+  bytes merkleRoot, len 32, aka MerkleHash
 
-Commitment commitment hasher=SHA256 tagged=urn:ubideco:mpc:commitment#2024-01-31
-  MerkleConcealed concealed concealed=MerkleConcealed
+commitment Commitment, hasher SHA256, tagged urn:ubideco:mpc:commitment#2024-01-31
+  concealed MerkleConcealed, concealed MerkleConcealed
 
-MerkleBlock rec
-  depth enum {
-    U5 _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7
-    _8=8 _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15
-    _16=16 _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23
-    _24=24 _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+rec MerkleBlock
+  enum depth {
+    U5, _0 0, _1 1, _2 2, _3 3, _4 4, _5 5, _6 6, _7 7
+    _8 8, _9 9, _10 10, _11 11, _12 12, _13 13, _14 14, _15 15
+    _16 16, _17 17, _18 18, _19 19, _20 20, _21 21, _22 22, _23 23
+    _24 24, _25 25, _26 26, _27 27, _28 28, _29 29, _30 30, _31 31
     
   }
-  cofactor is U16
-  crossSection list len=1..MAX32
-    TreeNode union
-      concealedNode rec tag=0
-        depth enum {
-          U5 _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7
-          _8=8 _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15
-          _16=16 _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23
-          _24=24 _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+  is cofactor, U16
+  list crossSection, len 1..MAX32
+    union TreeNode
+      rec concealedNode, tag 0
+        enum depth {
+          U5, _0 0, _1 1, _2 2, _3 3, _4 4, _5 5, _6 6, _7 7
+          _8 8, _9 9, _10 10, _11 11, _12 12, _13 13, _14 14, _15 15
+          _16 16, _17 17, _18 18, _19 19, _20 20, _21 21, _22 22, _23 23
+          _24 24, _25 25, _26 26, _27 27, _28 28, _29 29, _30 30, _31 31
           
         }
-        hash bytes len=32 aka=MerkleHash
-      commitmentLeaf rec tag=1
-        protocolId bytes len=32 aka=ProtocolId
-        message bytes len=32 aka=Message
-    some is U64 option wrapped tag=1
+        bytes hash, len 32, aka MerkleHash
+      rec commitmentLeaf, tag 1
+        bytes protocolId, len 32, aka ProtocolId
+        bytes message, len 32, aka Message
+    is some, U64, option, wrapped, tag 1
 
-Commitment commitment hasher=SHA256 tagged=urn:ubideco:mpc:commitment#2024-01-31
-  MerkleConcealed concealed concealed=MerkleConcealed
+commitment Commitment, hasher SHA256, tagged urn:ubideco:mpc:commitment#2024-01-31
+  concealed MerkleConcealed, concealed MerkleConcealed
 
-MerkleTree rec
-  depth enum {
-    U5 _0=0 _1=1 _2=2 _3=3 _4=4 _5=5 _6=6 _7=7
-    _8=8 _9=9 _10=10 _11=11 _12=12 _13=13 _14=14 _15=15
-    _16=16 _17=17 _18=18 _19=19 _20=20 _21=21 _22=22 _23=23
-    _24=24 _25=25 _26=26 _27=27 _28=28 _29=29 _30=30 _31=31
+rec MerkleTree
+  enum depth {
+    U5, _0 0, _1 1, _2 2, _3 3, _4 4, _5 5, _6 6, _7 7
+    _8 8, _9 9, _10 10, _11 11, _12 12, _13 13, _14 14, _15 15
+    _16 16, _17 17, _18 18, _19 19, _20 20, _21 21, _22 22, _23 23
+    _24 24, _25 25, _26 26, _27 27, _28 28, _29 29, _30 30, _31 31
     
   }
-  entropy is U64
-  cofactor is U16
-  messages map len=0..MAX24
-    key bytes len=32 aka=ProtocolId
-    value bytes len=32 aka=Message
-  map map len=0..MAX24
-    key is U32
-    value tuple
-      _ bytes len=32 aka=ProtocolId
-      _ bytes len=32 aka=Message
+  is entropy, U64
+  is cofactor, U16
+  map messages, len 0..MAX24
+    bytes key, len 32, aka ProtocolId
+    bytes value, len 32, aka Message
+  map map, len 0..MAX24
+    is key, U32
+    tuple value
+      bytes _, len 32, aka ProtocolId
+      bytes _, len 32, aka Message
 

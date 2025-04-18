@@ -22,9 +22,9 @@ edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "~4.7.1"
-strict_encoding = "~2.7.0"
-strict_types = "~2.7.0"
+amplify = "~4.8.0"
+strict_encoding = "~2.8.2"
+strict_types = "~2.8.3"
 
 [package]
 name = "client_side_validation"
