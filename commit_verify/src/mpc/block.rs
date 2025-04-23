@@ -434,12 +434,12 @@ impl MerkleBlock {
         message: Message,
     ) -> Result<u16, MergeError> {
         let block = MerkleBlock::with(proof, protocol_id, message)?;
-        self.merge_reveal(block)
+        self.merge_reveal(&block)
     }
 
     /// Merges two merkle blocks together, joining revealed information from
     /// each one of them.
-    pub fn merge_reveal(&mut self, other: MerkleBlock) -> Result<u16, MergeError> {
+    pub fn merge_reveal(&mut self, other: &MerkleBlock) -> Result<u16, MergeError> {
         let orig = self.clone();
         let base_root = self.commit_id();
         let merged_root = other.commit_id();
@@ -812,7 +812,7 @@ mod test {
             let mut merged_block = MerkleBlock::with(proof, pid, msg).unwrap();
             for (proof, (pid, msg)) in iter {
                 let block = MerkleBlock::with(proof, pid, msg).unwrap();
-                if let Err(err) = merged_block.merge_reveal(block.clone()) {
+                if let Err(err) = merged_block.merge_reveal(&block) {
                     eprintln!("Error: {err}");
                     eprintln!("Source tree: {mpc_tree:#?}");
                     eprintln!("Source block: {mpc_block:#?}");
