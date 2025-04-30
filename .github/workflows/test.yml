@@ -26,4 +26,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Test ${{matrix.os}}
-        run: cargo test --workspace --all-features --no-fail-fast
+        run: cargo test --workspace --all-features --no-fail-fast -- --include-ignored
