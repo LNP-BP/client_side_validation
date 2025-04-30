@@ -291,6 +291,7 @@ mod test {
     }
 
     #[test]
+    #[ignore = "should be executed alone for performance reasons"]
     fn tree_huge() {
         // Tree with 8192 protocol-messages: depth 23, cofactor 103. Serialized length
         // 1081361 bytes. Takes 71589 msecs to generate
@@ -372,6 +373,7 @@ mod test {
     }
 
     #[test]
+    #[ignore = "should be executed alone for performance reasons"]
     fn scalability() {
         let mut depths = vec![];
         let mut cofacs = vec![];
