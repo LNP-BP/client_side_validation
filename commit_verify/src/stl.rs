@@ -24,12 +24,12 @@ use strict_types::{CompileError, LibBuilder, TypeLib};
 use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
 pub const LIB_ID_COMMIT_VERIFY: &str =
-    "stl:egMd32l9-y$Kod0o-$FRcNAV-Q4U$O5h-pskW9YM-$irF0yY#miller-pancake-elastic";
+    "stl:TGUWcCPX-99GBEi0-tlbMxUg-1SS_~Qh-_IdYDJt-zjJ3uMI#violet-panther-herbert";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
-    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
-        strict_types::stl::std_stl().to_dependency()
-    })
+    LibBuilder::with(libname!(LIB_NAME_COMMIT_VERIFY), [
+        strict_types::stl::std_stl().to_dependency_types()
+    ])
     .transpile::<ReservedBytes<1>>()
     .transpile::<ReservedBytes<2>>()
     .transpile::<ReservedBytes<4>>()
