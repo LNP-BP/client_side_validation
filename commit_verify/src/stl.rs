@@ -27,9 +27,9 @@ pub const LIB_ID_COMMIT_VERIFY: &str =
     "stl:wH1wmGy2-0vBNWxL-MK~_eQb-Ayskv~e-oFmDrzI-O_IW_P0#biology-news-adam";
 
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
-    LibBuilder::new(libname!(LIB_NAME_COMMIT_VERIFY), tiny_bset! {
-        strict_types::stl::std_stl().to_dependency()
-    })
+    LibBuilder::with(libname!(LIB_NAME_COMMIT_VERIFY), [
+        strict_types::stl::std_stl().to_dependency_types()
+    ])
     .transpile::<ReservedBytes<1>>()
     .transpile::<ReservedBytes<2>>()
     .transpile::<ReservedBytes<3>>()
