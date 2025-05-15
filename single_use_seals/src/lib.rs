@@ -217,7 +217,7 @@ pub trait PublishedWitness<Seal: SingleUseSeal> {
 }
 
 /// Seal closing witness.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(
     feature = "strict_encoding",
     derive(StrictType, StrictDumb, StrictEncode, StrictDecode),
