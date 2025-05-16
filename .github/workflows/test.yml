@@ -27,3 +27,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Test ${{matrix.os}}
         run: cargo test --workspace --all-features --no-fail-fast -- --include-ignored
+  wasm-testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - name: Add wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Test in headless Chrome
+        run: wasm-pack test --headless --chrome
