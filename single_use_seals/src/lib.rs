@@ -433,6 +433,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
 
@@ -547,6 +548,14 @@ mod tests {
     impl Error for Invalid {}
 
     #[test]
+    fn verify_no_client_witness() {
+        let mut a = NoClientWitness::default();
+        let b = NoClientWitness::<DumbSeal>::new();
+        assert_eq!(a, b);
+        a.merge(b).unwrap();
+    }
+
+    #[test]
     fn verify_success() {
         let seal = DumbSeal(0xCA);
         let message = [
@@ -571,8 +580,12 @@ mod tests {
         ];
         let witness =
             SealWitness::new(DumbPubWitness(message, fake_seal), NoClientWitness::default());
+        let res = witness.verify_seal_closing(seal, message).unwrap_err();
+        // We need this to test cover Debug and Display impl for SealError
+        println!("{res}");
+        println!("{res:?}");
         assert!(matches!(
-            witness.verify_seal_closing(seal, message).unwrap_err(),
+            res,
             SealError::NotIncluded(s, 0x00) if s == seal
         ));
     }
@@ -587,10 +600,11 @@ mod tests {
         let mut fake_message = message;
         fake_message[0] = 0x00;
         let witness = SealWitness::new(DumbPubWitness(message, seal), NoClientWitness::default());
-        assert!(matches!(
-            witness.verify_seal_closing(seal, fake_message).unwrap_err(),
-            SealError::Published(Invalid)
-        ));
+        let res = witness.verify_seal_closing(seal, fake_message).unwrap_err();
+        // We need this to test cover Debug and Display impl for SealError
+        println!("{res}");
+        println!("{res:?}");
+        assert!(matches!(res, SealError::Published(Invalid)));
     }
 
     #[test]
@@ -601,9 +615,10 @@ mod tests {
             0xDA, 0xFE,
         ];
         let witness = SealWitness::new(DumbPubWitness(message, seal), FailingCliWitness::default());
-        assert!(matches!(
-            witness.verify_seal_closing(seal, message).unwrap_err(),
-            SealError::Client(Invalid)
-        ));
+        let res = witness.verify_seal_closing(seal, message).unwrap_err();
+        // We need this to test cover Debug and Display impl for SealError
+        println!("{res}");
+        println!("{res:?}");
+        assert!(matches!(res, SealError::Client(Invalid)));
     }
 }
