@@ -363,7 +363,7 @@ where Seal: SingleUseSeal
             seal.borrow()
                 .is_included(message, self)
                 .then_some(())
-                .ok_or(SealError::NotClosed(seal.borrow().clone(), self.published.pub_id()))?;
+                .ok_or(SealError::NotIncluded(seal.borrow().clone(), self.published.pub_id()))?;
         }
         // ensure that the published witness contains the commitment to the
         // f(message), where `f` is defined in the client-side witness
@@ -382,8 +382,8 @@ where Seal: SingleUseSeal
 /// [`SealWitness::verify_seals_closing`] procedures.
 #[derive(Clone)]
 pub enum SealError<Seal: SingleUseSeal> {
-    /// The single-use seal was not closed over the provided message.
-    NotClosed(Seal, <Seal::PubWitness as PublishedWitness<Seal>>::PubId),
+    /// The single-use seal was not included in the public witness.
+    NotIncluded(Seal, <Seal::PubWitness as PublishedWitness<Seal>>::PubId),
     /// The provided proof of the seal closing is not valid for the published
     /// part of the seal closing witness.
     Published(<Seal::PubWitness as PublishedWitness<Seal>>::Error),
@@ -395,7 +395,7 @@ pub enum SealError<Seal: SingleUseSeal> {
 impl<Seal: SingleUseSeal> Debug for SealError<Seal> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            SealError::NotClosed(seal, pub_id) => f
+            SealError::NotIncluded(seal, pub_id) => f
                 .debug_tuple("SealError::NotIncluded")
                 .field(seal)
                 .field(pub_id)
@@ -409,8 +409,8 @@ impl<Seal: SingleUseSeal> Debug for SealError<Seal> {
 impl<Seal: SingleUseSeal> Display for SealError<Seal> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            SealError::NotClosed(seal, pub_id) => {
-                write!(f, "seal {seal} is not included in the witness {pub_id}")
+            SealError::NotIncluded(seal, pub_id) => {
+                write!(f, "seal {seal} is not included in the public witness {pub_id}")
             }
             SealError::Published(err) => Display::fmt(err, f),
             SealError::Client(err) => Display::fmt(err, f),
@@ -425,7 +425,7 @@ where
 {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            SealError::NotClosed(..) => None,
+            SealError::NotIncluded(..) => None,
             SealError::Published(e) => Some(e),
             SealError::Client(e) => Some(e),
         }
@@ -438,6 +438,8 @@ mod tests {
 
     const LIB_NAME: &str = "SingleUseSealTests";
 
+    type DumbMessage = [u8; 16];
+
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
     #[derive(StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = LIB_NAME)]
@@ -446,8 +448,6 @@ mod tests {
     impl Display for DumbSeal {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result { f.write_str("DumbSeal") }
     }
-
-    type DumbMessage = [u8; 16];
 
     impl SingleUseSeal for DumbSeal {
         type Message = DumbMessage;
@@ -462,7 +462,7 @@ mod tests {
     #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
     #[derive(StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = LIB_NAME)]
-    struct DumbPubWitness(DumbMessage, DumbSeal);
+    struct DumbPubWitness<Seal: SingleUseSeal + Default = DumbSeal>(DumbMessage, Seal);
 
     impl PublishedWitness<DumbSeal> for DumbPubWitness {
         type PubId = u8;
@@ -472,6 +472,70 @@ mod tests {
 
         fn verify_commitment(&self, proof: DumbMessage) -> Result<(), Self::Error> {
             (self.0 == proof).then_some(()).ok_or(Invalid)
+        }
+    }
+
+    impl PublishedWitness<FailingSeal> for DumbPubWitness {
+        type PubId = u8;
+        type Error = Invalid;
+
+        fn pub_id(&self) -> Self::PubId { self.1 .0 }
+
+        fn verify_commitment(&self, proof: DumbMessage) -> Result<(), Self::Error> {
+            (self.0 == proof).then_some(()).ok_or(Invalid)
+        }
+    }
+
+    impl PublishedWitness<FailingSeal> for DumbPubWitness<FailingSeal> {
+        type PubId = u8;
+        type Error = Invalid;
+
+        fn pub_id(&self) -> Self::PubId { self.1 .0 }
+
+        fn verify_commitment(&self, proof: DumbMessage) -> Result<(), Self::Error> {
+            (self.0 == proof).then_some(()).ok_or(Invalid)
+        }
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = LIB_NAME)]
+    struct FailingSeal(u8);
+
+    impl Display for FailingSeal {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result { f.write_str("DumbSeal") }
+    }
+
+    impl SingleUseSeal for FailingSeal {
+        type Message = DumbMessage;
+        type PubWitness = DumbPubWitness<FailingSeal>;
+        type CliWitness = FailingCliWitness;
+
+        fn is_included(&self, _message: Self::Message, _witness: &SealWitness<Self>) -> bool {
+            true
+        }
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = LIB_NAME)]
+    struct FailingCliWitness();
+
+    impl ClientSideWitness for FailingCliWitness {
+        type Seal = FailingSeal;
+        type Proof = DumbMessage;
+        type Error = Invalid;
+
+        fn convolve_commit(
+            &self,
+            _msg: <Self::Seal as SingleUseSeal>::Message,
+        ) -> Result<Self::Proof, Self::Error> {
+            Err(Invalid)
+        }
+
+        fn merge(&mut self, _other: Self) -> Result<(), impl Error>
+        where Self: Sized {
+            Result::<_, Infallible>::Ok(())
         }
     }
 
@@ -495,5 +559,51 @@ mod tests {
             // We need this to test Display impl for the SealError
             .inspect_err(|e| eprintln!("{e}"))
             .unwrap()
+    }
+
+    #[test]
+    fn verify_not_included() {
+        let seal = DumbSeal(0xCA);
+        let fake_seal = DumbSeal(0x00);
+        let message = [
+            0xDEu8, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE, 0xFE, 0xED, 0xBE, 0xD0, 0xBA, 0xD1,
+            0xDA, 0xFE,
+        ];
+        let witness =
+            SealWitness::new(DumbPubWitness(message, fake_seal), NoClientWitness::default());
+        assert!(matches!(
+            witness.verify_seal_closing(seal, message).unwrap_err(),
+            SealError::NotIncluded(s, 0x00) if s == seal
+        ));
+    }
+
+    #[test]
+    fn verify_fake_message() {
+        let seal = DumbSeal(0xCA);
+        let message = [
+            0xDEu8, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE, 0xFE, 0xED, 0xBE, 0xD0, 0xBA, 0xD1,
+            0xDA, 0xFE,
+        ];
+        let mut fake_message = message;
+        fake_message[0] = 0x00;
+        let witness = SealWitness::new(DumbPubWitness(message, seal), NoClientWitness::default());
+        assert!(matches!(
+            witness.verify_seal_closing(seal, fake_message).unwrap_err(),
+            SealError::Published(Invalid)
+        ));
+    }
+
+    #[test]
+    fn verify_failing_client_witness() {
+        let seal = FailingSeal(0xCA);
+        let message = [
+            0xDEu8, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE, 0xFE, 0xED, 0xBE, 0xD0, 0xBA, 0xD1,
+            0xDA, 0xFE,
+        ];
+        let witness = SealWitness::new(DumbPubWitness(message, seal), FailingCliWitness::default());
+        assert!(matches!(
+            witness.verify_seal_closing(seal, message).unwrap_err(),
+            SealError::Client(Invalid)
+        ));
     }
 }
