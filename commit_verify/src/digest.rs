@@ -23,9 +23,16 @@ use amplify::num::u24;
 pub use ripemd::Ripemd160;
 pub use sha2::{Digest, Sha256};
 
+/// A generic cryptographic digest trait.
 pub trait DigestExt<const BYTE_LEN: usize = 32>: Digest {
+    /// Initialize a diges with a given tag.
     fn from_tag(tag: impl AsRef<[u8]>) -> Self;
+
+    /// Digest raw byte slice.
     fn input_raw(&mut self, data: &[u8]);
+
+    /// Digest bytes, adding the data length to the digest (preventing length
+    /// extension attack).
     fn input_with_len<const MAX: usize>(&mut self, data: &[u8]) {
         let len = data.len();
         match MAX {
@@ -37,6 +44,8 @@ pub trait DigestExt<const BYTE_LEN: usize = 32>: Digest {
         }
         self.input_raw(data);
     }
+
+    /// Compute the final cryptographic digest.
     fn finish(self) -> [u8; BYTE_LEN];
 }
 

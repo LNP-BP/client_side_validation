@@ -21,15 +21,22 @@
 
 // Coding conventions
 #![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
+    unsafe_code,
+    dead_code,
+    missing_docs,
+    unused_variables,
     unused_mut,
     unused_imports,
-    dead_code,
-    // TODO: uncomment missing_docs
+    unused_crate_dependencies,
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+
+//! Standard cryptographic commitment library, created and supported by the
+//! LNP/BP Labs.
+// TODO: Extend description and readme
 
 #[macro_use]
 extern crate amplify;
@@ -68,6 +75,7 @@ pub use id::{
 };
 pub use merkle::{MerkleBuoy, MerkleHash, MerkleLeaves, MerkleNode, NodeBranching};
 
+/// Name of the CommitVerify strict type library.
 pub const LIB_NAME_COMMIT_VERIFY: &str = "CommitVerify";
 
 /// Marker trait for specific commitment protocols.

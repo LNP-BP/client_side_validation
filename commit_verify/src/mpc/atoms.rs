@@ -28,8 +28,16 @@ use strict_encoding::StrictDumb;
 use crate::merkle::MerkleHash;
 use crate::{CommitmentId, DigestExt};
 
+/// The constant defining the minimum depth of the MPC Merkle tree.
 pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
 
+/// A specific cryptographic digest algorithm used in constructing MPC Merkle
+/// trees.
+///
+/// # Future use
+///
+/// For supporting zk compression of the proves in the future it is planned to
+/// add more zk-friendly digest algorithms.
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Default)]
 #[display(lowercase)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
@@ -37,6 +45,7 @@ pub const MPC_MINIMAL_DEPTH: u5 = u5::with(3);
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[repr(u8)]
 pub enum Method {
+    /// A tagged SHA256 digest.
     #[default]
     Sha256t = 0,
 }
@@ -60,6 +69,8 @@ pub struct ProtocolId(
 );
 
 impl ProtocolId {
+    /// Construct a protocol id from a slice, returning an error if the slice
+    /// length differs from 32 bytes.
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -80,31 +91,46 @@ pub struct Message(
 );
 
 impl Message {
+    /// Construct a message from a slice, returning an error if the slice
+    /// length differs from 32 bytes.
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
 }
 
+/// A leaf of the MPC Merkle tree.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, From)]
 #[derive(StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = crate::LIB_NAME_COMMIT_VERIFY, tags = custom)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = strict, id = MerkleHash)]
 pub enum Leaf {
+    /// Leaf, inhabited with a commitment under a protocol.
     // We use this constant since we'd like to be distinct from NodeBranching values
     #[strict_type(tag = 0x10)]
     Inhabited {
+        /// The protocol under which the message is created.
         protocol: ProtocolId,
+        /// The commitment under the protocol.
         message: Message,
     },
+
+    /// Lead, uninhabited by any protocol.
     // We use this constant since we'd like to be distinct from NodeBranching values
     #[strict_type(tag = 0x11)]
-    Entropy { entropy: u64, pos: u32 },
+    Entropy {
+        /// Entropic value.
+        entropy: u64,
+        /// A position of the leaf
+        pos: u32,
+    },
 }
 
 impl Leaf {
+    /// Construct a [`Leaf::Entropy`] variant.
     pub fn entropy(entropy: u64, pos: u32) -> Self { Self::Entropy { entropy, pos } }
 
+    /// Construct a [`Leaf::Inhabited`] variant.
     pub fn inhabited(protocol: ProtocolId, message: Message) -> Self {
         Self::Inhabited { protocol, message }
     }
@@ -136,6 +162,8 @@ impl CommitmentId for Commitment {
 }
 
 impl Commitment {
+    /// Construct a commitment from a slice, returning an error if the slice
+    /// length differs from 32 bytes.
     pub fn copy_from_slice(slice: &[u8]) -> Result<Self, FromSliceError> {
         Bytes32::copy_from_slice(slice).map(Self)
     }
@@ -148,11 +176,16 @@ impl From<Sha256> for Commitment {
 /// Structured source multi-message data for commitment creation
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct MultiSource {
+    /// A cryptographic digest algorithm used for the construction.
     pub method: Method,
     /// Minimal depth of the created LNPBP-4 commitment tree
     pub min_depth: u5,
     /// Map of the messages by their respective protocol ids
     pub messages: MessageMap,
+    /// An optional entropy used in creating MPC Merkle tree.
+    ///
+    /// If not provided, a system random generator is used.
+    /// If the generator is not available, it will cause panic.
     pub static_entropy: Option<u64>,
 }
 
@@ -170,6 +203,8 @@ impl Default for MultiSource {
 
 impl MultiSource {
     #[inline]
+    /// Create a default [`MultiSource`] instance, initializing the
+    /// [`MultiSource::static_entropy`] with the provided value.
     pub fn with_static_entropy(static_entropy: u64) -> Self {
         MultiSource {
             static_entropy: Some(static_entropy),

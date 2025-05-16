@@ -19,10 +19,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! CommitVerify strict type library.
+
 use strict_types::{CompileError, LibBuilder, TypeLib};
 
 use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COMMIT_VERIFY};
 
+/// Strict type library ID for the CommitVerify types.
 pub const LIB_ID_COMMIT_VERIFY: &str =
     "stl:wH1wmGy2-0vBNWxL-MK~_eQb-Ayskv~e-oFmDrzI-O_IW_P0#biology-news-adam";
 
@@ -76,6 +79,7 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     .compile()
 }
 
+/// Compiles  CommitVerify strict type library.
 pub fn commit_verify_stl() -> TypeLib {
     _commit_verify_stl().expect("invalid strict type CommitVerify library")
 }

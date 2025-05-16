@@ -69,6 +69,7 @@ impl Proof for MerkleTree {
 }
 
 impl MerkleTree {
+    /// Compute the root of the Merkle tree.
     pub fn root(&self) -> MerkleHash {
         let iter = (0..self.width_limit()).map(|pos| {
             self.map
@@ -193,20 +194,25 @@ impl MerkleTree {
         protocol_id_pos(protocol_id, self.cofactor, self.depth)
     }
 
-    /// Computes the maximum possible width of the merkle tree, equal to `2 ^
-    /// depth`.
+    /// Computes the maximum possible width of the MPC Merkle tree, equal to `2
+    /// ^ depth`.
     pub fn width_limit(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
 
-    /// Computes the factored width of the merkle tree, equal to `2 ^ depth -
-    /// cofactor`.
+    /// Computes the factored width of the MPC Merkle tree, equal to `2 ^ depth
+    /// - cofactor`.
     pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
+    /// Get the depth of the MPC Merkle tree.
     pub fn depth(&self) -> u5 { self.depth }
 
+    /// Get the cofactor of the MPC Merkle tree.
     pub fn cofactor(&self) -> u16 { self.cofactor }
 
+    /// Get the value of the entropy used in the MPC Merkle tree construct.
     pub fn entropy(&self) -> u64 { self.entropy }
 
+    /// Convert this MPC Merkle tree into an iterator over items and proofs of
+    /// their inclusion.
     pub fn into_proofs(self) -> impl Iterator<Item = (ProtocolId, MerkleProof)> {
         let block = MerkleBlock::from(self);
         block.into_known_proofs()
