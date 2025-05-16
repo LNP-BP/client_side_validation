@@ -136,7 +136,7 @@ impl<T> StrictDecode for T {}
 /// Trait for the types implementing single-use seal protocol, composing all
 /// their components (seal definition, message, and seal closing withness)
 /// together, and implementing the logic of the protocol-specific verification
-/// of the seal closing over the message (see [`Self::is_closed_over`]).
+/// of the seal closing over the message (see [`Self::is_included`]).
 pub trait SingleUseSeal:
     Clone + Debug + Display + StrictDumb + StrictEncode + StrictDecode
 {
@@ -149,13 +149,15 @@ pub trait SingleUseSeal:
     /// A type for the client-side part of the seal closing witness.
     type CliWitness: ClientSideWitness<Seal = Self> + StrictDumb + StrictEncode + StrictDecode;
 
-    /// Check that the seal was closed over the `message`, as is proven by the
-    /// `witness`.
+    /// Check that the seal was closing over a message is a part of the witness.
     ///
-    /// NB: Do not use this method directly; instead, use
-    /// [`SealWitness::verify_seal_closing`] and
+    /// Some public or client-side witnesses must be checked to include specific
+    /// seal closing information. This method ensures that this is the case.
+    ///
+    /// NB: This method does not perform the seal closing verification; for this
+    /// purpose use [`SealWitness::verify_seal_closing`] and
     /// [`SealWitness::verify_seals_closing`].
-    fn is_closed_over(&self, message: Self::Message, witness: &SealWitness<Self>) -> bool;
+    fn is_included(&self, message: Self::Message, witness: &SealWitness<Self>) -> bool;
 }
 
 /// A client-side part of the seal closing witness [`SealWitness`].
@@ -322,7 +324,7 @@ where Seal: SingleUseSeal
         // ensure that witness includes all seals
         for seal in seals {
             seal.borrow()
-                .is_closed_over(message, self)
+                .is_included(message, self)
                 .then_some(())
                 .ok_or(SealError::NotClosed(seal.borrow().clone(), self.published.pub_id()))?;
         }
