@@ -84,6 +84,8 @@ where Self: Eq + Sized
 /// Helpers for writing test functions working with commit-verify scheme
 #[cfg(test)]
 pub(crate) mod test_helpers {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use core::fmt::Debug;
     use core::hash::Hash;
     use std::collections::HashSet;

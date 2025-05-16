@@ -90,6 +90,8 @@ pub fn commit_verify_stl() -> TypeLib {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use super::*;
 
     #[test]

@@ -765,6 +765,8 @@ impl MerkleProof {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use super::*;
     use crate::mpc::tree::test_helpers::{
         make_det_messages, make_random_messages, make_random_tree,

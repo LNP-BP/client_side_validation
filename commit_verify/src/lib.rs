@@ -194,6 +194,8 @@ mod _reserved {
 /// Helpers for writing test functions working with commit schemes
 #[cfg(test)]
 pub mod test_helpers {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use amplify::confinement::SmallVec;
     use amplify::hex::FromHex;
 

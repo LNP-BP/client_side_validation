@@ -433,8 +433,9 @@ where
 }
 
 #[cfg(test)]
-#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use super::*;
 
     const LIB_NAME: &str = "SingleUseSealTests";

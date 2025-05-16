@@ -61,3 +61,6 @@ serde = ["dep:serde", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage_nightly)'] }

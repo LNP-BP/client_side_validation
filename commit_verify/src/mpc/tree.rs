@@ -225,6 +225,8 @@ impl MerkleTree {
 
 #[cfg(test)]
 pub(crate) mod test_helpers {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use std::collections::BTreeMap;
 
     use amplify::confinement::Confined;
@@ -275,6 +277,8 @@ pub(crate) mod test_helpers {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use std::collections::BTreeSet;
 
     use amplify::num::u5;

@@ -197,6 +197,7 @@ where
 #[cfg(test)]
 pub(crate) mod test_helpers {
     #![allow(missing_docs)]
+    #![cfg_attr(coverage_nightly, coverage(off))]
 
     use core::fmt::Debug;
     use core::hash::Hash;
@@ -305,6 +306,8 @@ pub(crate) mod test_helpers {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use core::fmt::Debug;
 
     use amplify::confinement::{SmallBlob, SmallVec, U32};
