@@ -229,6 +229,13 @@ pub trait MerkleLeaves {
     fn merkle_leaves(&self) -> impl ExactSizeIterator<Item = &Self::Leaf>;
 }
 
+impl<T, const LEN: usize> MerkleLeaves for [T; LEN]
+where T: CommitId<CommitmentId = MerkleHash>
+{
+    type Leaf = T;
+    fn merkle_leaves(&self) -> impl ExactSizeIterator<Item = &T> { self.iter() }
+}
+
 impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u8::MAX as usize }>
 where T: CommitId<CommitmentId = MerkleHash>
 {

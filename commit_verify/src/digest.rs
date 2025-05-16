@@ -35,6 +35,23 @@ pub trait DigestExt<const BYTE_LEN: usize = 32>: Digest {
     /// Digest raw byte slice.
     fn input_raw(&mut self, data: &[u8]);
 
+    /// Digest raw byte slice returning self.
+    fn with_raw(mut self, data: &[u8]) -> Self
+    where Self: Sized {
+        self.input_raw(data);
+        self
+    }
+
+    /// Digest bytes, adding the data length to the digest (preventing length
+    /// extension attack).
+    ///
+    /// Returns self.
+    fn with_len<const MAX: usize>(mut self, data: &[u8]) -> Self
+    where Self: Sized {
+        self.input_with_len::<MAX>(data);
+        self
+    }
+
     /// Digest bytes, adding the data length to the digest (preventing length
     /// extension attack).
     fn input_with_len<const MAX: usize>(&mut self, data: &[u8]) {

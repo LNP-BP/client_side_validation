@@ -121,13 +121,13 @@ impl CommitEngine {
         debug_assert!(
             Some(&fqn.name) != MerkleHash::strict_name().as_ref() ||
                 fqn.lib.as_str() != MerkleHash::STRICT_LIB_NAME,
-            "do not use commit_to_serialized for merklized collections, use commit_to_merkle \
+            "do not use `commit_to_serialized` for merklized collections, use `commit_to_merkle` \
              instead"
         );
         debug_assert!(
             Some(&fqn.name) != StrictHash::strict_name().as_ref() ||
                 fqn.lib.as_str() != StrictHash::STRICT_LIB_NAME,
-            "do not use commit_to_serialized for StrictHash types, use commit_to_hash instead"
+            "do not use `commit_to_serialized` for StrictHash types, use `commit_to_hash` instead"
         );
         self.layout
             .push(CommitStep::Serialized(fqn))
@@ -404,4 +404,192 @@ impl CommitmentId for StrictHash {
 
 impl From<Sha256> for StrictHash {
     fn from(hash: Sha256) -> Self { hash.finish().into() }
+}
+
+#[cfg(test)]
+mod tests {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+    use super::*;
+
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    struct DumbConceal(u8);
+
+    impl Conceal for DumbConceal {
+        type Concealed = DumbHash;
+        fn conceal(&self) -> Self::Concealed { DumbHash(0xFF - self.0) }
+    }
+
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    #[derive(CommitEncode)]
+    #[commit_encode(crate = self, strategy = strict, id = StrictHash)]
+    struct DumbHash(u8);
+
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    #[derive(CommitEncode)]
+    #[commit_encode(crate = self, strategy = strict, id = MerkleHash)]
+    struct DumbMerkle(u8);
+
+    #[test]
+    fn commit_engine_strict() {
+        let val = 123u64;
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_serialized(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Serialized(TypeFqn::from("_.U64"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(&val.to_le_bytes())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_option() {
+        let val = Some(128u64);
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_option(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Serialized(TypeFqn::from("_.U64"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(b"\x01\x80\x00\x00\x00\x00\x00\x00\x00")
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_conceal() {
+        let val = DumbConceal(123);
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_concealed(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Concealed(TypeFqn::from("Test.DumbConceal"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(&(0xFF - val.0).to_le_bytes())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_hash() {
+        let val = DumbHash(10);
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_hash(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Hashed(TypeFqn::from("Test.DumbHash"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(val.commit_id().as_slice())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_merkle() {
+        let val = [DumbMerkle(1), DumbMerkle(2), DumbMerkle(3), DumbMerkle(4)];
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_merkle(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Merklized(TypeFqn::from("Test.DumbMerkle"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(MerkleHash::merklize(&val).as_slice())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_list() {
+        let val = tiny_vec![0, 1, 2u8];
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_linear_list(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Collection(
+            CommitColType::List,
+            Sizing::new(0, 0xFF),
+            TypeFqn::from("_.U8")
+        )]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_len::<0xFF>(b"\x00\x01\x02")
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_set() {
+        let val = tiny_bset![0, 1, 2u8];
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_linear_set(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Collection(
+            CommitColType::Set,
+            Sizing::new(0, 0xFF),
+            TypeFqn::from("_.U8")
+        )]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_len::<0xFF>(b"\x00\x01\x02")
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_map() {
+        let val = tiny_bmap! {0 => tn!("A"), 1 => tn!("B"), 2u8 => tn!("C")};
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_linear_map(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Collection(
+            CommitColType::Map {
+                key: TypeFqn::from("_.U8")
+            },
+            Sizing::new(0, 0xFF),
+            TypeFqn::from("StrictTypes.TypeName")
+        )]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(b"\x03\x00\x01A\x01\x01B\x02\x01C")
+                .finish()
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn commit_engine_reject_hash() {
+        let val = StrictHash::strict_dumb();
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_serialized(&val);
+    }
+
+    #[test]
+    #[should_panic]
+    fn commit_engine_reject_merkle() {
+        let val = MerkleHash::strict_dumb();
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_serialized(&val);
+    }
 }
