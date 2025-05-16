@@ -133,6 +133,9 @@ trait StrictDecode {}
 #[cfg(not(feature = "strict_encoding"))]
 impl<T> StrictDecode for T {}
 
+/// Strict type library name for single-use seals.
+pub const LIB_NAME_SEALS: &str = "SingleUseSeals";
+
 /// Trait for the types implementing single-use seal protocol, composing all
 /// their components (seal definition, message, and seal closing withness)
 /// together, and implementing the logic of the protocol-specific verification
@@ -233,6 +236,30 @@ impl<Seal: SingleUseSeal> Default for NoClientWitness<Seal> {
     fn default() -> Self { Self::new() }
 }
 
+#[cfg(feature = "strict_encoding")]
+mod _strict_encoding_impls {
+    use strict_encoding::{
+        DecodeError, StrictProduct, StrictTuple, StrictType, TypedRead, TypedWrite,
+    };
+
+    use super::*;
+
+    impl<Seal: SingleUseSeal> StrictType for NoClientWitness<Seal> {
+        const STRICT_LIB_NAME: &'static str = LIB_NAME_SEALS;
+    }
+    impl<Seal: SingleUseSeal> StrictProduct for NoClientWitness<Seal> {}
+    impl<Seal: SingleUseSeal> StrictTuple for NoClientWitness<Seal> {
+        const FIELD_COUNT: u8 = 0;
+    }
+    impl<Seal: SingleUseSeal> StrictEncode for NoClientWitness<Seal> {
+        fn strict_encode<W: TypedWrite>(&self, writer: W) -> std::io::Result<W> { Ok(writer) }
+    }
+    impl<Seal: SingleUseSeal> StrictDecode for NoClientWitness<Seal> {
+        fn strict_decode(_reader: &mut impl TypedRead) -> Result<Self, DecodeError> {
+            Ok(NoClientWitness::new())
+        }
+    }
+}
 
 /// A published part of the seal closing witness [`SealWitness`].
 ///
@@ -271,7 +298,7 @@ pub trait PublishedWitness<Seal: SingleUseSeal> {
 #[cfg_attr(
     feature = "strict_encoding",
     derive(StrictType, StrictDumb, StrictEncode, StrictDecode),
-    strict_type(lib = "SingleUseSeals")
+    strict_type(lib = LIB_NAME_SEALS)
 )]
 #[cfg_attr(
     feature = "serde",
