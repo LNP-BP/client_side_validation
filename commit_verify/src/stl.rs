@@ -83,7 +83,7 @@ fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     .compile()
 }
 
-/// Compiles  CommitVerify strict type library.
+/// Compiles CommitVerify strict type library.
 pub fn commit_verify_stl() -> TypeLib {
     _commit_verify_stl().expect("invalid strict type CommitVerify library")
 }

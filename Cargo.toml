@@ -53,10 +53,11 @@ serde = { workspace = true, optional = true }
 
 [features]
 default = ["derive"]
-all = ["serde", "rand", "stl"]
-stl = ["commit_verify/stl"]
-rand = ["commit_verify/rand"]
+all = ["serde", "rand", "stl", "vesper"]
 derive = ["commit_verify/derive"]
+rand = ["commit_verify/rand"]
+stl = ["commit_verify/stl"]
+vesper = ["commit_verify/vesper"]
 serde = ["dep:serde", "commit_verify/serde"]
 
 [package.metadata.docs.rs]

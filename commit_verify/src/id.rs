@@ -24,6 +24,7 @@
 // the License.
 
 use std::collections::{BTreeMap, BTreeSet};
+#[cfg(feature = "vesper")]
 use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
 
@@ -315,6 +316,7 @@ pub struct CommitLayout {
     fields: TinyVec<CommitStep>,
 }
 
+#[cfg(feature = "vesper")]
 impl Display for CommitLayout {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(&self.to_vesper().display(), f)
