@@ -431,3 +431,69 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LIB_NAME: &str = "SingleUseSealTests";
+
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = LIB_NAME)]
+    struct DumbSeal(u8);
+
+    impl Display for DumbSeal {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result { f.write_str("DumbSeal") }
+    }
+
+    type DumbMessage = [u8; 16];
+
+    impl SingleUseSeal for DumbSeal {
+        type Message = DumbMessage;
+        type PubWitness = DumbPubWitness;
+        type CliWitness = NoClientWitness<DumbSeal>;
+
+        fn is_included(&self, _message: Self::Message, witness: &SealWitness<Self>) -> bool {
+            witness.published.1 == *self
+        }
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = LIB_NAME)]
+    struct DumbPubWitness(DumbMessage, DumbSeal);
+
+    impl PublishedWitness<DumbSeal> for DumbPubWitness {
+        type PubId = u8;
+        type Error = Invalid;
+
+        fn pub_id(&self) -> Self::PubId { self.1 .0 }
+
+        fn verify_commitment(&self, proof: DumbMessage) -> Result<(), Self::Error> {
+            (self.0 == proof).then_some(()).ok_or(Invalid)
+        }
+    }
+
+    #[derive(Copy, Clone, Debug)]
+    struct Invalid;
+    impl Display for Invalid {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result { f.write_str("invalid seal") }
+    }
+    impl Error for Invalid {}
+
+    #[test]
+    fn verify_success() {
+        let seal = DumbSeal(0xCA);
+        let message = [
+            0xDEu8, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE, 0xFE, 0xED, 0xBE, 0xD0, 0xBA, 0xD1,
+            0xDA, 0xFE,
+        ];
+        let witness = SealWitness::new(DumbPubWitness(message, seal), NoClientWitness::default());
+        witness
+            .verify_seal_closing(seal, message)
+            // We need this to test Display impl for the SealError
+            .inspect_err(|e| eprintln!("{e}"))
+            .unwrap()
+    }
+}
