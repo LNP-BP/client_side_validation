@@ -25,14 +25,17 @@
 
 // Coding conventions
 #![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
+    unsafe_code,
+    dead_code,
+    missing_docs,
+    unused_variables,
     unused_mut,
     unused_imports,
-    dead_code,
-    missing_docs
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case
 )]
+#![cfg_attr(not(target_arch = "wasm32"), deny(unused_crate_dependencies))]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
@@ -47,9 +50,9 @@
 //! * Strict binary data serialization used by client-side validation
 //!
 //! The goal of this module is to maximally reduce the probability of errors and
-//! mistakes within particular implementations of this paradigms by
-//! standardizing typical workflow processes in a form of interfaces that
-//! will be nearly impossible to use in a wrong way.
+//! mistakes within particular implementations of this paradigm by
+//! standardizing typical workflow processes in the form of interfaces that
+//! will be nearly impossible to use in the wrong way.
 
 /// Re-export of `commit_verify` crate.
 pub extern crate commit_verify as commit;

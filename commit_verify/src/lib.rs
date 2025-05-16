@@ -31,11 +31,11 @@
     unused_variables,
     unused_mut,
     unused_imports,
-    unused_crate_dependencies,
     non_upper_case_globals,
     non_camel_case_types,
     non_snake_case
 )]
+#![cfg_attr(not(target_arch = "wasm32"), deny(unused_crate_dependencies))]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 

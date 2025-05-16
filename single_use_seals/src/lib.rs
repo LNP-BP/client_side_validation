@@ -23,7 +23,19 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-#![deny(missing_docs)]
+// Coding conventions
+#![deny(
+    unsafe_code,
+    dead_code,
+    missing_docs,
+    unused_variables,
+    unused_mut,
+    unused_imports,
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case
+)]
+#![cfg_attr(not(target_arch = "wasm32"), deny(unused_crate_dependencies))]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![cfg_attr(not(feature = "strict_encoding"), no_std)]
