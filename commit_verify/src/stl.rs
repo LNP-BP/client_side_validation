@@ -26,6 +26,7 @@ use crate::{mpc, MerkleHash, MerkleNode, ReservedBytes, StrictHash, LIB_NAME_COM
 pub const LIB_ID_COMMIT_VERIFY: &str =
     "stl:wH1wmGy2-0vBNWxL-MK~_eQb-Ayskv~e-oFmDrzI-O_IW_P0#biology-news-adam";
 
+#[allow(clippy::result_large_err)]
 fn _commit_verify_stl() -> Result<TypeLib, CompileError> {
     LibBuilder::with(libname!(LIB_NAME_COMMIT_VERIFY), [
         strict_types::stl::std_stl().to_dependency_types()
