@@ -25,6 +25,7 @@
 
 #![deny(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![cfg_attr(not(feature = "strict_encoding"), no_std)]
 
 //! # Single-use-seals

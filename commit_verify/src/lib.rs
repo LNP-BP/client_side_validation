@@ -37,6 +37,7 @@
     non_snake_case
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 //! Standard cryptographic commitment library, created and supported by the
 //! LNP/BP Labs.
