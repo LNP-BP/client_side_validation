@@ -129,7 +129,7 @@ mod commit {
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
             #[cfg(feature = "rand")]
-            use rand::{thread_rng, RngCore};
+            use rand::{rng, RngCore};
 
             let msg_count = source.messages.len();
 
@@ -141,9 +141,7 @@ mod commit {
             }
 
             #[cfg(feature = "rand")]
-            let entropy = source
-                .static_entropy
-                .unwrap_or_else(|| thread_rng().next_u64());
+            let entropy = source.static_entropy.unwrap_or_else(|| rng().next_u64());
             #[cfg(not(feature = "rand"))]
             let entropy = source.static_entropy.expect(
                 "use must use `rand` feature for crate commit_verify if you do not provide static \
