@@ -203,7 +203,7 @@ pub trait ClientSideWitness: Eq {
 /// witness and have just the published one. To use [`SealWitness`] type in such
 /// protocols, the [`SingleUseSeal`] must set its [`SingleUseSeal::CliWitness`]
 /// to [`NoClientWitness`] type.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct NoClientWitness<Seal: SingleUseSeal>(PhantomData<Seal>);
 
 impl<Seal: SingleUseSeal> PartialEq for NoClientWitness<Seal> {
@@ -223,6 +223,16 @@ impl<Seal: SingleUseSeal> ClientSideWitness for NoClientWitness<Seal> {
         Ok::<_, Infallible>(())
     }
 }
+
+impl<Seal: SingleUseSeal> NoClientWitness<Seal> {
+    /// Constructs the object.
+    pub fn new() -> Self { Self(PhantomData) }
+}
+
+impl<Seal: SingleUseSeal> Default for NoClientWitness<Seal> {
+    fn default() -> Self { Self::new() }
+}
+
 
 /// A published part of the seal closing witness [`SealWitness`].
 ///
