@@ -118,6 +118,11 @@ impl<const LEN: usize, const VAL: u8> From<[u8; LEN]> for ReservedBytes<LEN, VAL
     }
 }
 
+impl<const LEN: usize, const VAL: u8> ReservedBytes<LEN, VAL> {
+    /// Constant constructor.
+    pub const fn new() -> Self { Self([VAL; LEN]) }
+}
+
 mod _reserved {
     use strict_encoding::{DecodeError, ReadTuple, StrictDecode, TypedRead};
 
@@ -146,46 +151,38 @@ mod _reserved {
 
     #[cfg(feature = "serde")]
     mod _serde {
-        use std::fmt;
-
-        use serde::de::Visitor;
-        use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+        use amplify::hex::{FromHex, ToHex};
+        use serde::de::Error;
+        use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
         use super::*;
 
         impl<const LEN: usize, const VAL: u8> Serialize for ReservedBytes<LEN, VAL> {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where S: Serializer {
-                // Doing nothing
-                serializer.serialize_unit()
+                if serializer.is_human_readable() {
+                    serializer.serialize_str(&self.0.to_hex())
+                } else {
+                    serializer.serialize_bytes(self.0.as_ref())
+                }
             }
         }
 
         impl<'de, const LEN: usize, const VAL: u8> Deserialize<'de> for ReservedBytes<LEN, VAL> {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: Deserializer<'de> {
-                #[derive(Default)]
-                pub struct UntaggedUnitVisitor;
+                let v = if deserializer.is_human_readable() {
+                    let s = String::deserialize(deserializer)?;
+                    Vec::<u8>::from_hex(&s)
+                        .map_err(|_| D::Error::custom("invalid reserved value"))?
+                } else {
+                    Vec::<u8>::deserialize(deserializer)?
+                };
 
-                impl Visitor<'_> for UntaggedUnitVisitor {
-                    type Value = ();
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        write!(formatter, "reserved unit")
-                    }
-
-                    fn visit_none<E>(self) -> Result<(), E>
-                    where E: de::Error {
-                        Ok(())
-                    }
-
-                    fn visit_unit<E>(self) -> Result<(), E>
-                    where E: de::Error {
-                        Ok(())
-                    }
+                if v != [VAL; LEN] {
+                    return Err(Error::custom("invalid reserved value"));
                 }
 
-                deserializer.deserialize_unit(UntaggedUnitVisitor)?;
                 Ok(default!())
             }
         }
