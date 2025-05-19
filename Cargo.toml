@@ -22,9 +22,9 @@ edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "~4.8.0"
-strict_encoding = "~2.8.2"
-strict_types = "~2.8.3"
+amplify = "~4.9.0"
+strict_encoding = "~2.9.1"
+strict_types = "~2.9.0"
 serde = { version = "1", features = ["derive"] }
 
 [package]
@@ -53,11 +53,15 @@ serde = { workspace = true, optional = true }
 
 [features]
 default = ["derive"]
-all = ["serde", "rand", "stl"]
-stl = ["commit_verify/stl"]
-rand = ["commit_verify/rand"]
+all = ["serde", "rand", "stl", "vesper"]
 derive = ["commit_verify/derive"]
+rand = ["commit_verify/rand"]
+stl = ["commit_verify/stl"]
+vesper = ["commit_verify/vesper"]
 serde = ["dep:serde", "commit_verify/serde"]
 
 [package.metadata.docs.rs]
 features = ["all"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage_nightly)'] }

@@ -2,22 +2,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
 
 //! Embedded commitments (commit-embed-verify scheme).
 
@@ -46,8 +50,8 @@ pub enum EmbedVerifyError<E: std::error::Error> {
 }
 
 /// Trait for equivalence verification. Implemented for all types implementing
-/// `Eq`. For non-`Eq` types this trait provides way to implement custom
-/// equivalence verification used during commitment verification procedure.
+/// `Eq`. For non-`Eq` types this trait provides a way to implement custom
+/// equivalence verification used during the commitment verification procedure.
 pub trait VerifyEq {
     /// Verifies commit-equivalence of two instances of the same type.
     fn verify_eq(&self, other: &Self) -> bool;
@@ -80,27 +84,27 @@ where
 }
 
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
-/// *container*) may commit to existing *message* (producing *commitment* data
-/// structure and a *proof*) in such way that the original message can't be
-/// restored from the commitment, however the fact of the commitment may be
+/// *container*) may commit to an existing *message* (producing *commitment*
+/// data structure and a *proof*) in such a way that the original message can't
+/// be restored from the commitment, however, the fact of the commitment may be
 /// deterministically *verified* when the message and the proof are *revealed*.
 ///
-/// To use *embed-commit-verify scheme* one needs to implement this trait for
-/// a data structure acting as a container for a specific commitment under
-/// certain protocol, specified as generic parameter. The container type must
-/// specify as associated types proof and commitment types.
+/// To use the *embed-commit-verify scheme*, one needs to implement this trait
+/// for a data structure acting as a container for a specific commitment under
+/// a certain protocol, specified as a generic parameter. The container type
+/// must specify as associated types proof and commitment types.
 ///
-/// Operations with *embed-commit-verify scheme* may be represented in form of
-/// `EmbedCommit: (Container, Message) -> (Container', Proof)` (see
-/// [`Self::embed_commit`] and `Verify: (Container', Message, Proof) -> bool`
+/// Operations with *embed-commit-verify scheme* may be represented in the form
+/// of `EmbedCommit: (Container, Message) -> (Container', Proof)` (see
+/// [`Self::embed_commit`]) and `Verify: (Container', Message, Proof) -> bool`
 /// (see [`Self::verify`]).
 ///
 /// This trait is heavily used in **deterministic bitcoin commitments**.
 ///
 /// # Protocol definition
 ///
-/// Generic parameter `Protocol` provides context & configuration for commitment
-/// scheme protocol used for this container type.
+/// Generic parameter `Protocol` provides context and configuration for the
+/// commitment scheme protocol used for this container type.
 ///
 /// Introduction of this generic allows to:
 /// - implement trait for foreign data types;
@@ -136,7 +140,7 @@ where
     /// Error type that may be reported during [`Self::embed_commit`] procedure.
     /// It may also be returned from [`Self::verify`] (wrapped into
     /// [`EmbedVerifyError`] in case the proof data are invalid and the
-    /// commitment can't be re-created.
+    /// commitment can't be re-created).
     type CommitError: std::error::Error;
 
     /// Creates a commitment to a message and embeds it into the provided
@@ -148,7 +152,7 @@ where
 
     /// Verifies commitment with commitment proof against the message.
     ///
-    /// Default implementation reconstructs original container with the
+    /// Default implementation reconstructs the original container with the
     /// [`EmbedCommitProof::restore_original_container`] method and repeats
     /// [`Self::embed_commit`] procedure checking that the resulting proof and
     /// commitment matches the provided `self` and `proof`.
@@ -177,20 +181,24 @@ where
         Ok(())
     }
 
-    /// Phantom method used to add `Protocol` generic parameter to the trait.
+    /// Phantom method used to add a `Protocol` generic parameter to the trait.
     ///
     /// # Panics
     ///
     /// Always panics when called.
     #[doc(hidden)]
     fn _phantom(_: Protocol) {
-        unimplemented!("EmbedCommitVerify::_phantom is a marker method which must not be used")
+        unimplemented!("EmbedCommitVerify::_phantom is a marker method that must not be used")
     }
 }
 
-/// Helpers for writing test functions working with embed-commit-verify scheme.
+/// Helpers for writing test functions working with the embed-commit-verify
+/// scheme.
 #[cfg(test)]
 pub(crate) mod test_helpers {
+    #![allow(missing_docs)]
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use core::fmt::Debug;
     use core::hash::Hash;
     use std::collections::HashSet;
@@ -298,6 +306,8 @@ pub(crate) mod test_helpers {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use core::fmt::Debug;
 
     use amplify::confinement::{SmallBlob, SmallVec, U32};

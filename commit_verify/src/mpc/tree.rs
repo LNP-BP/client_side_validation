@@ -2,22 +2,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
 
 use amplify::confinement::{LargeVec, MediumOrdMap};
 use amplify::num::{u256, u5};
@@ -69,6 +73,7 @@ impl Proof for MerkleTree {
 }
 
 impl MerkleTree {
+    /// Compute the root of the Merkle tree.
     pub fn root(&self) -> MerkleHash {
         let iter = (0..self.width_limit()).map(|pos| {
             self.map
@@ -124,7 +129,7 @@ mod commit {
 
         fn try_commit(source: &MultiSource) -> Result<Self, Error> {
             #[cfg(feature = "rand")]
-            use rand::{thread_rng, RngCore};
+            use rand::{rng, RngCore};
 
             let msg_count = source.messages.len();
 
@@ -136,9 +141,7 @@ mod commit {
             }
 
             #[cfg(feature = "rand")]
-            let entropy = source
-                .static_entropy
-                .unwrap_or_else(|| thread_rng().next_u64());
+            let entropy = source.static_entropy.unwrap_or_else(|| rng().next_u64());
             #[cfg(not(feature = "rand"))]
             let entropy = source.static_entropy.expect(
                 "use must use `rand` feature for crate commit_verify if you do not provide static \
@@ -193,20 +196,25 @@ impl MerkleTree {
         protocol_id_pos(protocol_id, self.cofactor, self.depth)
     }
 
-    /// Computes the maximum possible width of the merkle tree, equal to `2 ^
-    /// depth`.
+    /// Computes the maximum possible width of the MPC Merkle tree, equal to `2
+    /// ^ depth`.
     pub fn width_limit(&self) -> u32 { 2u32.pow(self.depth.to_u8() as u32) }
 
-    /// Computes the factored width of the merkle tree, equal to `2 ^ depth -
-    /// cofactor`.
+    /// Computes the factored width of the MPC Merkle tree, equal to `2 ^ depth
+    /// - cofactor`.
     pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
+    /// Get the depth of the MPC Merkle tree.
     pub fn depth(&self) -> u5 { self.depth }
 
+    /// Get the cofactor of the MPC Merkle tree.
     pub fn cofactor(&self) -> u16 { self.cofactor }
 
+    /// Get the value of the entropy used in the MPC Merkle tree construct.
     pub fn entropy(&self) -> u64 { self.entropy }
 
+    /// Convert this MPC Merkle tree into an iterator over items and proofs of
+    /// their inclusion.
     pub fn into_proofs(self) -> impl Iterator<Item = (ProtocolId, MerkleProof)> {
         let block = MerkleBlock::from(self);
         block.into_known_proofs()
@@ -215,6 +223,8 @@ impl MerkleTree {
 
 #[cfg(test)]
 pub(crate) mod test_helpers {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use std::collections::BTreeMap;
 
     use amplify::confinement::Confined;
@@ -265,6 +275,8 @@ pub(crate) mod test_helpers {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use std::collections::BTreeSet;
 
     use amplify::num::u5;

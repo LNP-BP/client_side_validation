@@ -19,6 +19,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(missing_docs)]
+
 use amplify::confinement::{Confined, SmallVec, TinyVec};
 use strict_encoding::Ident;
 use strict_types::layout::vesper::LenRange;

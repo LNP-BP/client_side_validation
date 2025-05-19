@@ -12,6 +12,8 @@
 // You should have received a copy of the Apache 2.0 License along with this
 // software. If not, see <https://opensource.org/licenses/Apache-2.0>.
 
+#![cfg_attr(coverage_nightly, feature(coverage_attribute), coverage(off))]
+
 use std::fs;
 use std::io::Write;
 
