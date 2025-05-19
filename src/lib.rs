@@ -2,34 +2,41 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
 
 // Coding conventions
 #![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
+    unsafe_code,
+    dead_code,
+    missing_docs,
+    unused_variables,
     unused_mut,
     unused_imports,
-    dead_code,
-    missing_docs
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 //! The LNP/BP client-side-validation foundation libraries implementing LNPBP
 //! specifications & standards (LNPBP-4, 7, 8, 9, 81).
@@ -42,9 +49,9 @@
 //! * Strict binary data serialization used by client-side validation
 //!
 //! The goal of this module is to maximally reduce the probability of errors and
-//! mistakes within particular implementations of this paradigms by
-//! standardizing typical workflow processes in a form of interfaces that
-//! will be nearly impossible to use in a wrong way.
+//! mistakes within particular implementations of this paradigm by
+//! standardizing typical workflow processes in the form of interfaces that
+//! will be nearly impossible to use in the wrong way.
 
 /// Re-export of `commit_verify` crate.
 pub extern crate commit_verify as commit;

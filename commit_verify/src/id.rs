@@ -2,24 +2,29 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
 
 use std::collections::{BTreeMap, BTreeSet};
+#[cfg(feature = "vesper")]
 use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
 
@@ -33,22 +38,49 @@ use crate::{Conceal, DigestExt, MerkleHash, MerkleLeaves, LIB_NAME_COMMIT_VERIFY
 
 const COMMIT_MAX_LEN: usize = U64MAX;
 
+/// Type of the collection participating in a commitment id creation.
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum CommitColType {
+    /// A vector-type collection (always correspond to a confined variant of
+    /// [`Vec`]).
     List,
+    /// A set of unique sorted elements (always correspond to a confined variant
+    /// of [`BTreeSet`]).
     Set,
-    Map { key: TypeFqn },
+    /// A map of unique sorted keys to values (always correspond to a confined
+    /// variant of [`BTreeMap`]).
+    Map {
+        /// A fully qualified strict type name for the keys.
+        key: TypeFqn,
+    },
 }
 
+/// Step of the commitment id creation.
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum CommitStep {
+    /// Serialization with [`CommitEngine::commit_to_serialized`].
     Serialized(TypeFqn),
+
+    /// Serialization with either
+    /// - [`CommitEngine::commit_to_linear_list`],
+    /// - [`CommitEngine::commit_to_linear_set`],
+    /// - [`CommitEngine::commit_to_linear_map`].
+    ///
+    /// A specific type of serialization depends on the first field
+    /// ([`CommitColType`]).
     Collection(CommitColType, Sizing, TypeFqn),
+
+    /// Serialization with [`CommitEngine::commit_to_hash`].
     Hashed(TypeFqn),
+
+    /// Serialization with [`CommitEngine::commit_to_merkle`].
     Merklized(TypeFqn),
+
+    /// Serialization with [`CommitEngine::commit_to_concealed`].
     Concealed(TypeFqn),
 }
 
+/// A helper engine used in computing commitment ids.
 #[derive(Clone, Debug)]
 pub struct CommitEngine {
     finished: bool,
@@ -64,6 +96,10 @@ fn commitment_fqn<T: StrictType>() -> TypeFqn {
 }
 
 impl CommitEngine {
+    /// Initialize the engine using a type-specific tag string.
+    ///
+    /// The tag should be in a form of a valid URN, ending with a fragment
+    /// specifying the date of the tag, or other form of versioning.
     pub fn new(tag: &'static str) -> Self {
         Self {
             finished: false,
@@ -79,18 +115,19 @@ impl CommitEngine {
         debug_assert!(ok);
     }
 
+    /// Add a commitment to a strict-encoded value.
     pub fn commit_to_serialized<T: StrictEncode>(&mut self, value: &T) {
         let fqn = commitment_fqn::<T>();
         debug_assert!(
             Some(&fqn.name) != MerkleHash::strict_name().as_ref() ||
                 fqn.lib.as_str() != MerkleHash::STRICT_LIB_NAME,
-            "do not use commit_to_serialized for merklized collections, use commit_to_merkle \
+            "do not use `commit_to_serialized` for merklized collections, use `commit_to_merkle` \
              instead"
         );
         debug_assert!(
             Some(&fqn.name) != StrictHash::strict_name().as_ref() ||
                 fqn.lib.as_str() != StrictHash::STRICT_LIB_NAME,
-            "do not use commit_to_serialized for StrictHash types, use commit_to_hash instead"
+            "do not use `commit_to_serialized` for StrictHash types, use `commit_to_hash` instead"
         );
         self.layout
             .push(CommitStep::Serialized(fqn))
@@ -99,6 +136,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&value);
     }
 
+    /// Add a commitment to a strict-encoded optional value.
     pub fn commit_to_option<T: StrictEncode + StrictDumb>(&mut self, value: &Option<T>) {
         let fqn = commitment_fqn::<T>();
         self.layout
@@ -108,6 +146,7 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&value);
     }
 
+    /// Add a commitment to a value which supports [`StrictHash`]ing.
     pub fn commit_to_hash<T: CommitEncode<CommitmentId = StrictHash> + StrictType>(
         &mut self,
         value: &T,
@@ -120,6 +159,9 @@ impl CommitEngine {
         self.inner_commit_to::<_, 32>(&value.commit_id());
     }
 
+    /// Add a commitment to a merklized collection.
+    ///
+    /// The collection must implement [`MerkleLeaves`] trait.
     pub fn commit_to_merkle<T: MerkleLeaves>(&mut self, value: &T)
     where T::Leaf: StrictType {
         let fqn = commitment_fqn::<T::Leaf>();
@@ -131,6 +173,11 @@ impl CommitEngine {
         self.inner_commit_to::<_, 32>(&root);
     }
 
+    /// Add a commitment to a type which supports [`Conceal`] procedure (hiding
+    /// some of its data).
+    ///
+    /// First, the conceal procedure is called for the `value`, and then the
+    /// resulting data are serialized using strict encoding.
     pub fn commit_to_concealed<T>(&mut self, value: &T)
     where
         T: Conceal + StrictType,
@@ -145,6 +192,13 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&concealed);
     }
 
+    /// Add a commitment to a vector collection.
+    ///
+    /// Does not use merklization and encodes each element as strict encoding
+    /// binary data right in to the hasher.
+    ///
+    /// Additionally to all elements, commits to the length of the collection
+    /// and minimal and maximal dimensions of the confinement.
     pub fn commit_to_linear_list<T, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<Vec<T>, MIN, MAX>,
@@ -160,6 +214,13 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
+    /// Add a commitment to a set collection.
+    ///
+    /// Does not use merklization and encodes each element as strict encoding
+    /// binary data right in to the hasher.
+    ///
+    /// Additionally to all elements, commits to the length of the collection
+    /// and minimal and maximal dimensions of the confinement.
     pub fn commit_to_linear_set<T, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<BTreeSet<T>, MIN, MAX>,
@@ -175,6 +236,13 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
+    /// Add a commitment to a mapped collection.
+    ///
+    /// Does not use merklization and encodes each element as strict encoding
+    /// binary data right in to the hasher.
+    ///
+    /// Additionally to all keys and values, commits to the length of the
+    /// collection and minimal and maximal dimensions of the confinement.
     pub fn commit_to_linear_map<K, V, const MIN: usize, const MAX: usize>(
         &mut self,
         collection: &Confined<BTreeMap<K, V>, MIN, MAX>,
@@ -195,20 +263,34 @@ impl CommitEngine {
         self.inner_commit_to::<_, COMMIT_MAX_LEN>(&collection);
     }
 
+    /// Get a reference for the underlying sequence of commit steps.
     pub fn as_layout(&mut self) -> &[CommitStep] {
         self.finished = true;
         self.layout.as_ref()
     }
 
+    /// Convert into the underlying sequence of commit steps.
     pub fn into_layout(self) -> TinyVec<CommitStep> { self.layout }
 
+    /// Mark the procedure as completed, preventing any further data from being
+    /// added.
     pub fn set_finished(&mut self) { self.finished = true; }
 
+    /// Complete the commitment returning the resulting hash.
     pub fn finish(self) -> Sha256 { self.hasher }
 
+    /// Complete the commitment returning the resulting hash and the description
+    /// of all commitment steps performed during the procedure.
     pub fn finish_layout(self) -> (Sha256, TinyVec<CommitStep>) { (self.hasher, self.layout) }
 }
 
+/// A trait for types supporting commit-encode procedure.
+///
+/// The procedure is used to generate a cryptographic deterministic commitment
+/// to data encoded in a binary form.
+///
+/// Later the commitment can be used to produce [`CommitmentId`] (which does a
+/// tagged hash of the commitment).
 pub trait CommitEncode {
     /// Type of the resulting commitment.
     type CommitmentId: CommitmentId;
@@ -218,6 +300,14 @@ pub trait CommitEncode {
     fn commit_encode(&self, e: &mut CommitEngine);
 }
 
+/// The description of the commitment layout used in production of
+/// [`CommitmentId`] (or other users of [`CommitEncode`]).
+///
+/// The layout description is useful in producing provably correct documentation
+/// of the commitment process for a specific type. For instance, this library
+/// uses it to generate a description of commitments in [Vesper] language.
+///
+/// [Vesper]: https://vesper-lang.org
 #[derive(Getters, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct CommitLayout {
     idty: TypeFqn,
@@ -226,17 +316,25 @@ pub struct CommitLayout {
     fields: TinyVec<CommitStep>,
 }
 
+#[cfg(feature = "vesper")]
 impl Display for CommitLayout {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(&self.to_vesper().display(), f)
     }
 }
 
+/// A definition of a resulting commitment type, which represent a unique
+/// identifier of the underlying data.
 pub trait CommitmentId: Copy + Ord + From<Sha256> + StrictType {
+    /// A tag string used in initializing SHA256 hasher.
     const TAG: &'static str;
 }
 
+/// A trait adding blanked implementation generating [`CommitmentLayout`] for
+/// any type implementing [`CommitEncode`].
 pub trait CommitmentLayout: CommitEncode {
+    /// Generate a descriptive commitment layout, which includes a description
+    /// of each encoded field and the used hashing strategies.
     fn commitment_layout() -> CommitLayout;
 }
 
@@ -286,6 +384,9 @@ impl<T: CommitEncode> CommitId for T {
     fn commit_id(&self) -> Self::CommitmentId { self.commit().finish().into() }
 }
 
+/// A commitment to the strict encoded-representation of any data.
+///
+/// It is created using tagged hash with [`StrictHash::TAG`] value.
 #[derive(Wrapper, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, From)]
 #[wrapper(Deref, BorrowSlice, Display, FromStr, Hex, Index, RangeOps)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
@@ -303,4 +404,192 @@ impl CommitmentId for StrictHash {
 
 impl From<Sha256> for StrictHash {
     fn from(hash: Sha256) -> Self { hash.finish().into() }
+}
+
+#[cfg(test)]
+mod tests {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+    use super::*;
+
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    struct DumbConceal(u8);
+
+    impl Conceal for DumbConceal {
+        type Concealed = DumbHash;
+        fn conceal(&self) -> Self::Concealed { DumbHash(0xFF - self.0) }
+    }
+
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    #[derive(CommitEncode)]
+    #[commit_encode(crate = self, strategy = strict, id = StrictHash)]
+    struct DumbHash(u8);
+
+    #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    #[derive(CommitEncode)]
+    #[commit_encode(crate = self, strategy = strict, id = MerkleHash)]
+    struct DumbMerkle(u8);
+
+    #[test]
+    fn commit_engine_strict() {
+        let val = 123u64;
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_serialized(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Serialized(TypeFqn::from("_.U64"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(&val.to_le_bytes())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_option() {
+        let val = Some(128u64);
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_option(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Serialized(TypeFqn::from("_.U64"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(b"\x01\x80\x00\x00\x00\x00\x00\x00\x00")
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_conceal() {
+        let val = DumbConceal(123);
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_concealed(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Concealed(TypeFqn::from("Test.DumbConceal"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(&(0xFF - val.0).to_le_bytes())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_hash() {
+        let val = DumbHash(10);
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_hash(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Hashed(TypeFqn::from("Test.DumbHash"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(val.commit_id().as_slice())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_merkle() {
+        let val = [DumbMerkle(1), DumbMerkle(2), DumbMerkle(3), DumbMerkle(4)];
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_merkle(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Merklized(TypeFqn::from("Test.DumbMerkle"))]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(MerkleHash::merklize(&val).as_slice())
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_list() {
+        let val = tiny_vec![0, 1, 2u8];
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_linear_list(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Collection(
+            CommitColType::List,
+            Sizing::new(0, 0xFF),
+            TypeFqn::from("_.U8")
+        )]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_len::<0xFF>(b"\x00\x01\x02")
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_set() {
+        let val = tiny_bset![0, 1, 2u8];
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_linear_set(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Collection(
+            CommitColType::Set,
+            Sizing::new(0, 0xFF),
+            TypeFqn::from("_.U8")
+        )]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_len::<0xFF>(b"\x00\x01\x02")
+                .finish()
+        );
+    }
+
+    #[test]
+    fn commit_engine_map() {
+        let val = tiny_bmap! {0 => tn!("A"), 1 => tn!("B"), 2u8 => tn!("C")};
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_linear_map(&val);
+        engine.set_finished();
+        let (id, layout) = engine.finish_layout();
+        assert_eq!(layout, tiny_vec![CommitStep::Collection(
+            CommitColType::Map {
+                key: TypeFqn::from("_.U8")
+            },
+            Sizing::new(0, 0xFF),
+            TypeFqn::from("StrictTypes.TypeName")
+        )]);
+        assert_eq!(
+            id.finish(),
+            Sha256::from_tag("test")
+                .with_raw(b"\x03\x00\x01A\x01\x01B\x02\x01C")
+                .finish()
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn commit_engine_reject_hash() {
+        let val = StrictHash::strict_dumb();
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_serialized(&val);
+    }
+
+    #[test]
+    #[should_panic]
+    fn commit_engine_reject_merkle() {
+        let val = MerkleHash::strict_dumb();
+        let mut engine = CommitEngine::new("test");
+        engine.commit_to_serialized(&val);
+    }
 }

@@ -5,12 +5,12 @@ on:
     branches:
       - master
     tags:
-      - 'v[0-9]+\.*'
+      - 'v[0-9]+.*'
   pull_request:
     branches:
       - master
       - develop
-      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.?*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [ derive, rand, stl, serde ]
+        feature: [ derive, rand, stl, vesper, serde ]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

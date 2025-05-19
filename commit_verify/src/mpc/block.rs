@@ -2,22 +2,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
 
 #![allow(unused_braces)]
 
@@ -35,36 +39,57 @@ use crate::mpc::tree::protocol_id_pos;
 use crate::mpc::{Commitment, MerkleTree, Message, MessageMap, Method, Proof, ProtocolId};
 use crate::{Conceal, LIB_NAME_COMMIT_VERIFY};
 
-/// commitment under protocol id {0} is absent from the known part of a given
-/// LNPBP-4 Merkle block.
+/// Error indicating that a given [`ProtocolId`] does not participate in a
+/// specific MPC Merkle tree.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
-#[display(doc_comments)]
-pub struct LeafNotKnown(ProtocolId);
+#[display(
+    "commitment under protocol id {0} is absent from the known part of a given LNPBP-4 Merkle \
+     block"
+)]
+pub struct LeafNotKnown(pub ProtocolId);
 
-/// the provided merkle proof protocol id {protocol_id} position {actual}
-/// doesn't match the expected position {expected} within the tree of width
-/// {width}.
+/// Error constructing MPC Merkle tree due to invalid [`MerkleProof`] data.
+///
+/// # Returned by
+///
+/// - [`MerkleBlock::with`]
+/// - [`MerkleProof::convolve`]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
-#[display(doc_comments)]
+#[display(
+    "the provided merkle proof protocol id {protocol_id} position {actual} doesn't match the \
+     expected position {expected} within the tree of width {width}."
+)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub struct InvalidProof {
-    protocol_id: ProtocolId,
-    expected: u32,
-    actual: u32,
-    width: u32,
+    /// The protocol id which position is mismatched.
+    pub protocol_id: ProtocolId,
+    /// The position in which the protocol should appear.
+    pub expected: u32,
+    /// The position in which the protocol appears in the proof.
+    pub actual: u32,
+    /// The width of the MPC Merkle tree.
+    pub width: u32,
 }
 
+/// Errors happening during the [`MerkleBlock::merge_reveal_path`] procedure.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, Error, From)]
-#[display(doc_comments)]
 pub enum MergeError {
+    /// Invalid [`MerkleProof`] data.
+    ///
+    /// See [`InvalidProof`] inner error type for the details.
     #[from]
     #[display(inner)]
     InvalidProof(InvalidProof),
 
-    /// attempt to merge two unrelated LNPBP-4 blocks with different Merkle
-    /// roots (base {base_root}, merged-in {merged_root}).
+    /// Attempt to merge two unrelated [`MerkleBlock`]s.
+    #[display(
+        "attempt to merge two unrelated LNPBP-4 blocks with different Merkle roots (base \
+         {base_root}, merged-in {merged_root})."
+    )]
     UnrelatedBlocks {
+        /// The merkle root of the first merged MPC block.
         base_root: Commitment,
+        /// The merkle root of the second merged MPC block.
         merged_root: Commitment,
     },
 }
@@ -125,6 +150,8 @@ impl TreeNode {
     }
 }
 
+/// A fully concealed MPC Merkle tree, consisting just of the Merkle root and
+/// information about its original depth and used cofactor.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(StrictType, StrictDumb, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
@@ -425,7 +452,7 @@ impl MerkleBlock {
     }
 
     /// Merges information from the given `proof` to the merkle block, revealing
-    /// path related to te `commitment` to the message under the given
+    /// the path related to te `commitment` to the message under the given
     /// `protocol_id`.
     pub fn merge_reveal_path(
         &mut self,
@@ -583,8 +610,8 @@ Changed commitment id: {}",
         })
     }
 
-    /// Constructs merkle proof for the inclusion of a commitment under given
-    /// `protocol_id` for the current Merkle block.
+    /// Constructs merkle proof for the inclusion of a commitment under the
+    /// given `protocol_id` for the current Merkle block.
     pub fn to_merkle_proof(&self, protocol_id: ProtocolId) -> Result<MerkleProof, LeafNotKnown> {
         self.clone().into_merkle_proof(protocol_id)
     }
@@ -601,6 +628,8 @@ Changed commitment id: {}",
     /// `2 ^ depth - cofactor`.
     pub fn factored_width(&self) -> u32 { self.width_limit() - self.cofactor as u32 }
 
+    /// Get an iterator over the known protocol ids present in the MPC Merkle
+    /// block.
     pub fn known_protocol_ids(&self) -> impl Iterator<Item = ProtocolId> + '_ {
         self.cross_section.iter().filter_map(|item| match item {
             TreeNode::ConcealedNode { .. } => None,
@@ -625,6 +654,8 @@ Changed commitment id: {}",
         .expect("same collection size")
     }
 
+    /// Convert this MPC Merkle block into an iterator over items and proofs of
+    /// their inclusion.
     pub fn into_known_proofs(self) -> impl Iterator<Item = (ProtocolId, MerkleProof)> {
         self.known_protocol_ids()
             .collect::<Vec<_>>()
@@ -734,6 +765,8 @@ impl MerkleProof {
 
 #[cfg(test)]
 mod test {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
     use super::*;
     use crate::mpc::tree::test_helpers::{
         make_det_messages, make_random_messages, make_random_tree,

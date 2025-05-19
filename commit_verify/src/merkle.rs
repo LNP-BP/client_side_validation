@@ -2,22 +2,28 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
+
+//! Generic cryptographic merklization procedures.
 
 use std::collections::BTreeSet;
 use std::ops::SubAssign;
@@ -37,9 +43,9 @@ use crate::{CommitId, CommitmentId, LIB_NAME_COMMIT_VERIFY};
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY, tags = repr, into_u8, try_from_u8)]
 #[repr(u8)]
 pub enum NodeBranching {
-    /// Void node: virtual node with no leafs.
+    /// Void node: virtual node with no leaves.
     ///
-    /// Used when the total width of the three is not a power two.
+    /// Used when the total width of the three is not power two.
     #[strict_type(dumb)]
     Void = 0x00,
 
@@ -50,28 +56,41 @@ pub enum NodeBranching {
     Branch = 0x02,
 }
 
+/// A node in the merkle tree used during the merklization process.
+///
+/// The data are hashed using [`CommitEncode`] procedure, ensuring that each
+/// node commits to its types, leaves, depth, and witdth of the tree at the node
+/// depth.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[derive(StrictDumb, StrictType, StrictEncode, StrictDecode)]
 #[strict_type(lib = LIB_NAME_COMMIT_VERIFY)]
 #[derive(CommitEncode)]
 #[commit_encode(crate = crate, strategy = strict, id = MerkleHash)]
 pub struct MerkleNode {
+    /// A type of the node, based on its leaves.
     pub branching: NodeBranching,
+    /// A depth of the node, with the root being a zero depth.
     pub depth: u8,
+    /// The width of the merkle tree at the depth of the node.
     pub width: u256,
+    /// First leaf of the node.
     pub node1: MerkleHash,
+    /// Second leaf of the node.
     pub node2: MerkleHash,
 }
 
 impl MerkleNode {
+    /// Construct a non-existing (virtual) merkle node.
     pub fn void(depth: impl Into<u8>, width: impl Into<u256>) -> Self {
         Self::with(NodeBranching::Void, depth, width, VIRTUAL_LEAF, VIRTUAL_LEAF)
     }
 
+    /// Construct a merkle node with just a single leaf.
     pub fn single(depth: impl Into<u8>, width: impl Into<u256>, node: MerkleHash) -> Self {
         Self::with(NodeBranching::Single, depth, width, node, VIRTUAL_LEAF)
     }
 
+    /// Construct a merkle node with two leaves.
     pub fn branches(
         depth: impl Into<u8>,
         width: impl Into<u256>,
@@ -124,14 +143,17 @@ impl From<Sha256> for MerkleHash {
 const VIRTUAL_LEAF: MerkleHash = MerkleHash(Bytes32::from_array([0xFF; 32]));
 
 impl MerkleHash {
+    /// Construct a non-existing (virtual) merkle node.
     pub fn void(depth: impl Into<u8>, width: impl Into<u256>) -> Self {
         MerkleNode::void(depth, width).commit_id()
     }
 
+    /// Construct a merkle node with just a single leaf.
     pub fn single(depth: impl Into<u8>, width: impl Into<u256>, node: MerkleHash) -> Self {
         MerkleNode::single(depth, width, node).commit_id()
     }
 
+    /// Construct a merkle node with two leaves.
     pub fn branches(
         depth: impl Into<u8>,
         width: impl Into<u256>,
@@ -195,9 +217,23 @@ impl MerkleHash {
     }
 }
 
+/// Trait, which can be implemented for any collection type such that its
+/// elements can be easily merklized with [`MerkleHash::merklize`].
 pub trait MerkleLeaves {
+    /// The type of the collection element.
+    ///
+    /// It must be able to produce a commitment in the form of a [`MerkleHash`].
     type Leaf: CommitId<CommitmentId = MerkleHash>;
+
+    /// Get an iterator over all collection elements that have to be merklized.
     fn merkle_leaves(&self) -> impl ExactSizeIterator<Item = &Self::Leaf>;
+}
+
+impl<T, const LEN: usize> MerkleLeaves for [T; LEN]
+where T: CommitId<CommitmentId = MerkleHash>
+{
+    type Leaf = T;
+    fn merkle_leaves(&self) -> impl ExactSizeIterator<Item = &T> { self.iter() }
 }
 
 impl<T, const MIN: usize> MerkleLeaves for Confined<Vec<T>, MIN, { u8::MAX as usize }>
@@ -243,6 +279,9 @@ where T: CommitId<CommitmentId = MerkleHash>
 }
 
 /// Helper struct to track depth when working with Merkle blocks.
+///
+/// Generic argument `D` is for a concrete arithmetic type matching the maximum
+/// depth of the merkle tree.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default> {
     buoy: D,
@@ -250,6 +289,7 @@ pub struct MerkleBuoy<D: Copy + Eq + SubAssign<u8> + Default> {
 }
 
 impl<D: Copy + Eq + SubAssign<u8> + Default> MerkleBuoy<D> {
+    /// Construct a new merkle buoy.
     pub fn new(top: D) -> Self {
         Self {
             buoy: top,
@@ -268,10 +308,10 @@ impl<D: Copy + Eq + SubAssign<u8> + Default> MerkleBuoy<D> {
 
     /// Add new item to the buoy.
     ///
-    /// Returns whether the buoy have surfaced in a result.
+    /// Returns whether the buoy has surfaced in a result.
     ///
-    /// The buoy surfaces each time the contents it has is reduced to two depth
-    /// of the same level.
+    /// The buoy surfaces each time the content it has is reduced to two
+    /// depths of the same level.
     pub fn push(&mut self, depth: D) -> bool {
         if depth == D::default() {
             return false;

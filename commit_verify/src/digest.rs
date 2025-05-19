@@ -2,30 +2,58 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2019-2024 by
-//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Designed in 2019-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+// Written in 2024-2025 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2019-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2019-2024 LNP/BP Standards Association, Switzerland.
+// Copyright (C) 2024-2025 LNP/BP Laboratories,
+//                         Institute for Distributed and Cognitive Systems
+// (InDCS), Switzerland. Copyright (C) 2019-2025 Dr Maxim Orlovsky.
+// All rights under the above copyrights are reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//        http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
 
 use amplify::num::u24;
 pub use ripemd::Ripemd160;
 pub use sha2::{Digest, Sha256};
 
+/// A generic cryptographic digest trait.
 pub trait DigestExt<const BYTE_LEN: usize = 32>: Digest {
+    /// Initialize a diges with a given tag.
     fn from_tag(tag: impl AsRef<[u8]>) -> Self;
+
+    /// Digest raw byte slice.
     fn input_raw(&mut self, data: &[u8]);
+
+    /// Digest raw byte slice returning self.
+    fn with_raw(mut self, data: &[u8]) -> Self
+    where Self: Sized {
+        self.input_raw(data);
+        self
+    }
+
+    /// Digest bytes, adding the data length to the digest (preventing length
+    /// extension attack).
+    ///
+    /// Returns self.
+    fn with_len<const MAX: usize>(mut self, data: &[u8]) -> Self
+    where Self: Sized {
+        self.input_with_len::<MAX>(data);
+        self
+    }
+
+    /// Digest bytes, adding the data length to the digest (preventing length
+    /// extension attack).
     fn input_with_len<const MAX: usize>(&mut self, data: &[u8]) {
         let len = data.len();
         match MAX {
@@ -37,6 +65,8 @@ pub trait DigestExt<const BYTE_LEN: usize = 32>: Digest {
         }
         self.input_raw(data);
     }
+
+    /// Compute the final cryptographic digest.
     fn finish(self) -> [u8; BYTE_LEN];
 }
 
