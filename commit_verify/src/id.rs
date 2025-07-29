@@ -77,7 +77,12 @@ pub enum CommitStep {
     Merklized(TypeFqn),
 
     /// Serialization with [`CommitEngine::commit_to_concealed`].
-    Concealed(TypeFqn),
+    Concealed {
+        /// The source type to which the concealment is applied.
+        src: TypeFqn,
+        /// The destination type of the concealment.
+        dst: TypeFqn,
+    },
 }
 
 /// A helper engine used in computing commitment ids.
@@ -183,9 +188,13 @@ impl CommitEngine {
         T: Conceal + StrictType,
         T::Concealed: StrictEncode,
     {
-        let fqn = commitment_fqn::<T>();
+        let src = commitment_fqn::<T>();
+        let dst = commitment_fqn::<T::Concealed>();
         self.layout
-            .push(CommitStep::Concealed(fqn))
+            .push(CommitStep::Concealed {
+                src,
+                dst: dst.clone(),
+            })
             .expect("too many fields for commitment");
 
         let concealed = value.conceal();
@@ -311,6 +320,7 @@ pub trait CommitEncode {
 #[derive(Getters, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct CommitLayout {
     idty: TypeFqn,
+    ty: TypeFqn,
     #[getter(as_copy)]
     tag: &'static str,
     fields: TinyVec<CommitStep>,
@@ -339,12 +349,13 @@ pub trait CommitmentLayout: CommitEncode {
 }
 
 impl<T> CommitmentLayout for T
-where T: CommitEncode + StrictDumb
+where T: CommitEncode + StrictType + StrictDumb
 {
     fn commitment_layout() -> CommitLayout {
         let dumb = Self::strict_dumb();
         let fields = dumb.commit().into_layout();
         CommitLayout {
+            ty: commitment_fqn::<T>(),
             idty: TypeFqn::with(
                 libname!(Self::CommitmentId::STRICT_LIB_NAME),
                 Self::CommitmentId::strict_name()
@@ -407,14 +418,14 @@ impl From<Sha256> for StrictHash {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     #![cfg_attr(coverage_nightly, coverage(off))]
     use super::*;
 
     #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
     #[derive(StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = "Test")]
-    struct DumbConceal(u8);
+    pub struct DumbConceal(u8);
 
     impl Conceal for DumbConceal {
         type Concealed = DumbHash;
@@ -426,14 +437,14 @@ mod tests {
     #[strict_type(lib = "Test")]
     #[derive(CommitEncode)]
     #[commit_encode(crate = self, strategy = strict, id = StrictHash)]
-    struct DumbHash(u8);
+    pub struct DumbHash(u8);
 
     #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
     #[derive(StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = "Test")]
     #[derive(CommitEncode)]
     #[commit_encode(crate = self, strategy = strict, id = MerkleHash)]
-    struct DumbMerkle(u8);
+    pub struct DumbMerkle(u8);
 
     #[test]
     fn commit_engine_strict() {
@@ -474,7 +485,10 @@ mod tests {
         engine.commit_to_concealed(&val);
         engine.set_finished();
         let (id, layout) = engine.finish_layout();
-        assert_eq!(layout, tiny_vec![CommitStep::Concealed(TypeFqn::from("Test.DumbConceal"))]);
+        assert_eq!(layout, tiny_vec![CommitStep::Concealed {
+            src: TypeFqn::from("Test.DumbConceal"),
+            dst: TypeFqn::from("Test.DumbHash")
+        },]);
         assert_eq!(
             id.finish(),
             Sha256::from_tag("test")
