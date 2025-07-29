@@ -41,7 +41,7 @@ impl CommitDerive {
             },
             StrategyAttr::ConcealStrict => quote! {
                 use #trait_crate::Conceal;
-                engine.commit_to_concealed(&self.conceal());
+                engine.commit_to_concealed(self);
             },
             StrategyAttr::Transparent => quote! {
                 use amplify::Wrapper;

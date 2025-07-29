@@ -24,7 +24,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "~4.9.0"
 strict_encoding = "~2.9.1"
-strict_types = "~2.9.0"
+strict_types = "~2.9.1"
 serde = { version = "1", features = ["derive"] }
 
 [package]

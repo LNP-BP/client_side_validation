@@ -25,7 +25,7 @@ required-features = ["stl", "vesper"]
 amplify = { workspace = true }
 strict_encoding = { workspace = true }
 strict_types = { workspace = true }
-vesper-lang = "0.2.1"
+vesper-lang = "0.2.3"
 commit_encoding_derive = { version = "0.12.0", path = "derive" }
 sha2 = "0.10.8"
 ripemd = "0.1.3"
@@ -40,8 +40,8 @@ default = ["derive"]
 all = ["rand", "derive", "stl", "vesper", "serde"]
 derive = []
 rand = ["dep:rand"]
-stl = ["strict_types/armor"]
-vesper = []
+stl = ["strict_types/armor", "strict_types/stl"]
+vesper = ["strict_types/vesper"]
 serde = ["dep:serde", "amplify/serde"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -35,10 +35,10 @@ pub type VesperCommit = TExpr<Pred>;
 #[display(lowercase)]
 pub enum Pred {
     Commitment,
-    Serialized,
-    Hashed,
-    Merklized,
-    Concealed,
+    Serialize,
+    Hash,
+    Merklize,
+    Conceal,
     List,
     Set,
     Element,
@@ -55,6 +55,7 @@ impl Predicate for Pred {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Attr {
+    For(TypeFqn),
     Tagged(&'static str),
     Concealed(TypeFqn),
     LenRange(LenRange),
@@ -74,8 +75,9 @@ impl Attribute for Attr {
 
     fn name(&self) -> Option<Ident> {
         match self {
+            Attr::For(_) => Some(ident!("for")),
             Attr::Tagged(_) => Some(ident!("tagged")),
-            Attr::Concealed(_) => Some(ident!("concealed")),
+            Attr::Concealed { .. } => Some(ident!("to")),
             Attr::LenRange(_) => Some(ident!("len")),
             Attr::Hasher => Some(ident!("hasher")),
         }
@@ -83,6 +85,7 @@ impl Attribute for Attr {
 
     fn value(&self) -> AttrVal<Self::Expression> {
         match self {
+            Attr::For(fqn) => AttrVal::Ident(fqn.name.to_ident()),
             Attr::Tagged(tag) => AttrVal::Expr(AttrExpr::Tag(tag)),
             Attr::Concealed(fqn) => AttrVal::Ident(fqn.name.to_ident()),
             Attr::LenRange(range) => AttrVal::Expr(AttrExpr::LenRange(range.clone())),
@@ -98,7 +101,7 @@ impl CommitStep {
             CommitStep::Collection(_, _, fqn) => fqn,
             CommitStep::Hashed(fqn) => fqn,
             CommitStep::Merklized(fqn) => fqn,
-            CommitStep::Concealed(fqn) => fqn,
+            CommitStep::Concealed { src, dst: _ } => src,
         }
         .name
         .to_ident()
@@ -106,20 +109,20 @@ impl CommitStep {
 
     fn predicate(&self) -> Pred {
         match self {
-            CommitStep::Serialized(_) => Pred::Serialized,
+            CommitStep::Serialized(_) => Pred::Serialize,
             CommitStep::Collection(CommitColType::List, _, _) => Pred::List,
             CommitStep::Collection(CommitColType::Set, _, _) => Pred::Set,
             CommitStep::Collection(CommitColType::Map { .. }, _, _) => Pred::Map,
-            CommitStep::Hashed(_) => Pred::Hashed,
-            CommitStep::Merklized(_) => Pred::Merklized,
-            CommitStep::Concealed(_) => Pred::Concealed,
+            CommitStep::Hashed(_) => Pred::Hash,
+            CommitStep::Merklized(_) => Pred::Merklize,
+            CommitStep::Concealed { .. } => Pred::Conceal,
         }
     }
 
     fn attributes(&self) -> SmallVec<Attr> {
         match self {
             CommitStep::Collection(_, sizing, _) => small_vec![Attr::LenRange((*sizing).into())],
-            CommitStep::Concealed(from) => small_vec![Attr::Concealed(from.clone())],
+            CommitStep::Concealed { src: _, dst } => small_vec![Attr::Concealed(dst.clone())],
             CommitStep::Serialized(_) | CommitStep::Hashed(_) | CommitStep::Merklized(_) => none!(),
         }
     }
@@ -154,10 +157,17 @@ impl CommitStep {
                     })
                 ]
             }
-            CommitStep::Serialized(_) |
-            CommitStep::Hashed(_) |
-            CommitStep::Merklized(_) |
-            CommitStep::Concealed(_) => empty!(),
+            CommitStep::Serialized(_) => none!(),
+
+            CommitStep::Hashed(subj) |
+            CommitStep::Merklized(subj) |
+            CommitStep::Concealed { src: _, dst: subj } => tiny_vec![Box::new(VesperCommit {
+                subject: subj.name.to_ident(),
+                predicate: Pred::Serialize,
+                attributes: none!(),
+                content: none!(),
+                comment: None,
+            })],
         }
     }
 }
@@ -182,7 +192,11 @@ impl CommitLayout {
         VesperCommit {
             subject,
             predicate: Pred::Commitment,
-            attributes: small_vec![Attr::Hasher, Attr::Tagged(self.tag())],
+            attributes: small_vec![
+                Attr::For(self.ty().clone()),
+                Attr::Hasher,
+                Attr::Tagged(self.tag())
+            ],
             content: Confined::from_iter_checked(content),
             comment: None,
         }
