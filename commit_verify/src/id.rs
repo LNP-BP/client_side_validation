@@ -418,14 +418,14 @@ impl From<Sha256> for StrictHash {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     #![cfg_attr(coverage_nightly, coverage(off))]
     use super::*;
 
     #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
     #[derive(StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = "Test")]
-    struct DumbConceal(u8);
+    pub struct DumbConceal(u8);
 
     impl Conceal for DumbConceal {
         type Concealed = DumbHash;
@@ -437,14 +437,14 @@ mod tests {
     #[strict_type(lib = "Test")]
     #[derive(CommitEncode)]
     #[commit_encode(crate = self, strategy = strict, id = StrictHash)]
-    struct DumbHash(u8);
+    pub struct DumbHash(u8);
 
     #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
     #[derive(StrictType, StrictEncode, StrictDecode)]
     #[strict_type(lib = "Test")]
     #[derive(CommitEncode)]
     #[commit_encode(crate = self, strategy = strict, id = MerkleHash)]
-    struct DumbMerkle(u8);
+    pub struct DumbMerkle(u8);
 
     #[test]
     fn commit_engine_strict() {

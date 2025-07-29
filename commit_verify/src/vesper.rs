@@ -202,3 +202,69 @@ impl CommitLayout {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![cfg_attr(coverage_nightly, coverage(off))]
+
+    use amplify::confinement::{LargeString, SmallOrdMap, SmallOrdSet};
+    use strict_encoding::{StrictDecode, StrictEncode};
+
+    use super::*;
+    use crate::id::tests::*;
+    use crate::{CommitEncode, CommitEngine, CommitmentLayout, StrictHash};
+
+    #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    struct NamedWrapper<T: Default + StrictEncode + StrictDecode>(T);
+
+    #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Default)]
+    #[derive(StrictType, StrictEncode, StrictDecode)]
+    #[strict_type(lib = "Test")]
+    struct Test {
+        serialized: NamedWrapper<LargeString>,
+        concealed: DumbConceal,
+        hash: DumbHash,
+        merkle_list: TinyVec<DumbMerkle>,
+        set: SmallOrdSet<DumbHash>,
+        map: SmallOrdMap<u8, u64>,
+    }
+    impl CommitEncode for Test {
+        type CommitmentId = StrictHash;
+        fn commit_encode(&self, e: &mut CommitEngine) {
+            e.commit_to_serialized(&self.serialized);
+            e.commit_to_concealed(&self.concealed);
+            e.commit_to_hash(&self.hash);
+            e.commit_to_merkle(&self.merkle_list);
+            e.commit_to_linear_set(&self.set);
+            e.commit_to_linear_map(&self.map);
+        }
+    }
+
+    #[test]
+    fn display() {
+        let layout = Test::commitment_layout();
+        assert_eq!(
+            layout
+                .to_vesper()
+                .display()
+                .to_string()
+                .replace(" \n", "\n"),
+            r#"commitment StrictHash: for Test, hasher SHA256, tagged urn:ubideco:strict-types:value-hash#2024-02-10
+  serialize NamedWrapperConfinedString04294967295
+  conceal DumbConceal: to DumbHash
+    serialize DumbHash
+  hash DumbHash
+    serialize DumbHash
+  merklize DumbMerkle
+    serialize DumbMerkle
+  set DumbHash: len 0..<2^16
+    element DumbHash
+  map U64: len 0..<2^16
+    mapKey U8
+    mapValue U64
+"#
+        );
+    }
+}
